@@ -1,0 +1,42 @@
+:root {
+  --primary: #6a38ff;
+  --text: #111827;
+  --text-light: #374151;
+  --bg: #ffffff;
+  --bg-alt: #f7f9fc;
+  --radius: 0.5rem;
+  --max-w: 960px;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; font-family: "Inter", sans-serif; color: var(--text); background: var(--bg);
+  line-height: 1.6; font-size: 18px;
+}
+img { max-width: 100%; height: auto; }
+a { color: var(--primary); text-decoration: none; }
+.container { width: min(100% - 2rem, var(--max-w)); margin-inline: auto; }
+.flex-between { display: flex; align-items: center; justify-content: space-between; }
+.text-center { text-align: center; }
+.section-pad { padding: 4rem 0; }
+.alt-bg { background: var(--bg-alt); }
+.section-title { font-size: 2rem; margin-bottom: 1.5rem; text-align: center; }
+.site-header { position: sticky; top: 0; background: #fafafa; padding: 0.75rem 0; border-bottom: 1px solid #eee; z-index: 10; }
+.site-nav a { margin-inline: 0.75rem; font-weight: 600; }
+.btn-primary { display: inline-block; background: var(--primary); color: #fff; padding: 0.75rem 1.25rem; border-radius: var(--radius); font-weight: 600; }
+.btn-primary:hover { opacity: .9; }
+.hero { padding: 6rem 0 4rem; }
+.hero h1 { font-size: clamp(2.25rem, 5vw, 3rem); margin: 0 0 1rem; }
+.gradient-text { background: linear-gradient(90deg, #6a38ff, #9b7cff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.subhead { max-width: 45ch; margin: 0 auto 2rem; color: var(--text-light); }
+.services-list { list-style: none; padding: 0; margin: 0 auto; max-width: 50ch; }
+.services-list li { margin-bottom: 1rem; position: relative; padding-left: 1.25rem; }
+.services-list li::before { content: ""; position: absolute; left: 0; top: 0.5rem; width: 0.5rem; height: 0.5rem; background: var(--primary); border-radius: 50%; }
+.optin-form { max-width: 32rem; margin: 0 auto; display: grid; gap: 1rem; }
+.optin-form input[type="tel"] { width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: var(--radius); }
+.checkbox { font-size: 0.9rem; line-height: 1.4; }
+.contact address { font-style: normal; line-height: 1.7; }
+.site-footer { background: #fafafa; padding: 1rem 0; font-size: 0.875rem; }
+
+@media (min-width: 768px) {
+  .services-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; }
+}
