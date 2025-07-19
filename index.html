@@ -29,7 +29,14 @@
     .container{max-width:var(--max-w);margin:0 auto;padding:0 1rem;}
     nav{display:flex;align-items:center;justify-content:space-between;height:64px;}
     nav ul{display:flex;gap:2rem;list-style:none;padding:0;margin:0;align-items:center;}
-    nav a{color:var(--gray-900);text-decoration:none;font-weight:600;}
+    nav a{
+  background:none;                /* clear rainbow gradient */
+  color:var(--gray-900);
+  text-decoration:none;
+  font-weight:600;
+  padding:0 .6rem;
+  transition:opacity .2s;
+}
     nav a:hover{opacity:.8;}
     .cta{background:var(--accent-gradient);color:#fff;padding:.6rem 1.2rem;border-radius:.5rem;border:none;cursor:pointer;font-weight:600;}
     .cta:hover{filter:brightness(1.1);}
