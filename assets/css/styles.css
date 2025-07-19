@@ -40,3 +40,21 @@ a { color: var(--primary); text-decoration: none; }
 @media (min-width: 768px) {
   .services-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; }
 }
+:root{
+  --gray-900:#1e1e1e;
+  --gray-600:#555;
+  --accent-start:#C8FF00;
+  --accent-mid:#00D9FF;
+  --accent-end:#FF38A0;
+  --accent-gradient:linear-gradient(90deg,var(--accent-start),var(--accent-mid),var(--accent-end));
+}
+
+h1,h2{font-family:'Poppins',sans-serif;}
+a,button.cta{
+  background:var(--accent-gradient);
+  color:#fff;
+  border:none; border-radius:.5rem;
+  transition:filter .2s;
+}
+a:hover,button.cta:hover{filter:brightness(1.1);}
+
