@@ -1,5 +1,5 @@
 <!-- ====================================================================
- index.html – Mobius Integrations (logo enlarged)
+ index.html – Mobius Integrations (logo now 90 px)
  ==================================================================== -->
 <!DOCTYPE html>
 <html lang="en">
@@ -27,7 +27,7 @@
     body{margin:0;font-family:'Inter',sans-serif;color:var(--gray-900);line-height:1.6;}
     header{position:sticky;top:0;background:#fafafa;border-bottom:1px solid #eee;z-index:1000;}
     .container{max-width:var(--max-w);margin:0 auto;padding:0 1rem;}
-    nav{display:flex;align-items:center;justify-content:space-between;height:80px;} /* increased height */
+    nav{display:flex;align-items:center;justify-content:space-between;height:100px;} /* increased to fit 90px logo */
     nav ul{display:flex;gap:2rem;list-style:none;padding:0;margin:0;align-items:center;}
     nav a{
       background:none;
@@ -38,7 +38,7 @@
       transition:opacity .2s;
     }
     nav a:hover{opacity:.8;}
-    .cta{background:var(--accent-gradient);color:#fff;padding:.6rem 1.2rem;border-radius:.5rem;border:none;cursor:pointer;font-weight:600;}
+    .cta{background:var(--accent-gradient);color:#fff;padding:.8rem 1.4rem;border-radius:.5rem;border:none;cursor:pointer;font-weight:600;}
     .cta:hover{filter:brightness(1.1);}
     h1,h2{font-family:'Poppins',sans-serif;margin:0 0 1rem;font-weight:600;}
     section{padding:var(--section-pad) 1rem;text-align:center;}
@@ -50,7 +50,7 @@
     label{font-size:.95rem;color:var(--gray-600);line-height:1.4;}
     footer{background:#fafafa;padding:2rem 1rem;font-size:.875rem;color:var(--gray-600);text-align:center;border-top:1px solid #eee;}
     /* Logo size fix */
-    .logo img{height:60px;width:auto;}
+    .logo img{height:90px;width:auto;}
   </style>
 </head>
 <body>
@@ -58,7 +58,7 @@
 <header>
   <div class="container">
     <nav>
-      <a href="#top" class="logo"><img src="assets/img/logo.png" alt="Mobius Integrations logo" style="height:60px"></a>
+      <a href="#top" class="logo"><img src="assets/img/logo.png" alt="Mobius Integrations logo"></a>
       <ul>
         <li><a href="#services">Services</a></li>
         <li><a href="#optin">Opt‑In</a></li>
@@ -71,7 +71,7 @@
 </header>
 
 <!-- =========== Hero ================= -->
-<section id="top" style="padding-top:7rem;"> <!-- extra top‑pad matching taller nav -->
+<section id="top" style="padding-top:9rem;"> <!-- match taller nav -->
   <div class="container">
     <h1>Put routine work on autopilot.</h1>
     <p style="max-width:45ch;margin:0 auto 2rem;">We connect your favorite tools—WhatsApp, n8n, Google Workspace, CRMs—to create seamless, AI‑driven workflows that save hours each week.</p>
@@ -95,7 +95,7 @@
 <section id="optin">
   <div class="container">
     <h2>WhatsApp Consent</h2>
-    <form action="#" onsubmit="event.preventDefault();this.reset();alert('Thank you! We\'ll text you soon.');">
+    <form action="#" onsubmit="event.preventDefault();this.reset();alert('Thank you! We\\'ll text you soon.');">
       <input type="tel" name="phone" placeholder="+1 555‑123‑4567" pattern="\+?[0-9\s-]{7,15}" required>
       <label><input type="checkbox" required> I consent to receive WhatsApp appointment reminders and service updates from Mobius Integrations. Message & data rates may apply. Reply STOP to unsubscribe.</label>
       <button type="submit" class="cta">Opt In</button>
