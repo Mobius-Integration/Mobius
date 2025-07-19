@@ -1,0 +1,232 @@
+<!--
+  Clean, spacious layout for Mobius Integrations
+  Drop this into any static host (or a Squarespace/Wix custom‑code block)
+  Uses:
+  • A single Inter webfont
+  • CSS variables for easy colour/spacing tweaks
+  • Flex + max‑width container for centred, roomy sections
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Mobius Integrations – AI Workflow Automation</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Google Fonts → Inter keeps it crisp but professional -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      /* Primary brand colour + greys → tweak here */
+      --primary: #6b4cd3;
+      --gray-100: #f5f5f7;
+      --gray-200: #e9ecef;
+      --max-width: 960px;
+
+      /* Spacing scale */
+      --space-xs: 0.5rem;
+      --space-s: 1rem;
+      --space-m: 2rem;
+      --space-l: 3rem;
+      --space-xl: 4rem;
+    }
+
+    /* Global reset + typography */
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Inter", sans-serif;
+      color: #1e1e1e;
+      line-height: 1.6;
+      background: #fff;
+    }
+
+    a { color: var(--primary); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    h1, h2, h3 { font-weight: 700; line-height: 1.2; margin: 0 0 var(--space-m); }
+    h1 { font-size: 2.75rem; }
+    h2 { font-size: 2rem; text-align: center; }
+
+    /* Layout helpers */
+    .wrapper {
+      max-width: var(--max-width);
+      margin: 0 auto;
+      padding: 0 var(--space-m);
+    }
+    section { padding: var(--space-xl) 0; border-bottom: 1px solid var(--gray-200); }
+    section:last-of-type { border-bottom: none; }
+
+    /* Header */
+    header {
+      background: var(--gray-100);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    header .inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--space-s) 0;
+    }
+    nav a {
+      margin: 0 var(--space-s);
+      font-weight: 500;
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-block;
+      background: var(--primary);
+      color: #fff;
+      padding: 0.75rem 1.5rem;
+      border-radius: 0.5rem;
+      font-weight: 600;
+      transition: background 0.2s;
+    }
+    .btn:hover { background: #5742b5; }
+
+    /* Lists */
+    ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    ul li {
+      display: flex;
+      align-items: flex-start;
+      margin-bottom: var(--space-s);
+    }
+    ul li::before {
+      content: "•";
+      color: var(--primary);
+      font-size: 1.5rem;
+      line-height: 1;
+      margin-right: var(--space-s);
+    }
+
+    /* Form */
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-s);
+      max-width: 400px;
+      margin: 0 auto;
+      background: #fafafa;
+      border: 1px solid var(--gray-200);
+      border-radius: 0.75rem;
+      padding: var(--space-m);
+    }
+    input[type="tel"] {
+      padding: 0.75rem;
+      border: 1px solid #ccc;
+      border-radius: 0.5rem;
+      font-size: 1rem;
+    }
+    label { font-size: 0.9rem; }
+
+    /* Footer */
+    footer {
+      background: var(--gray-100);
+      padding: var(--space-s) 0;
+      text-align: center;
+      font-size: 0.8rem;
+    }
+
+    /* Breakpoint tweaks */
+    @media (max-width: 600px) {
+      h1 { font-size: 2.2rem; }
+      nav { display: none; } /* hide desktop nav – add burger later if desired */
+    }
+  </style>
+</head>
+<body>
+  <!-- ======= Header ======= -->
+  <header>
+    <div class="wrapper inner">
+      <a href="#" class="logo" style="display:flex;align-items:center;">
+        <!-- Swap in your real logo → keep height consistent to avoid layout shift -->
+        <img src="logo.svg" alt="Mobius Integrations logo" style="height: 40px;" />
+      </a>
+      <nav>
+        <a href="#services">Services</a>
+        <a href="#optin">Opt‑In</a>
+        <a href="#contact">Contact</a>
+        <a href="#privacy">Privacy & Terms</a>
+      </nav>
+      <a href="#contact" class="btn">Book now</a>
+    </div>
+  </header>
+
+  <main>
+    <!-- ======= Hero ======= -->
+    <section id="hero" style="text-align:center;">
+      <div class="wrapper">
+        <h1>Put routine work on autopilot.</h1>
+        <p>We connect your favorite tools—WhatsApp, n8n, Google Workspace, CRMs—to create seamless, AI‑driven workflows that save hours each week.</p>
+        <a href="#contact" class="btn">Book a discovery call</a>
+      </div>
+    </section>
+
+    <!-- ======= Services ======= -->
+    <section id="services">
+      <div class="wrapper">
+        <h2>Core Services</h2>
+        <ul>
+          <li><strong>WhatsApp Automation & Opt‑In Flows</strong> – compliant template setup, consent capture, appointment reminders.</li>
+          <li><strong>n8n Integration</strong> – build custom automations connecting 300+ apps.</li>
+          <li><strong>AI Prompt Engineering</strong> – craft high‑conversion copy & images with GPT / DALL·E pipelines.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ======= Opt‑In ======= -->
+    <section id="optin">
+      <div class="wrapper">
+        <h2>WhatsApp Consent</h2>
+        <form action="/subscribe" method="POST">
+          <label>Mobile number (with country code)
+            <input type="tel" name="phone" required placeholder="+1…" />
+          </label>
+          <label>
+            <input type="checkbox" name="agree" required />
+            I consent to receive WhatsApp appointment reminders and service updates from Mobius Integrations. Message & data rates may apply. Reply STOP to unsubscribe.
+          </label>
+          <button type="submit" class="btn">Opt In</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- ======= Contact ======= -->
+    <section id="contact">
+      <div class="wrapper" style="text-align:center;">
+        <h2>Contact</h2>
+        <p><strong>Mario Barillas, Founder</strong><br />
+          Based in Tampa Bay, FL, USA<br />
+          <strong>Email:</strong> support@mobiusintegrations.com<br />
+          <strong>WhatsApp:</strong> +1‑XXX‑XXX‑XXXX<br />
+          <strong>Hours:</strong> Mon‑Fri 9‑5 ET
+        </p>
+      </div>
+    </section>
+
+    <!-- ======= Privacy ======= -->
+    <section id="privacy">
+      <div class="wrapper">
+        <h2>Privacy Policy & Terms (summary)</h2>
+        <p>We collect your name, phone number, and project details solely to deliver integration services and WhatsApp reminders you request. Data is processed in the United States and never sold. You may opt out at any time by replying STOP or emailing support@mobiusintegrations.com. <a href="/privacy.html">Full policy</a>.</p>
+      </div>
+    </section>
+  </main>
+
+  <!-- ======= Footer ======= -->
+  <footer>
+    <div class="wrapper">
+      © 2025 Mobius Integrations. All rights reserved.
+    </div>
+  </footer>
+</body>
+</html>
