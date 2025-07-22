@@ -1,0 +1,7 @@
+# build output
+dist/
+# dependencies
+node_modules/
+# IDE / OS
+.vscode/
+.DS_Store

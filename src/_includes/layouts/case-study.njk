@@ -1,0 +1,53 @@
+{% extends "./base.njk" %}
+
+{# -------------------------------------------
+  Case‑study Layout v2 (clean, professional)
+  Features:
+  • Hero banner with gradient overlay + optional featured image
+  • Sidebar KPI panel w/ icons
+  • Rich body typography via @tailwindcss/typography
+  • JSON‑LD structured data for SEO (Organisation + HowTo)
+------------------------------------------- #}
+
+{% block content %}
+{% set heroImage = featured_image | default('/assets/img/case-default.jpg') %}
+<section class="relative isolate overflow-hidden">
+  <img src="{{ heroImage }}" alt="{{ title }} hero" class="absolute inset-0 w-full h-full object-cover object-center opacity-30" />
+  <div class="absolute inset-0 bg-gradient-to-b from-primary/60 to-primary/90 mix-blend-multiply"></div>
+  <div class="relative z-10 container mx-auto px-4 py-24 text-center text-white">
+    <h1 class="text-4xl md:text-5xl font-bold mb-4">{{ title }}</h1>
+    <p class="max-w-2xl mx-auto text-lg">{{ case_tagline }}</p>
+  </div>
+</section>
+
+<section class="container mx-auto px-4 py-16 grid lg:grid-cols-3 gap-10">
+  <article class="prose lg:prose-lg max-w-none lg:col-span-2">
+    {{ content | safe }}
+  </article>
+
+  <aside class="bg-gray-50 p-8 rounded-2xl shadow-sm self-start sticky top-28">
+    <h2 class="text-xl font-semibold mb-6 text-primary">Results at a glance</h2>
+    <ul class="space-y-4 text-sm">
+      <li class="flex items-start gap-3"><span class="i-lucide-line-chart w-5 h-5 text-primary"></span><strong>No‑show rate:</strong> {{ metric_noshow }}</li>
+      <li class="flex items-start gap-3"><span class="i-lucide-timerreset w-5 h-5 text-primary"></span><strong>Avg. handling time:</strong> {{ metric_aht }}</li>
+      <li class="flex items-start gap-3"><span class="i-lucide-badge-dollar-sign w-5 h-5 text-primary"></span><strong>ROI:</strong> {{ metric_roi }}</li>
+    </ul>
+    <a href="/#book" target="_blank" rel="noopener" class="block w-full mt-8 text-center px-4 py-2 rounded-lg bg-primary text-white hover:bg-primary-dark transition">Book a discovery call</a>
+  </aside>
+</section>
+
+{# SEO structured data #}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "CreativeWork",
+  "name": "{{ title }}",
+  "description": "{{ case_tagline }}",
+  "publisher": {
+    "@type": "Organization",
+    "name": "Mobius Integration",
+    "logo": { "@type": "ImageObject", "url": "/assets/img/logo.svg" }
+  }
+}
+</script>
+{% endblock %}

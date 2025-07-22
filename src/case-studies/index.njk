@@ -1,0 +1,14 @@
+---
+layout: base.njk
+title: Case Studies
+permalink: "/case/"
+---
+<h1 class="text-3xl font-bold mb-8">All Success Stories</h1>
+<div class="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+  {% for cs in collections.case %}
+  <a href="{{ cs.url }}" class="block p-6 bg-white rounded-xl shadow-sm hover:shadow-md transition">
+    <h3 class="font-semibold mb-2">{{ cs.data.title }}</h3>
+    <p class="text-sm text-gray-600">{{ cs.data.case_tagline }}</p>
+  </a>
+  {% endfor %}
+</div>

@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{% if title %}{{ title }} · {% endif %}Mobius Integration</title>
+    <link href="/css/tailwind.css" rel="stylesheet" />
+    <meta name="robots" content="index,follow" />
+    <meta property="og:site_name" content="Mobius Integration" />
+  </head>
+  <body class="font-sans text-gray-800 leading-relaxed bg-white">
+    {% include "partials/header.njk" %}
+
+    <main class="min-h-screen pt-20 pb-12">
+      {% block content %}
+        {{ content | safe }}
+      {% endblock %}
+    </main>
+
+    {% include "partials/footer.njk" %}
+  {% include "partials/consent-meta.njk" %}
+  </body>
+</html>

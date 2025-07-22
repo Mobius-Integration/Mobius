@@ -1,0 +1,36 @@
+{
+  "description": "n8n workflow: publish approved blog drafts to Git repo",
+  "nodes": [
+    {
+      "id": 1,
+      "name": "HTTP Poll ApprovedDrafts",
+      "type": "httpRequest",
+      "parameters": {
+        "url": "https://api.your-content-source.dev/approved",
+        "method": "GET"
+      }
+    },
+    {
+      "id": 2,
+      "name": "Write Markdown File",
+      "type": "n8n-nodes-base.writeBinaryFile",
+      "parameters": {
+        "fileName": "{{Date.now()}}-{{title-slug}}.md",
+        "dataPropertyName": "markdown",
+        "directory": "/workspace/src/posts"
+      }
+    },
+    {
+      "id": 3,
+      "name": "Git Commit & Push",
+      "type": "n8n-nodes-base.exec",
+      "parameters": {
+        "command": "git add . && git commit -m 'chore(blog): auto‑publish {{title}}' && git push"
+      }
+    }
+  ],
+  "connections": {
+    "1": { "main": [ [ { "node": "2" } ] ] },
+    "2": { "main": [ [ { "node": "3" } ] ] }
+  }
+}
