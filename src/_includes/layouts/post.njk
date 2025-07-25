@@ -1,0 +1,14 @@
+{% raw %}{% extends "layouts/base.njk" %}{% endraw %}
+
+{% raw %}{% block content %}{% endraw %}
+<article class="prose prose-indigo max-w-none">
+  <h1 class="text-4xl font-bold text-gray-900 mb-4">{% raw %}{{ title }}{% endraw %}</h1>
+  <p class="text-sm text-gray-600 mb-8">
+    <time datetime="{% raw %}{{ date | date:"yyyy-MM-dd" }}{% endraw %}">
+      {% raw %}{{ date | date:"MMMM d, yyyy" }}{% endraw %}
+    </time> 
+    • <span>Mobius Integration</span>
+  </p>
+  {% raw %}{{ content | safe }}{% endraw %}
+</article>
+{% raw %}{% endblock %}{% endraw %}

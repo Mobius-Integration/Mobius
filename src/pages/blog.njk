@@ -1,0 +1,26 @@
+---
+layout: base
+title: Blog
+permalink: /blog/
+---
+
+<h1 class="text-3xl font-bold text-gray-900 mb-8">Blog</h1>
+<ul class="list-none space-y-6">
+  {% raw %}{% for post in collections.post | reverse %}{% endraw %}
+    <li>
+      <h2 class="text-2xl font-semibold text-gray-900">
+        <a href="{% raw %}{{ post.url }}{% endraw %}" class="hover:text-indigo-600">
+          {% raw %}{{ post.data.title }}{% endraw %}
+        </a>
+      </h2>
+      <p class="text-sm text-gray-600">
+        <time datetime="{% raw %}{{ post.date | date:"yyyy-MM-dd" }}{% endraw %}">
+          {% raw %}{{ post.date | date:"MMMM d, yyyy" }}{% endraw %}
+        </time>
+      </p>
+      <p class="text-gray-700 mt-2">
+        {% raw %}{{ post.data.excerpt or post.templateContent | striptags | truncate(150) }}{% endraw %}…
+      </p>
+    </li>
+  {% raw %}{% endfor %}{% endraw %}
+</ul>

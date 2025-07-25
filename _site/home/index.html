@@ -1,0 +1,20 @@
+{% set siteTitle = "Mobius Integration" %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{ title or siteTitle }}</title>
+  <meta name="description" content="AI Integration solutions for finance and legal sectors." />
+  <!-- Tailwind CSS compiled stylesheet -->
+  <link href="/assets/css/tailwind.css" rel="stylesheet" />
+</head>
+<body class="text-gray-800 bg-gray-50">
+  {% include "partials/header.njk" %}
+  <main class="container mx-auto px-4 py-8">
+    <!-- Page-specific content will be injected here -->
+    {{ content | safe }}
+  </main>
+  {% include "partials/footer.njk" %}
+</body>
+</html>

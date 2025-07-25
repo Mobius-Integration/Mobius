@@ -1,0 +1,80 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Use page title if provided; otherwise fall back to the global site title -->
+    <title>Blog</title>
+    <meta name="description" content="AI Integration solutions for finance and legal sectors." />
+    <!-- Tailwind CSS compiled stylesheet -->
+    <link href="/assets/css/tailwind.css" rel="stylesheet" />
+  </head>
+  <body class="text-gray-800 bg-gray-50">
+    
+    <header class="bg-white shadow-md">
+  <!-- Thin rainbow accent bar -->
+  <div class="h-1 bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500"></div>
+  <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+    <!-- Logo / Brand Name -->
+    <a href="/" class="text-xl font-semibold text-gray-900">
+      <img src="/assets/logo.png" alt="Mobius Integration Logo" class="h-8 inline-block mr-2 align-text-bottom">
+      Mobius<span class="text-indigo-500"> Integration</span>
+    </a>
+    <!-- Navigation Links -->
+    <nav class="space-x-6 text-gray-700">
+      <a href="/" class="hover:text-indigo-600">Home</a>
+      <a href="/services/" class="hover:text-indigo-600">Services</a>
+      <a href="/case-studies/" class="hover:text-indigo-600">Case Studies</a>
+      <a href="/blog/" class="hover:text-indigo-600">Blog</a>
+      <a href="/about/" class="hover:text-indigo-600">About Us</a>
+      <a href="/contact/" class="hover:text-indigo-600">Contact</a>
+      <!-- Call to action: Book Now button -->
+      <a href="/contact/#booking" class="bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 text-white font-semibold px-4 py-2 rounded hover:opacity-90">Book Now</a>
+    </nav>
+  </div>
+</header>
+
+
+    <main class="container mx-auto px-4 py-8">
+      
+      
+<h1 class="text-3xl font-bold text-gray-900 mb-8">Blog</h1>
+<ul class="list-none space-y-6">
+  {% for post in collections.post | reverse %}
+    <li>
+      <h2 class="text-2xl font-semibold text-gray-900">
+        <a href="{{ post.url }}" class="hover:text-indigo-600">
+          {{ post.data.title }}
+        </a>
+      </h2>
+      <p class="text-sm text-gray-600">
+        <time datetime="{{ post.date | date:"yyyy-MM-dd" }}">
+          {{ post.date | date:"MMMM d, yyyy" }}
+        </time>
+      </p>
+      <p class="text-gray-700 mt-2">
+        {{ post.data.excerpt or post.templateContent | striptags | truncate(150) }}…
+      </p>
+    </li>
+  {% endfor %}
+</ul>
+
+    </main>
+
+    
+    <footer class="bg-white border-t border-gray-200">
+  <div class="container mx-auto px-4 py-6 text-sm text-gray-600 flex flex-col md:flex-row justify-between">
+    <div class="mb-4 md:mb-0">
+      © <span id="year">{{ (new Date()).getFullYear() }}</span> Mobius Integration. All rights reserved.
+    </div>
+    <div class="space-x-4">
+      <a href="/privacy/" class="hover:text-gray-800">Privacy Policy</a>
+      <a href="/terms/" class="hover:text-gray-800">Terms of Service</a>
+    </div>
+  </div>
+</footer>
+
+  </body>
+</html>
