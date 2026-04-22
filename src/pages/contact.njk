@@ -2,48 +2,76 @@
 layout: base
 title: Contact
 permalink: /contact/
+description: Get in touch with Mobius Integration — book a free discovery call or send us a message about your AI project.
 ---
 
-<h1 class="text-3xl font-bold text-gray-900 mb-6">Get in Touch</h1>
-<p class="text-gray-800 mb-8">Have questions or want to learn more about how AI can transform your business? Reach out to us below or schedule a free demo call.</p>
+<section class="bg-white py-20 px-4">
+  <div class="container mx-auto max-w-5xl">
 
-<div class="grid md:grid-cols-2 gap-8 items-start">
-  <!-- Contact Form -->
-  <div>
-    <h2 class="text-2xl font-semibold text-gray-900 mb-4">Contact Us</h2>
-    <form name="contactForm" method="POST" data-netlify="true" action="/thank-you-contact/">
-      <div class="mb-4">
-        <label class="block text-sm font-medium text-gray-700 mb-1" for="name">Name</label>
-        <input type="text" id="name" name="name" required class="w-full border border-gray-300 rounded px-3 py-2" />
-      </div>
-      <div class="mb-4">
-        <label class="block text-sm font-medium text-gray-700 mb-1" for="email">Email</label>
-        <input type="email" id="email" name="email" required class="w-full border border-gray-300 rounded px-3 py-2" />
-      </div>
-      <div class="mb-4">
-        <label class="block text-sm font-medium text-gray-700 mb-1" for="message">Message</label>
-        <textarea id="message" name="message" rows="4" required class="w-full border border-gray-300 rounded px-3 py-2"></textarea>
-      </div>
-      <button type="submit" class="bg-indigo-600 text-white font-medium px-5 py-2 rounded hover:bg-indigo-500">
-        Send Message
-      </button>
-    </form>
-  </div>
+    <div class="text-center mb-14">
+      <h1 class="text-4xl font-bold text-gray-900 mb-4">Let's Talk</h1>
+      <p class="text-xl text-gray-600 max-w-xl mx-auto">Tell us what's slowing your business down. We'll listen, ask good questions, and come back with options — no pressure, no pitch.</p>
+    </div>
 
-  <!-- Booking Section -->
-  <div id="booking">
-    <h2 class="text-2xl font-semibold text-gray-900 mb-4">Book a Demo/Consultation</h2>
-    <p class="text-gray-800 mb-4">Choose a convenient time for a live demo or consultation with our team:</p>
-    <!-- Example booking tool embed or link -->
-    <div class="bg-gray-100 p-4 rounded">
-      <!-- Embed code for Calendly or other scheduling tool goes here. Example: -->
-      <p class="text-gray-600 italic">[Booking calendar widget will be embedded here]</p>
-      <!-- For instance, if using Calendly: 
-           <div class="calendly-inline-widget" data-url="https://calendly.com/your-calendly-link" style="min-width:320px;height:630px;"></div>
-           <script src="https://assets.calendly.com/assets/external/widget.js" type="text/javascript"></script>
-      -->
-      <!-- Or simply a link: -->
-      <p class="mt-2">Prefer email? <a href="mailto:hello@mobiusintegration.com" class="text-indigo-600 underline">Email us</a> to schedule a call.</p>
+    <div class="grid md:grid-cols-2 gap-12 items-start">
+
+      <div>
+        <h2 class="text-2xl font-bold text-gray-900 mb-6">Send a Message</h2>
+        <form name="contactForm" method="POST" data-netlify="true" action="/thank-you-contact/" class="space-y-4">
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1" for="name">Name</label>
+            <input type="text" id="name" name="name" required
+              class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1" for="email">Email</label>
+            <input type="email" id="email" name="email" required
+              class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1" for="company">Company (optional)</label>
+            <input type="text" id="company" name="company"
+              class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1" for="message">What's the challenge you're trying to solve?</label>
+            <textarea id="message" name="message" rows="5" required
+              class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-400"></textarea>
+          </div>
+          <button type="submit" class="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold py-3 px-6 rounded-lg hover:opacity-90 transition">
+            Send Message
+          </button>
+        </form>
+      </div>
+
+      <div id="booking">
+        <h2 class="text-2xl font-bold text-gray-900 mb-6">Book a Free Discovery Call</h2>
+        <p class="text-gray-600 mb-6">A 30-minute call where we map your workflow, identify opportunities, and give you a clear picture of what's possible — completely free, no commitment.</p>
+
+        <div class="bg-gray-50 rounded-2xl p-8 border border-gray-200 text-center mb-6">
+          <div class="text-5xl mb-4">📅</div>
+          <p class="text-gray-500 italic text-sm mb-4">Booking calendar coming soon. For now, email us directly to schedule a call.</p>
+          <a href="mailto:{{ site.email }}" class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold px-6 py-3 rounded-lg hover:opacity-90 transition inline-block">
+            Email to Book
+          </a>
+        </div>
+
+        <div class="space-y-4 text-sm text-gray-600">
+          <div class="flex items-start gap-3">
+            <span class="text-indigo-500 mt-0.5">✓</span>
+            <p>We'll walk through your current workflow and find the highest-impact opportunities</p>
+          </div>
+          <div class="flex items-start gap-3">
+            <span class="text-indigo-500 mt-0.5">✓</span>
+            <p>You'll leave with concrete ideas — whether or not you work with us</p>
+          </div>
+          <div class="flex items-start gap-3">
+            <span class="text-indigo-500 mt-0.5">✓</span>
+            <p>No sales pressure — we'll tell you straight if AI isn't the right fit</p>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
-</div>
+</section>

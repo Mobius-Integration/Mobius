@@ -1,11 +1,38 @@
-<footer class="bg-white border-t border-gray-200">
-  <div class="container mx-auto px-4 py-6 text-sm text-gray-600 flex flex-col md:flex-row justify-between">
-    <div class="mb-4 md:mb-0">
-      © <span id="year">{% raw %}{{ (new Date()).getFullYear() }}{% endraw %}</span> Mobius Integration. All rights reserved.
+<footer class="bg-gray-900 text-gray-400">
+  <div class="h-1 bg-gradient-to-r from-lime-400 via-cyan-400 via-blue-500 via-purple-600 to-pink-500"></div>
+  <div class="container mx-auto px-4 py-12">
+    <div class="grid md:grid-cols-3 gap-8 mb-10">
+      <div>
+        <img src="/assets/img/logo.svg" alt="Mobius Integration" class="h-10 mb-3">
+        <p class="text-sm leading-relaxed">Custom AI tools for businesses that want to move faster, work smarter, and grow without limits.</p>
+      </div>
+      <div>
+        <h4 class="text-white font-semibold mb-3">Quick Links</h4>
+        <ul class="space-y-2 text-sm">
+          <li><a href="/services/" class="hover:text-white transition-colors">Services</a></li>
+          <li><a href="/industries/" class="hover:text-white transition-colors">Industries</a></li>
+          <li><a href="/portfolio/" class="hover:text-white transition-colors">Portfolio</a></li>
+          <li><a href="/pricing/" class="hover:text-white transition-colors">Pricing</a></li>
+          <li><a href="/blog/" class="hover:text-white transition-colors">Blog</a></li>
+          <li><a href="/about/" class="hover:text-white transition-colors">About Us</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4 class="text-white font-semibold mb-3">Get in Touch</h4>
+        <ul class="space-y-2 text-sm">
+          <li><a href="mailto:{{ site.email }}" class="hover:text-white transition-colors">{{ site.email }}</a></li>
+          <li><a href="/contact/" class="hover:text-white transition-colors">Contact Us</a></li>
+          <li><a href="/contact/#booking" class="hover:text-white transition-colors">Book a Free Demo</a></li>
+          <li><a href="/faq/" class="hover:text-white transition-colors">FAQ</a></li>
+        </ul>
+      </div>
     </div>
-    <div class="space-x-4">
-      <a href="/privacy/" class="hover:text-gray-800">Privacy Policy</a>
-      <a href="/terms/" class="hover:text-gray-800">Terms of Service</a>
+    <div class="border-t border-gray-800 pt-6 flex flex-col md:flex-row justify-between items-center text-sm gap-3">
+      <p>&copy; {{ site.year }} Mobius Integration. All rights reserved.</p>
+      <div class="flex gap-5">
+        <a href="/privacy/" class="hover:text-white transition-colors">Privacy Policy</a>
+        <a href="/terms/" class="hover:text-white transition-colors">Terms of Service</a>
+      </div>
     </div>
   </div>
 </footer>

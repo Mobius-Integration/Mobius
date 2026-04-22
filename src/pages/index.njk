@@ -1,52 +1,162 @@
 ---
-layout: base            # ← uses the alias defined in .eleventy.js
-permalink: /            # ← generates the root URL
+layout: base
+permalink: /
 title: Home
+description: Mobius Integration finds your business pain points and builds custom AI tools to fix them. Consult, design, and build — across any industry.
 ---
 
-<section class="text-center py-12">
-  <h1 class="text-4xl font-bold text-gray-900 mb-6">
-    Empowering Finance & Legal Industries with AI Integration
-  </h1>
-  <p class="text-lg text-gray-700 max-w-2xl mx-auto mb-8">
-    Mobius Integration helps businesses in <span class="font-semibold text-indigo-600">finance</span> and <span class="font-semibold text-indigo-600">legal</span> sectors streamline operations and unlock insights using cutting‑edge AI.
-  </p>
-  <!-- Call‑to‑Action Button -->
-  <a href="/contact/#booking" class="bg-indigo-600 text-white font-medium px-6 py-3 rounded hover:bg-indigo-500">
-    Book a Free Demo
-  </a>
-</section>
-
-<!-- Services Overview Section -->
-<section class="py-10 bg-gray-100">
-  <div class="max-w-4xl mx-auto">
-    <h2 class="text-2xl font-semibold text-gray-900 mb-4">Our Services</h2>
-    <p class="text-gray-700 mb-6">We specialize in AI solutions tailored for the finance and legal industries, from intelligent document processing to predictive analytics.</p>
-
-    <ul class="grid md:grid-cols-2 gap-6 text-left text-gray-800">
-      <li class="p-4 bg-white rounded shadow">
-        <h3 class="font-semibold text-lg">Financial AI Solutions</h3>
-        <p class="text-sm mt-2">Automate risk analysis, customer support, and compliance workflows with AI-driven tools.</p>
-      </li>
-      <li class="p-4 bg-white rounded shadow">
-        <h3 class="font-semibold text-lg">Legal AI Solutions</h3>
-        <p class="text-sm mt-2">Leverage AI for contract analysis, legal research assistance, and document automation.</p>
-      </li>
-    </ul>
+<!-- Hero -->
+<section class="bg-white py-20 px-4">
+  <div class="container mx-auto max-w-4xl text-center">
+    <span class="inline-block bg-indigo-50 text-indigo-700 text-sm font-semibold px-3 py-1 rounded-full mb-6">AI Integration for Every Industry</span>
+    <h1 class="text-5xl md:text-6xl font-bold text-gray-900 leading-tight mb-6">
+      We Find Your Pain Points.<br>
+      <span class="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent">We Build the Tools to Fix Them.</span>
+    </h1>
+    <p class="text-xl text-gray-600 max-w-2xl mx-auto mb-10">
+      Mobius Integration partners with businesses across every industry — we consult, design, and build custom AI solutions tailored to your exact workflow.
+    </p>
+    <div class="flex flex-col sm:flex-row gap-4 justify-center">
+      <a href="/contact/#booking" class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold px-8 py-4 rounded-lg hover:opacity-90 transition text-lg">
+        Get a Free Consultation
+      </a>
+      <a href="/portfolio/" class="border-2 border-indigo-600 text-indigo-600 font-semibold px-8 py-4 rounded-lg hover:bg-indigo-50 transition text-lg">
+        See What We Build
+      </a>
+    </div>
   </div>
 </section>
 
-<!-- Lead Capture Form -->
-<section class="py-12">
-  <div class="max-w-md mx-auto bg-white p-6 rounded shadow">
-    <h2 class="text-xl font-semibold text-gray-900 mb-4 text-center">Stay in the Loop</h2>
-    <p class="text-gray-700 mb-6 text-center">Sign up to receive updates and insights on AI integration for your industry.</p>
-
-    <form name="leadCapture" method="POST" data-netlify="true" action="/thank-you/">
-      <div class="mb-4">
-        <input type="email" name="email" required placeholder="Your email address" class="w-full border border-gray-300 rounded px-3 py-2" />
+<!-- How It Works -->
+<section class="bg-gray-50 py-20 px-4">
+  <div class="container mx-auto max-w-5xl">
+    <div class="text-center mb-12">
+      <h2 class="text-3xl font-bold text-gray-900 mb-3">How It Works</h2>
+      <p class="text-gray-600 text-lg">Simple process, powerful results — every time.</p>
+    </div>
+    <div class="grid md:grid-cols-3 gap-8">
+      <div class="bg-white rounded-xl p-8 shadow-sm border border-gray-100 text-center">
+        <div class="w-14 h-14 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center mx-auto mb-5">
+          <span class="text-white text-xl font-bold">1</span>
+        </div>
+        <h3 class="text-xl font-bold text-gray-900 mb-3">Discover</h3>
+        <p class="text-gray-600">We start with a deep-dive into your business. No pitch — just questions. We map your workflow and find where AI creates the most impact.</p>
       </div>
-      <button type="submit" class="w-full bg-indigo-600 text-white font-medium py-2 px-4 rounded hover:bg-indigo-500">
+      <div class="bg-white rounded-xl p-8 shadow-sm border border-gray-100 text-center">
+        <div class="w-14 h-14 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center mx-auto mb-5">
+          <span class="text-white text-xl font-bold">2</span>
+        </div>
+        <h3 class="text-xl font-bold text-gray-900 mb-3">Design</h3>
+        <p class="text-gray-600">We present multiple solution options — from quick automations to full custom builds — with clear timelines and transparent pricing.</p>
+      </div>
+      <div class="bg-white rounded-xl p-8 shadow-sm border border-gray-100 text-center">
+        <div class="w-14 h-14 bg-gradient-to-br from-pink-500 to-orange-500 rounded-xl flex items-center justify-center mx-auto mb-5">
+          <span class="text-white text-xl font-bold">3</span>
+        </div>
+        <h3 class="text-xl font-bold text-gray-900 mb-3">Build</h3>
+        <p class="text-gray-600">We build, integrate, and deploy your tool. We stay hands-on until it's running exactly how your team needs it.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- What We Build -->
+<section class="bg-white py-20 px-4">
+  <div class="container mx-auto max-w-5xl">
+    <div class="text-center mb-12">
+      <h2 class="text-3xl font-bold text-gray-900 mb-3">What We Build</h2>
+      <p class="text-gray-600 text-lg">Practical AI tools that slot into the way you already work.</p>
+    </div>
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div class="bg-gray-50 rounded-xl p-6 border border-gray-100 hover:border-indigo-200 hover:shadow-md transition">
+        <div class="text-2xl mb-3">🤖</div>
+        <h3 class="font-bold text-gray-900 mb-2">AI Customer Support</h3>
+        <p class="text-sm text-gray-600">24/7 intelligent assistants that handle inquiries, routing, and resolution — so your team handles what matters.</p>
+      </div>
+      <div class="bg-gray-50 rounded-xl p-6 border border-gray-100 hover:border-indigo-200 hover:shadow-md transition">
+        <div class="text-2xl mb-3">📄</div>
+        <h3 class="font-bold text-gray-900 mb-2">Document Automation</h3>
+        <p class="text-sm text-gray-600">Extract, analyze, and generate documents with AI-powered workflows — contracts, reports, proposals, and more.</p>
+      </div>
+      <div class="bg-gray-50 rounded-xl p-6 border border-gray-100 hover:border-indigo-200 hover:shadow-md transition">
+        <div class="text-2xl mb-3">📊</div>
+        <h3 class="font-bold text-gray-900 mb-2">Data Analytics & Insights</h3>
+        <p class="text-sm text-gray-600">Turn raw data into actionable dashboards and predictive reports your team can act on immediately.</p>
+      </div>
+      <div class="bg-gray-50 rounded-xl p-6 border border-gray-100 hover:border-indigo-200 hover:shadow-md transition">
+        <div class="text-2xl mb-3">⚡</div>
+        <h3 class="font-bold text-gray-900 mb-2">Workflow Automation</h3>
+        <p class="text-sm text-gray-600">Connect your tools and eliminate manual, repetitive tasks — saving hours of work every single day.</p>
+      </div>
+      <div class="bg-gray-50 rounded-xl p-6 border border-gray-100 hover:border-indigo-200 hover:shadow-md transition">
+        <div class="text-2xl mb-3">🧠</div>
+        <h3 class="font-bold text-gray-900 mb-2">Custom AI Assistants</h3>
+        <p class="text-sm text-gray-600">Purpose-built AI models trained on your business data, processes, and terminology — not generic chatbots.</p>
+      </div>
+      <div class="bg-gray-50 rounded-xl p-6 border border-gray-100 hover:border-indigo-200 hover:shadow-md transition">
+        <div class="text-2xl mb-3">🔗</div>
+        <h3 class="font-bold text-gray-900 mb-2">System Integrations</h3>
+        <p class="text-sm text-gray-600">Seamlessly connect AI capabilities into your existing software stack — no rip-and-replace required.</p>
+      </div>
+    </div>
+    <div class="text-center mt-10">
+      <a href="/services/" class="text-indigo-600 font-semibold hover:underline">View all services &rarr;</a>
+    </div>
+  </div>
+</section>
+
+<!-- Industries -->
+<section class="bg-gray-50 py-20 px-4">
+  <div class="container mx-auto max-w-5xl">
+    <div class="text-center mb-12">
+      <h2 class="text-3xl font-bold text-gray-900 mb-3">Every Industry. Every Size.</h2>
+      <p class="text-gray-600 text-lg">We work across sectors — wherever there's a workflow, we can improve it.</p>
+    </div>
+    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+      <div class="bg-white rounded-lg px-4 py-3 text-sm font-medium text-gray-700 border border-gray-200 text-center hover:border-indigo-300 hover:text-indigo-700 transition">Finance & Banking</div>
+      <div class="bg-white rounded-lg px-4 py-3 text-sm font-medium text-gray-700 border border-gray-200 text-center hover:border-indigo-300 hover:text-indigo-700 transition">Legal & Law Firms</div>
+      <div class="bg-white rounded-lg px-4 py-3 text-sm font-medium text-gray-700 border border-gray-200 text-center hover:border-indigo-300 hover:text-indigo-700 transition">Healthcare</div>
+      <div class="bg-white rounded-lg px-4 py-3 text-sm font-medium text-gray-700 border border-gray-200 text-center hover:border-indigo-300 hover:text-indigo-700 transition">Real Estate</div>
+      <div class="bg-white rounded-lg px-4 py-3 text-sm font-medium text-gray-700 border border-gray-200 text-center hover:border-indigo-300 hover:text-indigo-700 transition">E-commerce & Retail</div>
+      <div class="bg-white rounded-lg px-4 py-3 text-sm font-medium text-gray-700 border border-gray-200 text-center hover:border-indigo-300 hover:text-indigo-700 transition">Marketing & Advertising</div>
+      <div class="bg-white rounded-lg px-4 py-3 text-sm font-medium text-gray-700 border border-gray-200 text-center hover:border-indigo-300 hover:text-indigo-700 transition">HR & Recruiting</div>
+      <div class="bg-white rounded-lg px-4 py-3 text-sm font-medium text-gray-700 border border-gray-200 text-center hover:border-indigo-300 hover:text-indigo-700 transition">Logistics</div>
+      <div class="bg-white rounded-lg px-4 py-3 text-sm font-medium text-gray-700 border border-gray-200 text-center hover:border-indigo-300 hover:text-indigo-700 transition">Education</div>
+      <div class="bg-white rounded-lg px-4 py-3 text-sm font-medium text-gray-700 border border-gray-200 text-center hover:border-indigo-300 hover:text-indigo-700 transition">Insurance</div>
+      <div class="bg-white rounded-lg px-4 py-3 text-sm font-medium text-gray-700 border border-gray-200 text-center hover:border-indigo-300 hover:text-indigo-700 transition">Manufacturing</div>
+      <div class="bg-white rounded-lg px-4 py-3 text-sm font-medium text-gray-700 border border-gray-200 text-center hover:border-indigo-300 hover:text-indigo-700 transition">Professional Services</div>
+    </div>
+    <div class="text-center mt-8">
+      <a href="/industries/" class="text-indigo-600 font-semibold hover:underline">See how we work in your industry &rarr;</a>
+    </div>
+  </div>
+</section>
+
+<!-- Lead Capture -->
+<section class="bg-gradient-to-br from-indigo-600 to-purple-700 py-20 px-4 text-white text-center">
+  <div class="container mx-auto max-w-2xl">
+    <h2 class="text-3xl font-bold mb-4">Not Sure Where to Start?</h2>
+    <p class="text-indigo-100 text-lg mb-8">Book a free 30-minute discovery call. We'll map your workflow, identify opportunities, and give you a clear path forward — no commitment required.</p>
+    <div class="flex flex-col sm:flex-row gap-4 justify-center">
+      <a href="/contact/#booking" class="bg-white text-indigo-700 font-bold px-8 py-4 rounded-lg hover:bg-indigo-50 transition text-lg">
+        Book a Free Call
+      </a>
+      <a href="/contact/" class="border-2 border-white text-white font-semibold px-8 py-4 rounded-lg hover:bg-indigo-700 transition text-lg">
+        Send a Message
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- Email Signup -->
+<section class="bg-white py-16 px-4">
+  <div class="container mx-auto max-w-md text-center">
+    <h2 class="text-2xl font-bold text-gray-900 mb-2">Stay in the Loop</h2>
+    <p class="text-gray-600 mb-6">Get practical AI insights and updates delivered to your inbox.</p>
+    <form name="leadCapture" method="POST" data-netlify="true" action="/thank-you/" class="flex gap-3">
+      <input type="email" name="email" required placeholder="Your email address"
+        class="flex-1 border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+      <button type="submit" class="bg-indigo-600 text-white font-semibold px-5 py-3 rounded-lg hover:bg-indigo-500 transition whitespace-nowrap">
         Subscribe
       </button>
     </form>

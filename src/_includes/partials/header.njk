@@ -1,22 +1,44 @@
-<header class="bg-white shadow-md">
-  <!-- Thin rainbow accent bar -->
-  <div class="h-1 bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500"></div>
-  <div class="container mx-auto px-4 py-3 flex justify-between items-center">
-    <!-- Logo / Brand Name -->
-    <a href="/" class="text-xl font-semibold text-gray-900">
-      <img src="/assets/logo.png" alt="Mobius Integration Logo" class="h-8 inline-block mr-2 align-text-bottom">
-      Mobius<span class="text-indigo-500"> Integration</span>
-    </a>
-    <!-- Navigation Links -->
-    <nav class="space-x-6 text-gray-700">
-      <a href="/" class="hover:text-indigo-600">Home</a>
-      <a href="/services/" class="hover:text-indigo-600">Services</a>
-      <a href="/case-studies/" class="hover:text-indigo-600">Case Studies</a>
-      <a href="/blog/" class="hover:text-indigo-600">Blog</a>
-      <a href="/about/" class="hover:text-indigo-600">About Us</a>
-      <a href="/contact/" class="hover:text-indigo-600">Contact</a>
-      <!-- Call to action: Book Now button -->
-      <a href="/contact/#booking" class="bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 text-white font-semibold px-4 py-2 rounded hover:opacity-90">Book Now</a>
+<header class="bg-white shadow-sm sticky top-0 z-50">
+  <div class="h-1 bg-gradient-to-r from-lime-400 via-cyan-400 via-blue-500 via-purple-600 to-pink-500"></div>
+  <div class="container mx-auto px-4 py-3">
+    <div class="flex justify-between items-center">
+      <a href="/" class="flex items-center gap-2">
+        <img src="/assets/img/logo.svg" alt="Mobius Integration" class="h-10">
+      </a>
+      <nav class="hidden lg:flex items-center gap-5 text-sm font-medium text-gray-600">
+        <a href="/" class="hover:text-indigo-600 transition-colors">Home</a>
+        <a href="/services/" class="hover:text-indigo-600 transition-colors">Services</a>
+        <a href="/industries/" class="hover:text-indigo-600 transition-colors">Industries</a>
+        <a href="/portfolio/" class="hover:text-indigo-600 transition-colors">Portfolio</a>
+        <a href="/pricing/" class="hover:text-indigo-600 transition-colors">Pricing</a>
+        <a href="/blog/" class="hover:text-indigo-600 transition-colors">Blog</a>
+        <a href="/about/" class="hover:text-indigo-600 transition-colors">About</a>
+        <a href="/contact/" class="hover:text-indigo-600 transition-colors">Contact</a>
+        <a href="/contact/#booking" class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-4 py-2 rounded-lg hover:opacity-90 transition font-semibold text-sm">Book Now</a>
+      </nav>
+      <button id="menuBtn" class="lg:hidden p-2 text-gray-600 hover:text-indigo-600 transition-colors" aria-label="Toggle menu">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+        </svg>
+      </button>
+    </div>
+    <nav id="mobileMenu" class="hidden lg:hidden border-t border-gray-100 mt-3 pt-4 pb-2">
+      <div class="flex flex-col gap-4 text-gray-700 font-medium">
+        <a href="/" class="hover:text-indigo-600">Home</a>
+        <a href="/services/" class="hover:text-indigo-600">Services</a>
+        <a href="/industries/" class="hover:text-indigo-600">Industries</a>
+        <a href="/portfolio/" class="hover:text-indigo-600">Portfolio</a>
+        <a href="/pricing/" class="hover:text-indigo-600">Pricing</a>
+        <a href="/blog/" class="hover:text-indigo-600">Blog</a>
+        <a href="/about/" class="hover:text-indigo-600">About</a>
+        <a href="/contact/" class="hover:text-indigo-600">Contact</a>
+        <a href="/contact/#booking" class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-4 py-2 rounded-lg text-center block">Book Now</a>
+      </div>
     </nav>
   </div>
 </header>
+<script>
+  document.getElementById('menuBtn').addEventListener('click', function() {
+    document.getElementById('mobileMenu').classList.toggle('hidden');
+  });
+</script>

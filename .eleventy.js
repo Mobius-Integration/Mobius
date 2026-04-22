@@ -23,8 +23,18 @@ module.exports = function (eleventyConfig) {
    */
   eleventyConfig.addCollection("post", (collection) => {
     return collection
-      .getFilteredByTag("post")   // only templates with `tags: post`
-      .sort((a, b) => b.date - a.date); // newest → oldest
+      .getFilteredByTag("post")
+      .sort((a, b) => b.date - a.date);
+  });
+
+  eleventyConfig.addFilter("readableDate", (dateObj) => {
+    return new Date(dateObj).toLocaleDateString("en-US", {
+      year: "numeric", month: "long", day: "numeric"
+    });
+  });
+
+  eleventyConfig.addFilter("isoDate", (dateObj) => {
+    return new Date(dateObj).toISOString().slice(0, 10);
   });
 
   /* --------------------------------------------------
