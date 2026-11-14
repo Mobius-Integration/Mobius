@@ -1,7 +1,9 @@
 // Single source of truth for site-wide facts. Templates read these as `site.*`.
-// SITE_URL and CONTACT_EMAIL come from the environment at build time so that
-// nothing dead (an unregistered domain, a mailbox that doesn't exist) is ever published.
-const url = (process.env.SITE_URL || "").replace(/\/+$/, "");
+// PRODUCTION_URL is where the site is live today. When a custom domain is connected,
+// change it here (or set SITE_URL at build time) and canonical links and the sitemap follow.
+// CONTACT_EMAIL stays empty until a working mailbox exists, so no dead address is published.
+const PRODUCTION_URL = "https://mobius-dq3.pages.dev";
+const url = (process.env.SITE_URL || PRODUCTION_URL).replace(/\/+$/, "");
 
 module.exports = {
   title: "Mobius Integration",

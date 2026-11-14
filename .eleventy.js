@@ -18,8 +18,8 @@ module.exports = function (eleventyConfig) {
   // Cloudflare Pages reads security/cache headers from a `_headers` file at the output root.
   eleventyConfig.addPassthroughCopy({ "src/_headers": "_headers" });
 
-  // A sitemap needs absolute URLs. With no SITE_URL set (see src/_data/site.js), publish none.
-  if (!(process.env.SITE_URL || "").trim()) {
+  // A sitemap needs absolute URLs. With no site URL (see src/_data/site.js), publish none.
+  if (!require("./src/_data/site.js").url) {
     eleventyConfig.ignores.add("src/sitemap.njk");
   }
 

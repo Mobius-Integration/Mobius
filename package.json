@@ -7,9 +7,11 @@
     "build": "npm run clean && npm run build:css && npx @11ty/eleventy",
     "serve": "eleventy --serve",
     "start": "npm-run-all --parallel watch:css serve",
-    "preview": "npm run build && wrangler pages dev _site --kv LEADS --compatibility-date=2025-01-01",
-    "deploy": "npm run build && wrangler pages deploy _site --project-name=mobius-integration --branch=main --commit-dirty=true",
-    "clean": "node -e \"require('fs').rmSync('_site',{recursive:true,force:true})\""
+    "preview": "npm run build && wrangler pages dev _site",
+    "deploy": "npm run build && wrangler pages deploy _site --project-name=mobius --branch=master --commit-dirty=true",
+    "clean": "node -e \"require('fs').rmSync('_site',{recursive:true,force:true})\"",
+    "deploy:preview": "npm run build && wrangler pages deploy _site --project-name=mobius --branch=preview --commit-dirty=true",
+    "leads": "wrangler kv key list --binding LEADS --remote"
   },
   "devDependencies": {
     "@11ty/eleventy": "^2.0.0",
