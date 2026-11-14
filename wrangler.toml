@@ -1,5 +1,5 @@
 # Cloudflare Pages configuration for the Mobius Integration site.
-# Deploy with: npm run deploy
+# Deploy with: npm run deploy  (pushes to GitHub master also deploy automatically)
 name = "mobius"
 pages_build_output_dir = "_site"
 compatibility_date = "2025-01-01"
@@ -9,3 +9,13 @@ compatibility_date = "2025-01-01"
 [[kv_namespaces]]
 binding = "LEADS"
 id = "656311875d054e309f70e5dbb19a26ab"
+
+# Lead autopilot (workers/lead-alert): website pre-check, score, AI draft, alert email.
+[[services]]
+binding = "LEAD_ALERT"
+service = "mobius-lead-alert"
+
+# functions/_middleware.js sends www and the pages.dev address to this host.
+# Leave empty until the custom domain is attached and serving the site.
+[vars]
+CANONICAL_HOST = ""

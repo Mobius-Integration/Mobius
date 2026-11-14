@@ -1,0 +1,23 @@
+# Lead autopilot for the Mobius website.
+# Called only by the Pages site through a service binding (no public URL).
+# For each new lead: read-only check of the lead's website, a lead score,
+# an AI-drafted reply for a person to review, and one alert email to the owner.
+#
+# Deploy:  cd workers/lead-alert && npx wrangler deploy
+# Secret:  npx wrangler secret put ALERT_TO   (the owner's verified Email Routing address)
+name = "mobius-lead-alert"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+workers_dev = false
+preview_urls = false
+
+# Sends only to addresses verified in Email Routing for this account.
+[[send_email]]
+name = "MAILER"
+
+[ai]
+binding = "AI"
+
+[vars]
+ALERT_FROM = "leads@mobiusintegration.com"
+SITE_NAME = "Mobius Integration"

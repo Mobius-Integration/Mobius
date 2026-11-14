@@ -149,6 +149,22 @@ export async function onRequestPost(context) {
     );
   }
 
+  // Lead autopilot (workers/lead-alert): pre-check the lead's website, score the lead,
+  // draft a reply and email the owner. Runs after the response is sent, so a slow or
+  // failed alert never affects the visitor; the lead is already stored above.
+  if (env && env.LEAD_ALERT && typeof env.LEAD_ALERT.fetch === "function") {
+    const alert = env.LEAD_ALERT.fetch("https://lead-alert.internal/notify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(record),
+    })
+      .then((res) => {
+        if (!res.ok) console.error("contact: lead alert responded", res.status);
+      })
+      .catch((err) => console.error("contact: lead alert failed:", err && err.message));
+    if (typeof context.waitUntil === "function") context.waitUntil(alert);
+  }
+
   return success(request, wantsJson);
 }
 
