@@ -6,6 +6,31 @@ module.exports = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: [
+          '"Inter Variable"',
+          "Inter",
+          "ui-sans-serif",
+          "system-ui",
+          "-apple-system",
+          "Segoe UI",
+          "Roboto",
+          "Helvetica Neue",
+          "Arial",
+          "sans-serif"
+        ],
+        display: [
+          '"Plus Jakarta Sans Variable"',
+          '"Inter Variable"',
+          "ui-sans-serif",
+          "system-ui",
+          "-apple-system",
+          "Segoe UI",
+          "Roboto",
+          "Arial",
+          "sans-serif"
+        ]
+      },
       colors: {
         // Example custom colors (optional):
         indigo: {

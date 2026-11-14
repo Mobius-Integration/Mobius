@@ -1,14 +1,33 @@
-{% raw %}{% extends "layouts/base.njk" %}{% endraw %}
+---
+layout: base
+---
+<section class="section">
+  <article class="wrap-narrow">
+    <header>
+      <p class="text-sm text-gray-600">
+        <a href="/blog/" class="link">Blog</a>
+      </p>
+      <h1 class="mt-3 text-3xl font-extrabold leading-tight tracking-tight text-gray-900 md:text-5xl">{{ title }}</h1>
+      <p class="mt-4 text-sm text-gray-600">
+        <time datetime="{{ page.date | isoDate }}">{{ page.date | readableDate }}</time>
+        <span aria-hidden="true">&middot;</span>
+        By the {{ site.title }} team
+      </p>
+    </header>
 
-{% raw %}{% block content %}{% endraw %}
-<article class="prose prose-indigo max-w-none">
-  <h1 class="text-4xl font-bold text-gray-900 mb-4">{% raw %}{{ title }}{% endraw %}</h1>
-  <p class="text-sm text-gray-600 mb-8">
-    <time datetime="{% raw %}{{ date | date:"yyyy-MM-dd" }}{% endraw %}">
-      {% raw %}{{ date | date:"MMMM d, yyyy" }}{% endraw %}
-    </time> 
-    • <span>Mobius Integration</span>
-  </p>
-  {% raw %}{{ content | safe }}{% endraw %}
-</article>
-{% raw %}{% endblock %}{% endraw %}
+    <div class="prose prose-lg prose-indigo mt-8 max-w-3xl prose-headings:font-bold prose-headings:text-gray-900 prose-p:text-gray-800 prose-li:text-gray-800 prose-a:font-medium prose-a:text-indigo-700 prose-a:underline prose-a:underline-offset-2 hover:prose-a:text-indigo-900">
+      {{ content | safe }}
+    </div>
+
+    <aside class="card-muted mt-14" aria-labelledby="post-cta-heading">
+      <h2 id="post-cta-heading" class="text-2xl font-bold text-gray-900">Want us to look at your site?</h2>
+      <p class="mt-3 text-gray-700">The Free Tech Checkup is a 20-minute call plus a written scan of your website, booking flow and Google presence. You get a plain-English list of what to fix first, and there is no obligation.</p>
+      <p class="mt-6">
+        <a href="{{ site.cta.href }}" class="btn-primary">Book my {{ site.cta.label }}</a>
+      </p>
+      <p class="mt-6 text-sm">
+        <a href="/blog/" class="link">Back to all blog posts</a>
+      </p>
+    </aside>
+  </article>
+</section>

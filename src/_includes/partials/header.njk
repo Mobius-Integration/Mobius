@@ -1,44 +1,47 @@
-<header class="bg-white shadow-sm sticky top-0 z-50">
-  <div class="h-1 bg-gradient-to-r from-lime-400 via-cyan-400 via-blue-500 via-purple-600 to-pink-500"></div>
-  <div class="container mx-auto px-4 py-3">
-    <div class="flex justify-between items-center">
-      <a href="/" class="flex items-center gap-2">
-        <img src="/assets/img/logo.svg" alt="Mobius Integration" style="height:2.5rem;width:auto;max-width:160px;">
+<header class="sticky top-0 z-50 bg-white shadow-sm">
+  <div class="rainbow-bar" aria-hidden="true"></div>
+  <div class="container mx-auto px-4 py-2">
+    <div class="flex flex-wrap items-center justify-between gap-x-6">
+      <a href="/" class="flex min-h-[44px] items-center" aria-label="Mobius Integration home">
+        <img src="/assets/img/logo.svg" alt="" class="h-10 w-auto" style="max-width:160px;">
       </a>
-      <nav class="hidden lg:flex items-center gap-5 text-sm font-medium text-gray-600">
-        <a href="/" class="hover:text-indigo-600 transition-colors">Home</a>
-        <a href="/services/" class="hover:text-indigo-600 transition-colors">Services</a>
-        <a href="/industries/" class="hover:text-indigo-600 transition-colors">Who We Serve</a>
-        <a href="/portfolio/" class="hover:text-indigo-600 transition-colors">Portfolio</a>
-        <a href="/pricing/" class="hover:text-indigo-600 transition-colors">Pricing</a>
-        <a href="/blog/" class="hover:text-indigo-600 transition-colors">Blog</a>
-        <a href="/about/" class="hover:text-indigo-600 transition-colors">About</a>
-        <a href="/contact/" class="hover:text-indigo-600 transition-colors">Contact</a>
-        <a href="/contact/#booking" class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-4 py-2 rounded-lg hover:opacity-90 transition font-semibold text-sm">Free Audit</a>
-      </nav>
-      <button id="menuBtn" class="lg:hidden p-2 text-gray-600 hover:text-indigo-600 transition-colors" aria-label="Toggle menu">
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <button type="button" id="menuBtn" class="hidden min-h-[44px] min-w-[44px] items-center justify-center gap-2 rounded-lg px-3 font-semibold text-gray-800 hover:text-indigo-700 lg:hidden" aria-expanded="false" aria-controls="site-nav">
+        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
         </svg>
+        <span>Menu</span>
       </button>
+      <nav id="site-nav" aria-label="Main" class="flex w-full flex-col gap-1 border-t border-gray-200 py-3 lg:w-auto lg:flex-row lg:items-center lg:gap-1 lg:border-0 lg:py-0">
+        {%- for item in site.nav %}
+        {%- set isCurrent = (page.url == item.href) %}
+        <a href="{{ item.href }}"{% if isCurrent %} aria-current="page"{% endif %} class="inline-flex min-h-[44px] items-center rounded px-2 text-sm {% if isCurrent %}font-bold text-indigo-800 underline decoration-2 underline-offset-8{% else %}font-medium text-gray-700 hover:text-indigo-800 hover:underline hover:underline-offset-8{% endif %}">{{ item.label }}</a>
+        {%- endfor %}
+        <a href="{{ site.cta.href }}"{% if page.url == site.cta.href %} aria-current="page"{% endif %} class="btn-primary mt-2 text-sm lg:ml-2 lg:mt-0">{{ site.cta.label }}</a>
+      </nav>
     </div>
-    <nav id="mobileMenu" class="hidden lg:hidden border-t border-gray-100 mt-3 pt-4 pb-2">
-      <div class="flex flex-col gap-4 text-gray-700 font-medium">
-        <a href="/" class="hover:text-indigo-600">Home</a>
-        <a href="/services/" class="hover:text-indigo-600">Services</a>
-        <a href="/industries/" class="hover:text-indigo-600">Industries</a>
-        <a href="/portfolio/" class="hover:text-indigo-600">Portfolio</a>
-        <a href="/pricing/" class="hover:text-indigo-600">Pricing</a>
-        <a href="/blog/" class="hover:text-indigo-600">Blog</a>
-        <a href="/about/" class="hover:text-indigo-600">About</a>
-        <a href="/contact/" class="hover:text-indigo-600">Contact</a>
-        <a href="/contact/#booking" class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-4 py-2 rounded-lg text-center block">Book Now</a>
-      </div>
-    </nav>
   </div>
 </header>
 <script>
-  document.getElementById('menuBtn').addEventListener('click', function() {
-    document.getElementById('mobileMenu').classList.toggle('hidden');
-  });
+  (function () {
+    var btn = document.getElementById('menuBtn');
+    var nav = document.getElementById('site-nav');
+    if (!btn || !nav) return;
+    // Progressive enhancement: without JavaScript the nav stays visible and the button stays hidden.
+    btn.classList.remove('hidden');
+    btn.classList.add('inline-flex');
+    nav.classList.add('hidden', 'lg:flex');
+    function setOpen(open) {
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      nav.classList.toggle('hidden', !open);
+    }
+    btn.addEventListener('click', function () {
+      setOpen(btn.getAttribute('aria-expanded') !== 'true');
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && btn.getAttribute('aria-expanded') === 'true') {
+        setOpen(false);
+        btn.focus();
+      }
+    });
+  })();
 </script>

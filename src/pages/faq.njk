@@ -1,74 +1,123 @@
 ---
 layout: base
-title: FAQ
+title: Frequently Asked Questions
 permalink: /faq/
-description: Frequently asked questions about the Mobius Integration 48-Hour Automation Sprint for dental and med spa practices in Tampa.
+description: "Straight answers for local business owners about Mobius: the free checkup, fixed pricing, contracts, accessibility, ownership, response times and more."
 ---
+{% set checkupTimeline %}{% for p in packages.all %}{% if p.id == "checkup" %}{{ p.timeline }}{% endif %}{% endfor %}{% endset %}
 
-<section class="bg-white py-20 px-4">
-  <div class="container mx-auto max-w-3xl">
+{# One list drives both the visible questions and the FAQPage JSON-LD, so they cannot drift apart. Answers are plain text. #}
+{% set groups = [
+  { id: "working", title: "Working with Mobius" },
+  { id: "money", title: "Pricing and contracts" },
+  { id: "access", title: "Accessibility and health information" },
+  { id: "practical", title: "Location, support and ownership" }
+] %}
 
-    <div class="text-center mb-14">
-      <h1 class="text-4xl font-bold text-gray-900 mb-4">Frequently Asked Questions</h1>
-      <p class="text-gray-600 text-lg">Everything you need to know before booking your audit.</p>
+{% set faqs = [
+  {
+    g: "working",
+    q: "What does a tech partner do?",
+    a: "A tech partner is the one team you call about the technology your business depends on: your website, online booking, texts and emails to customers, your Google listing, and the software that ties them together. We fix and build what needs it, keep an eye on it afterward, and explain everything in plain English. You get one accountable team instead of five separate vendors.",
+    link: { href: "/services/", label: "See everything we do" }
+  },
+  {
+    g: "working",
+    q: "What is the Free Tech Checkup, and is it really free?",
+    a: "Yes, it is free. It is a 20-minute call plus a written look at your website, your booking or contact flow and your Google presence. You get a plain-English report with your top fixes ranked. " ~ (checkupTimeline | trim) ~ ". You can use the report with us, with another vendor, or not at all.",
+    link: { href: "/free-checkup/", label: "Book your free checkup" }
+  },
+  {
+    g: "working",
+    q: "Is Mobius a new company? Do you have clients I can talk to?",
+    a: "Mobius is a new firm, and we have no client case studies to show yet. Our examples page is clearly labeled as illustrative, not client work. We will publish real projects, with each client's permission, as they are completed. Until then, the free checkup lets you see how we work on your own business before you pay anything.",
+    link: { href: "/portfolio/", label: "Read the example projects" }
+  },
+  {
+    g: "working",
+    q: "Can you work with the website and tools I already have?",
+    a: "Usually, yes. Our tune-up package exists to fix the site you already have, and we can connect the booking, point-of-sale, customer and accounting tools you already use where those tools allow it. Some problems can only be fixed by the software vendor. In that case we write them a clear request for you and tell you your options. If something is worth replacing, we will say so.",
+    link: { href: "/pricing/", label: "See the packages" }
+  },
+  {
+    g: "money",
+    q: "How does pricing work?",
+    a: packages.terms[1] ~ " Our packages list their prices up front. If your project doesn't fit a package, we quote it after a free scoping call.",
+    link: { href: "/pricing/", label: "See packages and prices" }
+  },
+  {
+    g: "money",
+    q: "Do I have to sign a long contract?",
+    a: packages.terms[0] ~ " One-time projects are covered by the written agreement for that project.",
+    link: null
+  },
+  {
+    g: "money",
+    q: "What does third-party software cost?",
+    a: packages.terms[2] ~ " Tools like texting and booking services charge their own fees. We tell you what they will cost before you commit.",
+    link: null
+  },
+  {
+    g: "access",
+    q: "Is an accessibility audit legal advice? Will it make me ADA compliant?",
+    a: "No. Mobius is not a law firm, and an audit is not legal advice. No one can honestly guarantee legal compliance, and we don't. What we do is test your site against WCAG 2.1 AA, fix what we find where we can, and document what we changed and what only a vendor can fix. For questions about your legal obligations or risk, talk to an attorney.",
+    link: { href: "/services/", label: "See our accessibility services" }
+  },
+  {
+    g: "access",
+    q: "What if I'm a healthcare practice?",
+    a: "We design reminders and follow-ups to keep health details out of text messages and emails. We do not claim that Mobius or its work is HIPAA compliant, and we can't promise it. Questions about your own HIPAA obligations are best answered by your attorney or compliance advisor.",
+    link: null
+  },
+  {
+    g: "practical",
+    q: "How fast do you respond?",
+    a: "We reply within " ~ site.responseTime ~ ". " ~ site.callHours ~ ", so you can talk when the workday is over. We are a small team, so we don't offer 24/7 support or same-day guarantees.",
+    link: { href: "/contact/", label: "Contact us" }
+  },
+  {
+    g: "practical",
+    q: "Do you only work in Tampa Bay?",
+    a: "We are based in " ~ site.region ~ " and focus on local businesses here, in Tampa, St. Petersburg and Clearwater. Most projects can be done remotely, so if you are outside the area, ask and we will tell you honestly whether we can help.",
+    link: { href: "/contact/", label: "Ask about your project" }
+  },
+  {
+    g: "practical",
+    q: "Who owns the website and accounts when we're done?",
+    a: "You do. Your domain, your website and your accounts belong to you, not to us. If we ever stop working together, you keep what we built.",
+    link: null
+  }
+] %}
+
+<section class="section bg-white">
+  <div class="wrap-narrow">
+    <p class="eyebrow">FAQ</p>
+    <h1 class="mt-4 text-4xl font-extrabold leading-tight tracking-tight text-gray-900 md:text-5xl">Frequently asked questions</h1>
+    <p class="lede mt-6">Short, honest answers to what local business owners ask us most. If yours isn't here, <a class="link" href="/contact/">send us a message</a>.</p>
+
+    {% for group in groups %}
+    <h2 class="h-section mt-14">{{ group.title }}</h2>
+    <div class="mt-6 space-y-4">
+      {% for f in faqs %}{% if f.g == group.id %}
+      <details class="card-muted">
+        <summary class="cursor-pointer text-lg font-bold text-gray-900">{{ f.q }}</summary>
+        <p class="mt-4 text-gray-700">{{ f.a }}</p>
+        {% if f.link %}<p class="mt-3"><a class="link font-semibold" href="{{ f.link.href }}">{{ f.link.label }}</a></p>{% endif %}
+      </details>
+      {% endif %}{% endfor %}
     </div>
-
-    <div class="space-y-6">
-
-      <div class="border border-gray-200 rounded-xl p-6">
-        <h2 class="text-lg font-bold text-gray-900 mb-2">What exactly is the 48-Hour Sprint?</h2>
-        <p class="text-gray-600">It's our core service: we build and deploy a full automation stack for your practice in 48 hours. That includes speed-to-lead response, booking workflows, reminder sequences, no-show recovery, and review generation — all set up, tested, and running in two days.</p>
-      </div>
-
-      <div class="border border-gray-200 rounded-xl p-6">
-        <h2 class="text-lg font-bold text-gray-900 mb-2">What software do you use?</h2>
-        <p class="text-gray-600">We use GoHighLevel (GHL), a leading practice automation platform. We handle the entire setup — you don't need any technical knowledge or existing GHL experience. We build it, you run it.</p>
-      </div>
-
-      <div class="border border-gray-200 rounded-xl p-6">
-        <h2 class="text-lg font-bold text-gray-900 mb-2">Will this work with my current practice management software?</h2>
-        <p class="text-gray-600">In most cases, yes. We'll confirm compatibility during the free audit. GoHighLevel integrates with the most common dental and med spa platforms. Where direct integration isn't possible, we build workarounds that get the same result.</p>
-      </div>
-
-      <div class="border border-gray-200 rounded-xl p-6">
-        <h2 class="text-lg font-bold text-gray-900 mb-2">Is the messaging HIPAA compliant?</h2>
-        <p class="text-gray-600">Yes. We build all reminder and follow-up sequences to be HIPAA-safe — no protected health information in SMS or email messages. We also handle A2P 10DLC registration for SMS compliance so your messages actually get delivered.</p>
-      </div>
-
-      <div class="border border-gray-200 rounded-xl p-6">
-        <h2 class="text-lg font-bold text-gray-900 mb-2">How long does setup actually take?</h2>
-        <p class="text-gray-600">48 hours from the time we have your access and information. The audit takes 20 minutes, then we collect what we need from you (logins, branding, messaging preferences), and we're live within two days.</p>
-      </div>
-
-      <div class="border border-gray-200 rounded-xl p-6">
-        <h2 class="text-lg font-bold text-gray-900 mb-2">What do you need from me to get started?</h2>
-        <p class="text-gray-600">Access to your existing systems (website form, scheduling software, Google Business), your practice branding (logo, colors, tone), and about 30–60 minutes of your time across the audit and onboarding. We handle the rest.</p>
-      </div>
-
-      <div class="border border-gray-200 rounded-xl p-6">
-        <h2 class="text-lg font-bold text-gray-900 mb-2">What if I don't see results?</h2>
-        <p class="text-gray-600">We'll show you the expected ROI during the free audit before you commit. If the math doesn't work for your practice size or situation, we'll tell you straight — we'd rather you not hire us than have a bad experience. After the Sprint, we monitor performance and optimize monthly.</p>
-      </div>
-
-      <div class="border border-gray-200 rounded-xl p-6">
-        <h2 class="text-lg font-bold text-gray-900 mb-2">Do I have to do the monthly monitoring?</h2>
-        <p class="text-gray-600">No — the $297/month monitoring is optional. The automation will keep running without it. But most practices find it valuable because we catch sequence issues, optimize messaging, and add new automations as your practice grows.</p>
-      </div>
-
-      <div class="border border-gray-200 rounded-xl p-6">
-        <h2 class="text-lg font-bold text-gray-900 mb-2">Do you only serve Tampa?</h2>
-        <p class="text-gray-600">We're focused on Tampa and the Tampa Bay area right now, but everything is done remotely — no on-site visits required. If you're outside Tampa but in Florida, reach out and we'll let you know if we can take you on.</p>
-      </div>
-
-    </div>
-
-    <div class="mt-12 bg-indigo-50 rounded-2xl p-8 text-center border border-indigo-100">
-      <h3 class="text-xl font-bold text-gray-900 mb-3">Still have questions?</h3>
-      <p class="text-gray-600 mb-6">The free audit is the fastest way to get answers specific to your practice. 20 minutes, no commitment.</p>
-      <a href="/contact/#booking" class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold px-8 py-3 rounded-lg hover:opacity-90 transition inline-block">
-        Book My Free Audit
-      </a>
-    </div>
-
+    {% endfor %}
   </div>
 </section>
+
+<section class="section band-dark on-dark">
+  <div class="wrap-narrow text-center">
+    <h2 class="text-3xl font-bold text-white md:text-4xl">Still have a question?</h2>
+    <p class="mt-4 text-lg text-indigo-100">Bring it to the free checkup. It's a 20-minute call, and we'll answer it about your business.</p>
+    <a class="btn-light mt-8" href="{{ site.cta.href }}">Book my free checkup</a>
+  </div>
+</section>
+
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{% for f in faqs %}{"@type":"Question","name":{{ f.q | dump | safe }},"acceptedAnswer":{"@type":"Answer","text":{{ f.a | dump | safe }} } }{% if not loop.last %},{% endif %}{% endfor %}]}
+</script>

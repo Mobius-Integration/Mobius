@@ -1,0 +1,47 @@
+---
+layout: base
+title: Accessibility
+permalink: /accessibility/
+description: "Our accessibility statement. We build this site to WCAG 2.1 Level AA, here is what we did, what we haven't done yet, and how to report a problem."
+date: Last Modified
+---
+
+<section class="section bg-white">
+  <div class="wrap-narrow">
+    <p class="eyebrow">Accessibility statement</p>
+    <h1 class="mt-4 text-4xl font-extrabold leading-tight tracking-tight text-gray-900 md:text-5xl">Accessibility</h1>
+    <p class="lede mt-6">We help other businesses fix accessibility problems, so this site has to hold up to the same standard. Here is what we aim for, what we've done, and where we know the limits are.</p>
+    <p class="mt-4 text-gray-700">Last reviewed: <time>{{ page.date | readableDate }}</time>.</p>
+
+    <h2 class="h-section mt-12">Our commitment</h2>
+    <p class="mt-4 text-lg text-gray-700">We aim for this website to meet the Web Content Accessibility Guidelines (WCAG) 2.1 at Level AA. We want everyone who visits to be able to read it, move through it and contact us, whether they use a mouse, a keyboard, a screen reader or a phone.</p>
+
+    <h2 class="h-section mt-12">What we've done</h2>
+    <ul class="mt-4 list-disc space-y-2 pl-6 text-lg text-gray-700">
+      <li>Built the pages with semantic HTML: real headings in order, lists, links and buttons.</li>
+      <li>Made everything usable by keyboard, with a skip link and a visible focus outline.</li>
+      <li>Chosen text and background colors with enough contrast, and made sure nothing relies on color alone.</li>
+      <li>Given every form field a visible label, with required and optional fields marked and errors read out to assistive technology.</li>
+      <li>Left out CAPTCHAs, which block many people.</li>
+      <li>Respected the reduced-motion setting on your device, and used no autoplaying motion.</li>
+      <li>Tested the pages with automated accessibility tools and by using them with a keyboard.</li>
+    </ul>
+
+    <h2 class="h-section mt-12">What we can't promise</h2>
+    <ul class="mt-4 list-disc space-y-2 pl-6 text-lg text-gray-700">
+      <li>Automated tools catch only some problems. Passing them does not mean a site is fully accessible.</li>
+      <li>This site has not yet been audited by an independent third party.</li>
+      <li>Our testing so far is limited to the automated tools and keyboard checks described above.</li>
+      <li>Issues may remain. We don't claim that this site fully conforms to WCAG 2.1 AA, only that we are working toward it.</li>
+    </ul>
+    <p class="mt-4 text-lg text-gray-700">This statement is not legal advice, and Mobius is not a law firm.</p>
+
+    <h2 class="h-section mt-12">Report a problem</h2>
+    <p class="mt-4 text-lg text-gray-700">If something on this site is hard to use, tell us which page it was and what got in your way. We will reply within {{ site.responseTime }}.</p>
+    <ul class="mt-4 list-disc space-y-2 pl-6 text-lg text-gray-700">
+      <li>Use the <a class="link" href="/contact/">contact form</a>.</li>
+      {% if site.email %}<li>Email <a class="link" href="mailto:{{ site.email }}">{{ site.email }}</a>.</li>{% endif %}
+    </ul>
+    <p class="mt-4 text-lg text-gray-700">If you'd like to know how accessible your own site is, the <a class="link" href="/free-checkup/">Free Tech Checkup</a> includes an accessibility scan of your key pages.</p>
+  </div>
+</section>

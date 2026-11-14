@@ -2,46 +2,43 @@
 layout: base
 title: Blog
 permalink: /blog/
-description: AI insights, integration tips, and practical guides from the Mobius Integration team.
+description: Plain-English tech advice for Tampa Bay business owners, on websites, accessibility, booking and follow-up, and hiring the right help.
 ---
 
-<section class="bg-white py-20 px-4">
-  <div class="container mx-auto max-w-3xl">
-
-    <div class="text-center mb-14">
-      <h1 class="text-4xl font-bold text-gray-900 mb-4">Blog</h1>
-      <p class="text-gray-600 text-lg">Practical AI insights — no hype, no fluff. Just what's actually useful for businesses.</p>
-    </div>
+<section class="section">
+  <div class="wrap-narrow">
+    <h1 class="text-4xl font-extrabold leading-tight tracking-tight text-gray-900 md:text-5xl">Blog</h1>
+    <p class="lede mt-4">Plain-English tech advice for local business owners. Things you can check yourself, and questions worth asking before you spend money.</p>
 
     {% if collections.post and collections.post.length %}
-      <ul class="space-y-10">
+      <div class="mt-12 space-y-6">
         {% for post in collections.post %}
-          <li class="border-b border-gray-100 pb-10">
-            <h2 class="text-2xl font-bold text-gray-900 mb-2">
-              <a href="{{ post.url }}" class="hover:text-indigo-600 transition-colors">
-                {{ post.data.title }}
-              </a>
+          <article class="card">
+            <h2 class="text-2xl font-bold text-gray-900">
+              <a href="{{ post.url }}" class="underline underline-offset-2 hover:text-indigo-700">{{ post.data.title }}</a>
             </h2>
-            <p class="text-sm text-gray-500 mb-3">
+            <p class="mt-2 text-sm text-gray-600">
               <time datetime="{{ post.date | isoDate }}">{{ post.date | readableDate }}</time>
             </p>
-            <p class="text-gray-600">
-              {{ post.data.excerpt or post.templateContent | striptags | truncate(180) }}
-            </p>
-            <a href="{{ post.url }}" class="inline-block mt-4 text-indigo-600 font-semibold text-sm hover:underline">
-              Read more &rarr;
-            </a>
-          </li>
+            <p class="mt-3 text-gray-700">{{ post.data.description }}</p>
+          </article>
         {% endfor %}
-      </ul>
+      </div>
     {% else %}
-      <div class="text-center py-16 text-gray-500">
-        <div class="text-5xl mb-4">✍️</div>
-        <p class="text-lg font-medium text-gray-700 mb-2">Posts coming soon.</p>
-        <p>We're putting together practical AI guides for businesses. Check back shortly.</p>
-        <a href="/" class="inline-block mt-6 text-indigo-600 font-semibold hover:underline">&larr; Back to Home</a>
+      <div class="card-muted mt-12">
+        <p class="text-lg font-semibold text-gray-900">Posts are on the way.</p>
+        <p class="mt-2 text-gray-700">We are writing practical guides for local business owners. In the meantime, the <a href="{{ site.cta.href }}" class="link">{{ site.cta.label }}</a> is the quickest way to find out where your website and booking flow stand.</p>
       </div>
     {% endif %}
+  </div>
+</section>
 
+<section class="band-dark on-dark section">
+  <div class="wrap-narrow text-center">
+    <h2 class="text-3xl font-bold text-white md:text-4xl">Want a second pair of eyes on your own site?</h2>
+    <p class="mx-auto mt-4 max-w-xl text-lg text-indigo-100">The Free Tech Checkup is a 20-minute call plus a written scan of your website, booking flow and Google presence. You get a plain-English list of what to fix first.</p>
+    <p class="mt-8">
+      <a href="{{ site.cta.href }}" class="btn-light">Book my {{ site.cta.label }}</a>
+    </p>
   </div>
 </section>

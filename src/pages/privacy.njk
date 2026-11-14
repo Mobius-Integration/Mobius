@@ -2,23 +2,39 @@
 layout: base
 title: Privacy Policy
 permalink: /privacy/
+description: "What Mobius collects when you use our contact or checkup form, why, where it is stored, and how to ask us to delete it. We use no advertising trackers."
+date: Last Modified
 ---
 
-<section class="bg-white py-20 px-4">
-  <div class="container mx-auto max-w-3xl prose prose-gray">
-    <h1>Privacy Policy</h1>
-    <p class="text-gray-500 text-sm">Last updated: {{ site.year }}</p>
-    <p>Mobius Integration ("we", "us", or "our") is committed to protecting your privacy. This policy explains how we collect and use information when you interact with our website or services.</p>
+<section class="section bg-white">
+  <div class="wrap-narrow">
+    <p class="eyebrow">Privacy</p>
+    <h1 class="mt-4 text-4xl font-extrabold leading-tight tracking-tight text-gray-900 md:text-5xl">Privacy policy</h1>
+    <p class="mt-4 text-gray-700">This is a plain-language summary of how this website handles your information. Last updated: <time>{{ page.date | readableDate }}</time>.</p>
 
-    <h2>Information We Collect</h2>
-    <p>We may collect your name, email address, and business information when you contact us or sign up for updates. We do not sell or share this data with third parties.</p>
+    <h2 class="h-section mt-12">What we collect</h2>
+    <p class="mt-4 text-lg text-gray-700">We collect only what you choose to send us through the contact or checkup form:</p>
+    <ul class="mt-4 list-disc space-y-2 pl-6 text-lg text-gray-700">
+      <li>Your name and email address (required).</li>
+      <li>Optionally, your business name, website, phone number and a message, along with anything else the form asks for.</li>
+    </ul>
+    <p class="mt-4 text-lg text-gray-700">Please don't put health, financial or other sensitive details in the form. We don't need them to get started.</p>
 
-    <h2>How We Use Your Information</h2>
-    <p>We use your information solely to respond to inquiries, schedule calls, and send relevant updates you have opted into. You may unsubscribe at any time.</p>
+    <h2 class="h-section mt-12">Why we collect it</h2>
+    <p class="mt-4 text-lg text-gray-700">To reply to you, and to deliver your Free Tech Checkup or answer your question. We don't use it for anything else.</p>
 
-    <h2>Contact</h2>
-    <p>Questions about this policy? Email us at <a href="mailto:{{ site.email }}">{{ site.email }}</a>.</p>
+    <h2 class="h-section mt-12">Where it goes</h2>
+    <p class="mt-4 text-lg text-gray-700">This site is hosted by Cloudflare, and your form submission is handled through that hosting so it can reach us. Like most hosting providers, Cloudflare may keep standard technical records, such as IP addresses, to run and protect the service.</p>
 
-    <p class="text-gray-400 text-sm italic">Full privacy policy coming soon as we grow. For now, reach out directly with any questions.</p>
+    <h2 class="h-section mt-12">What we don't do</h2>
+    <ul class="mt-4 list-disc space-y-2 pl-6 text-lg text-gray-700">
+      <li>We don't use advertising trackers or analytics cookies on this site.</li>
+      <li>We don't sell your information.</li>
+    </ul>
+
+    <h2 class="h-section mt-12">Asking us to delete your information</h2>
+    <p class="mt-4 text-lg text-gray-700">If you want us to delete what you sent us, tell us through the <a class="link" href="/contact/">contact form</a>{% if site.email %} or by email at <a class="link" href="mailto:{{ site.email }}">{{ site.email }}</a>{% endif %}. We will reply within {{ site.responseTime }}.</p>
+
+    <p class="mt-12 text-gray-700">See also our <a class="link" href="/terms/">terms of use</a> and <a class="link" href="/accessibility/">accessibility statement</a>.</p>
   </div>
 </section>

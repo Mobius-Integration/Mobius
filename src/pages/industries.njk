@@ -2,76 +2,59 @@
 layout: base
 title: Who We Serve
 permalink: /industries/
-description: Mobius Integration serves dental practices, Invisalign practices, implant practices, and med spas in Tampa with practice automation.
+description: "Mobius helps Tampa Bay restaurants, medical offices, salons, contractors, shops, gyms and real estate teams with their website, bookings and follow-up."
 ---
 
-<section class="bg-white py-20 px-4">
-  <div class="container mx-auto max-w-5xl">
+{# Audiences come from src/_data/audiences.js. The "wins" are typical first projects, not promised results. #}
 
-    <div class="text-center mb-14">
-      <h1 class="text-4xl font-bold text-gray-900 mb-4">Built for Dental & Med Spa Practices</h1>
-      <p class="text-xl text-gray-600 max-w-2xl mx-auto">We specialize in practices where speed-to-lead, no-show rates, and patient retention directly impact revenue — and where the right automation pays for itself fast.</p>
+<section class="section">
+  <div class="wrap text-center">
+    <p class="eyebrow mb-4">Who we serve</p>
+    <h1 class="h-section mb-4 md:text-5xl">Local businesses across {{ site.region }}</h1>
+    <p class="lede mx-auto max-w-2xl">We work with owner-run businesses in {% for area in site.areas %}{{ area }}{% if not loop.last %}{% if loop.index == site.areas.length - 1 %} and {% else %}, {% endif %}{% endif %}{% endfor %} and the towns around them. Below are the kinds of businesses we built our packages for, and the headaches that tend to come with each.</p>
+    <p class="mx-auto mt-4 max-w-2xl text-gray-700">The projects listed are typical places to start. They are examples of what we might do, not results we promise. Every business is different, so we scope yours after we talk.</p>
+  </div>
+</section>
+
+<section class="section pt-0 md:pt-0" aria-label="Business types we serve">
+  <div class="wrap">
+    <div class="grid gap-6 md:grid-cols-2">
+      {% for a in audiences %}
+      <article id="{{ a.id }}" class="card scroll-mt-24">
+        <p aria-hidden="true" class="text-4xl">{{ a.icon }}</p>
+        <h2 class="mt-3 text-2xl font-bold text-gray-900">{{ a.name }}</h2>
+
+        <h3 class="mt-5 text-sm font-bold uppercase tracking-wide text-gray-900">Common headaches</h3>
+        <ul class="mt-2 space-y-2 text-sm text-gray-800">
+          {% for pain in a.pains %}
+          <li class="flex items-start gap-2"><span aria-hidden="true" class="font-bold text-gray-700">&bull;</span><span>{{ pain }}</span></li>
+          {% endfor %}
+        </ul>
+
+        <h3 class="mt-5 text-sm font-bold uppercase tracking-wide text-gray-900">Typical first projects</h3>
+        <ul class="mt-2 space-y-2 text-sm text-gray-800">
+          {% for win in a.wins %}
+          <li class="flex items-start gap-2"><span aria-hidden="true" class="font-bold text-indigo-700">&#10003;</span><span>{{ win }}</span></li>
+          {% endfor %}
+        </ul>
+      </article>
+      {% endfor %}
     </div>
+  </div>
+</section>
 
-    <div class="grid md:grid-cols-2 gap-8 mb-16">
+<section class="section bg-gray-50" aria-labelledby="dont-see-heading">
+  <div class="wrap-narrow">
+    <h2 id="dont-see-heading" class="h-section mb-4">Don't see your business?</h2>
+    <p class="text-gray-800">Most local businesses share the same handful of tech problems: a website that is hard to use on a phone, slow replies to new customers, a Google listing that is out of date, and software that doesn't talk to other software. If that sounds like you, we can probably help, whatever you sell.</p>
+    <p class="mt-4 text-gray-800">Tell us what you do on the <a href="/contact/" class="link">contact page</a> and we will say honestly whether we are a good fit.</p>
+  </div>
+</section>
 
-      <div class="bg-gray-50 rounded-2xl p-8 border border-gray-100 hover:border-indigo-200 hover:shadow-md transition">
-        <div class="text-4xl mb-4">🦷</div>
-        <h2 class="text-2xl font-bold text-gray-900 mb-3">General Dental Practices</h2>
-        <p class="text-gray-600 mb-4">High appointment volume means no-shows hit hard, and a slow response to a new patient inquiry can lose them to the practice down the street. Automation fixes both.</p>
-        <ul class="space-y-2 text-sm text-gray-700">
-          <li class="flex items-start gap-2"><span class="text-indigo-500">✓</span> Reduce no-show rates with multi-touch reminders</li>
-          <li class="flex items-start gap-2"><span class="text-indigo-500">✓</span> Respond to new inquiries before competitors</li>
-          <li class="flex items-start gap-2"><span class="text-indigo-500">✓</span> Automate recall and reactivation campaigns</li>
-          <li class="flex items-start gap-2"><span class="text-indigo-500">✓</span> Generate Google reviews from satisfied patients</li>
-        </ul>
-      </div>
-
-      <div class="bg-gray-50 rounded-2xl p-8 border border-gray-100 hover:border-purple-200 hover:shadow-md transition">
-        <div class="text-4xl mb-4">😁</div>
-        <h2 class="text-2xl font-bold text-gray-900 mb-3">Invisalign Practices</h2>
-        <p class="text-gray-600 mb-4">Invisalign leads are high-value and high-competition. The window to convert a new inquiry is tiny — and the revenue per patient justifies a fast, professional follow-up system.</p>
-        <ul class="space-y-2 text-sm text-gray-700">
-          <li class="flex items-start gap-2"><span class="text-purple-500">✓</span> Instant response to new Invisalign consultation requests</li>
-          <li class="flex items-start gap-2"><span class="text-purple-500">✓</span> Multi-touch nurture sequence for unconverted leads</li>
-          <li class="flex items-start gap-2"><span class="text-purple-500">✓</span> Automated check-in reminders during treatment</li>
-          <li class="flex items-start gap-2"><span class="text-purple-500">✓</span> Review generation post-treatment completion</li>
-        </ul>
-      </div>
-
-      <div class="bg-gray-50 rounded-2xl p-8 border border-gray-100 hover:border-cyan-200 hover:shadow-md transition">
-        <div class="text-4xl mb-4">🔬</div>
-        <h2 class="text-2xl font-bold text-gray-900 mb-3">Implant Practices</h2>
-        <p class="text-gray-600 mb-4">Implant consultations are high-ticket and high-intent. Patients researching implants are comparing multiple providers — the practice that responds and nurtures best wins the case.</p>
-        <ul class="space-y-2 text-sm text-gray-700">
-          <li class="flex items-start gap-2"><span class="text-cyan-500">✓</span> Speed-to-lead for consultation requests</li>
-          <li class="flex items-start gap-2"><span class="text-cyan-500">✓</span> Long-form nurture sequences for patients deciding over weeks</li>
-          <li class="flex items-start gap-2"><span class="text-cyan-500">✓</span> Pre-consultation intake and preparation automation</li>
-          <li class="flex items-start gap-2"><span class="text-cyan-500">✓</span> Post-procedure follow-up and review collection</li>
-        </ul>
-      </div>
-
-      <div class="bg-gray-50 rounded-2xl p-8 border border-gray-100 hover:border-pink-200 hover:shadow-md transition">
-        <div class="text-4xl mb-4">💆</div>
-        <h2 class="text-2xl font-bold text-gray-900 mb-3">Med Spas</h2>
-        <p class="text-gray-600 mb-4">Med spa clients are busy, social-media-driven, and comparison-shop heavily. Fast response, professional follow-up, and reputation management are the difference between booking and losing.</p>
-        <ul class="space-y-2 text-sm text-gray-700">
-          <li class="flex items-start gap-2"><span class="text-pink-500">✓</span> Instant response to DM and web form inquiries</li>
-          <li class="flex items-start gap-2"><span class="text-pink-500">✓</span> Automated booking and pre-treatment instructions</li>
-          <li class="flex items-start gap-2"><span class="text-pink-500">✓</span> Post-treatment follow-up and rebooking sequences</li>
-          <li class="flex items-start gap-2"><span class="text-pink-500">✓</span> Review generation and before/after follow-up</li>
-        </ul>
-      </div>
-
-    </div>
-
-    <div class="bg-indigo-50 rounded-2xl p-8 text-center border border-indigo-100">
-      <h3 class="text-xl font-bold text-gray-900 mb-3">Based in Tampa. Available Statewide.</h3>
-      <p class="text-gray-600 mb-6">We currently focus on practices in Tampa and the broader Tampa Bay area, with plans to expand across Florida. All setup and monitoring is done remotely — no on-site visits needed.</p>
-      <a href="/contact/#booking" class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold px-8 py-3 rounded-lg hover:opacity-90 transition inline-block">
-        Book a Free Practice Audit
-      </a>
-    </div>
-
+<section class="section band-dark on-dark text-center">
+  <div class="wrap-narrow">
+    <h2 class="text-3xl font-bold text-white md:text-4xl">See what your business is missing</h2>
+    <p class="mx-auto mt-4 max-w-xl text-lg text-indigo-100">The free checkup is a 20-minute call and a written report on your website, booking flow and Google listing. It costs nothing.</p>
+    <p class="mt-8"><a href="{{ site.cta.href }}" class="btn-light">Book your {{ site.cta.label }}</a></p>
   </div>
 </section>

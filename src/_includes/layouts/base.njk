@@ -1,23 +1,56 @@
+{%- set pageTitle = (title + " | " + site.title) if (title and title != "Home") else (site.title + " | " + site.tagline) -%}
+{%- set pageDescription = description or site.description -%}
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{% if title %}{{ title }} | {{ site.title }}{% else %}{{ site.title }}{% endif %}</title>
-    <meta name="description" content="{{ description or site.description }}" />
+    <title>{{ pageTitle }}</title>
+    <meta name="description" content="{{ pageDescription }}" />
+{%- if site.url %}
+    <link rel="canonical" href="{{ site.url }}{{ page.url }}" />
+{%- endif %}
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="{{ site.title }}" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:title" content="{{ pageTitle }}" />
+    <meta property="og:description" content="{{ pageDescription }}" />
+{%- if site.url %}
+    <meta property="og:url" content="{{ site.url }}{{ page.url }}" />
+{%- endif %}
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="{{ pageTitle }}" />
+    <meta name="twitter:description" content="{{ pageDescription }}" />
     <link rel="icon" href="/assets/img/logo.svg" type="image/svg+xml" />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@700;800;900&display=swap" rel="stylesheet">
+    <link rel="preload" href="/assets/fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/assets/fonts/plus-jakarta-sans-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
     <link href="/assets/css/tailwind.css" rel="stylesheet" />
-    <style>
-      body { font-family: 'Inter', system-ui, sans-serif; }
-      h1, h2, h3 { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; }
-    </style>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "ProfessionalService",
+      "name": {{ site.title | dump | safe }},
+      "description": {{ site.description | dump | safe }},
+{%- if site.url %}
+      "url": {{ site.url | dump | safe }},
+{%- endif %}
+      "areaServed": [
+{%- for area in site.areas %}
+        { "@type": "City", "name": {{ area | dump | safe }} }{% if not loop.last %},{% endif %}
+{%- endfor %}
+      ],
+      "founder": [
+{%- for person in site.founders %}
+        { "@type": "Person", "name": {{ person.name | dump | safe }}, "jobTitle": {{ person.role | dump | safe }} }{% if not loop.last %},{% endif %}
+{%- endfor %}
+      ]
+    }
+    </script>
   </head>
-  <body class="text-gray-800 bg-white antialiased">
+  <body class="bg-white text-gray-800 antialiased">
+    <a class="skip-link" href="#main">Skip to main content</a>
     {% include "partials/header.njk" %}
-    <main>
+    <main id="main" tabindex="-1">
       {{ content | safe }}
     </main>
     {% include "partials/footer.njk" %}

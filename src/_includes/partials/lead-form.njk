@@ -1,0 +1,208 @@
+{#-
+  Shared lead form. Set these before including it:
+    formSource   (required)  "free-checkup" or "contact". Also prefixes every id.
+    formButton   (optional)  Submit button label. Default "Send message".
+    formHeading  (optional)  Rendered as an h2 above the form.
+    showSiteUrl  (optional)  Set to false to hide the website field. Shown by default.
+  Posts to /api/contact. Works without JavaScript (plain post, 303 to /thanks/).
+-#}
+{% set fp = formSource or "form" %}
+<style>
+  /* No-JavaScript failure message: only visible when the server redirects back with #{{ fp }}-form-error. */
+  .lead-nojs-error:not(:target) { display: none; }
+</style>
+<div id="{{ fp }}-form-wrap">
+  {% if formHeading %}<h2 class="mb-6 text-2xl font-bold text-gray-900">{{ formHeading }}</h2>{% endif %}
+
+  <div id="{{ fp }}-form-error" class="lead-nojs-error mb-6 rounded-lg border-2 border-red-700 bg-red-50 p-4 text-red-900" role="alert">
+    <p class="font-semibold">Error: we couldn't send your message.</p>
+    <p class="mt-1">Please check that your name and email are filled in, then try again.{% if site.email %} You can also email us at <a class="link" href="mailto:{{ site.email }}">{{ site.email }}</a>.{% endif %}</p>
+  </div>
+
+  <form id="{{ fp }}-form" method="POST" action="/api/contact" novalidate data-lead-form data-prefix="{{ fp }}" class="space-y-5">
+    <div>
+      <label class="field-label" for="{{ fp }}-name">Name (required)</label>
+      <input class="field-input" type="text" id="{{ fp }}-name" name="name" required aria-required="true" autocomplete="name" maxlength="200" aria-describedby="{{ fp }}-name-error">
+      <p class="field-error" id="{{ fp }}-name-error" hidden></p>
+    </div>
+
+    <div>
+      <label class="field-label" for="{{ fp }}-email">Email (required)</label>
+      <input class="field-input" type="email" id="{{ fp }}-email" name="email" required aria-required="true" autocomplete="email" maxlength="254" aria-describedby="{{ fp }}-email-error">
+      <p class="field-error" id="{{ fp }}-email-error" hidden></p>
+    </div>
+
+    <div>
+      <label class="field-label" for="{{ fp }}-business">Business name (optional)</label>
+      <input class="field-input" type="text" id="{{ fp }}-business" name="business" autocomplete="organization" maxlength="200">
+    </div>
+
+    {% if showSiteUrl !== false %}
+    <div>
+      <label class="field-label" for="{{ fp }}-site-url">Your website (optional)</label>
+      <input class="field-input" type="url" id="{{ fp }}-site-url" name="site_url" autocomplete="url" maxlength="300" aria-describedby="{{ fp }}-site-url-help">
+      <p class="field-help" id="{{ fp }}-site-url-help">{% if fp == "free-checkup" %}If you have one, the address helps us prepare the checkup.{% else %}If you have one, the address helps us see what you're working with.{% endif %}</p>
+    </div>
+    {% endif %}
+
+    <div>
+      <label class="field-label" for="{{ fp }}-phone">Phone (optional)</label>
+      <input class="field-input" type="tel" id="{{ fp }}-phone" name="phone" autocomplete="tel" maxlength="50">
+    </div>
+
+    <div>
+      <label class="field-label" for="{{ fp }}-interest">What do you need help with? (optional)</label>
+      <select class="field-input" id="{{ fp }}-interest" name="interest">
+        <option value="not-sure" selected>Not sure yet</option>
+        {% for p in packages.all %}
+        <option value="{{ p.id }}">{{ p.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div>
+      <label class="field-label" for="{{ fp }}-preferred-time">Best time for a call (optional)</label>
+      <input class="field-input" type="text" id="{{ fp }}-preferred-time" name="preferred_time" maxlength="200" aria-describedby="{{ fp }}-preferred-time-help">
+      <p class="field-help" id="{{ fp }}-preferred-time-help">{{ site.callHours }}. Tell us what works for you.</p>
+    </div>
+
+    <div>
+      <label class="field-label" for="{{ fp }}-message">Message (optional)</label>
+      <textarea class="field-input" id="{{ fp }}-message" name="message" rows="5" maxlength="5000"></textarea>
+    </div>
+
+    <input type="hidden" name="source" value="{{ fp }}">
+    <input type="hidden" name="started_at" value="">
+
+    {# Honeypot: hidden from everyone, including assistive tech and keyboard users. #}
+    <div aria-hidden="true" style="position:absolute;left:-10000px;top:auto;width:1px;height:1px;overflow:hidden;">
+      <label for="{{ fp }}-company-fax">Leave this field empty</label>
+      <input type="text" id="{{ fp }}-company-fax" name="company_fax" tabindex="-1" autocomplete="off" value="">
+    </div>
+
+    <div>
+      <button type="submit" class="btn-primary w-full sm:w-auto" data-submit>{{ formButton or "Send message" }}</button>
+      <p class="field-help mt-3">We use what you send to reply to your request. See our <a class="link" href="/privacy/">privacy policy</a>.</p>
+    </div>
+
+    <div role="status" aria-live="polite" class="font-semibold text-gray-800" data-status></div>
+
+    <div role="alert" class="rounded-lg border-2 border-red-700 bg-red-50 p-4 text-red-900" data-failure hidden>
+      <p class="font-semibold" data-failure-text></p>
+      <p class="mt-1">Everything you typed is still here.{% if site.email %} You can also email us at <a class="link" href="mailto:{{ site.email }}">{{ site.email }}</a>.{% else %} Please try again in a few minutes.{% endif %}</p>
+    </div>
+  </form>
+
+  <div id="{{ fp }}-success" class="rounded-2xl border-2 border-green-700 bg-green-50 p-6 text-green-900" tabindex="-1" data-success hidden>
+    <p class="text-xl font-bold">Thanks. We got your message.</p>
+    <p class="mt-2">We'll reply within {{ site.responseTime }} to say hello and, if you asked for a call, to find a time.</p>
+    <p class="mt-4"><a class="link" href="/">Back to the home page</a></p>
+  </div>
+
+  <script>
+    (function () {
+      var script = document.currentScript;
+      var wrap = script && script.parentElement;
+      if (!wrap || !window.fetch || !window.JSON) return;
+      var form = wrap.querySelector("form[data-lead-form]");
+      if (!form) return;
+
+      var status = wrap.querySelector("[data-status]");
+      var failBox = wrap.querySelector("[data-failure]");
+      var failText = wrap.querySelector("[data-failure-text]");
+      var success = wrap.querySelector("[data-success]");
+      var button = form.querySelector("[data-submit]");
+      var nojsError = wrap.querySelector(".lead-nojs-error");
+      var started = form.elements["started_at"];
+      if (started) started.value = String(Date.now());
+      if (nojsError) nojsError.hidden = true;
+
+      function showError(input, message) {
+        var out = document.getElementById(input.id + "-error");
+        if (!out) return;
+        if (message) {
+          out.textContent = "Error: " + message;
+          out.hidden = false;
+          input.setAttribute("aria-invalid", "true");
+        } else {
+          out.textContent = "";
+          out.hidden = true;
+          input.removeAttribute("aria-invalid");
+        }
+      }
+
+      function validate() {
+        var name = form.elements["name"];
+        var email = form.elements["email"];
+        var first = null;
+        if (!name.value.trim()) {
+          showError(name, "Please enter your name.");
+          first = first || name;
+        } else {
+          showError(name, "");
+        }
+        var addr = email.value.trim();
+        if (!addr) {
+          showError(email, "Please enter your email address.");
+          first = first || email;
+        } else if (!/^[^\s@<>()]+@[^\s@<>()]+\.[^\s@<>()]{2,}$/.test(addr)) {
+          showError(email, "Please enter a valid email address, like name@example.com.");
+          first = first || email;
+        } else {
+          showError(email, "");
+        }
+        return first;
+      }
+
+      function fail(message) {
+        status.textContent = "";
+        failText.textContent = message || "We couldn't send your message. Please try again shortly.";
+        failBox.hidden = true;
+        window.setTimeout(function () { failBox.hidden = false; }, 50);
+        button.disabled = false;
+      }
+
+      form.addEventListener("submit", function (event) {
+        event.preventDefault();
+        failBox.hidden = true;
+        var invalid = validate();
+        if (invalid) {
+          status.textContent = "";
+          invalid.focus();
+          return;
+        }
+
+        var data = {};
+        Array.prototype.forEach.call(form.elements, function (el) {
+          if (el.name && el.type !== "submit") data[el.name] = el.value;
+        });
+        if (data.site_url && !/^https?:\/\//i.test(data.site_url.trim())) {
+          data.site_url = "https://" + data.site_url.trim();
+        }
+
+        button.disabled = true;
+        status.textContent = "Sending…";
+
+        fetch("/api/contact", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Accept": "application/json" },
+          body: JSON.stringify(data)
+        }).then(function (res) {
+          return res.json().then(function (json) { return { ok: res.ok, json: json }; },
+                                 function () { return { ok: false, json: null }; });
+        }).then(function (result) {
+          if (result.ok && result.json && result.json.ok === true) {
+            status.textContent = "";
+            form.hidden = true;
+            success.hidden = false;
+            success.focus();
+          } else {
+            fail(result.json && result.json.error);
+          }
+        }).catch(function () {
+          fail("We couldn't reach our server. Check your connection and try again.");
+        });
+      });
+    })();
+  </script>
+</div>

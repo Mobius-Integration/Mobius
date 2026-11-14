@@ -1,0 +1,26 @@
+---
+layout: base
+title: Thanks
+permalink: /thanks/
+description: Thanks for contacting Mobius Integration. Here is what happens next.
+eleventyExcludeFromCollections: true
+---
+
+<section class="section">
+  <div class="wrap-narrow">
+    <h1 class="h-display">Thanks, we got your message</h1>
+    <p class="lede mt-5">A real person will read it and reply within {{ site.responseTime }}.</p>
+
+    <h2 class="h-section mt-12">What happens next</h2>
+    <ol class="mt-6 list-decimal space-y-3 pl-6 text-lg marker:font-bold marker:text-indigo-700">
+      <li>We read what you sent and reply by email.</li>
+      <li>If you asked for a call, we'll suggest a time. {{ site.callHours }}.</li>
+      <li>Nothing is charged and nothing is signed. You decide what to do after we talk.</li>
+    </ol>
+
+    <p class="mt-10 flex flex-wrap gap-4">
+      <a class="btn-primary" href="/">Back to the home page</a>
+      <a class="btn-secondary" href="/pricing/">See our packages</a>
+    </p>
+  </div>
+</section>

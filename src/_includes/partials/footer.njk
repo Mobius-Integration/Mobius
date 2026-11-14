@@ -1,38 +1,45 @@
-<footer class="bg-gray-900 text-gray-400">
-  <div class="h-1 bg-gradient-to-r from-lime-400 via-cyan-400 via-blue-500 via-purple-600 to-pink-500"></div>
+<footer class="bg-gray-900 text-gray-300">
+  <div class="rainbow-bar" aria-hidden="true"></div>
   <div class="container mx-auto px-4 py-12">
-    <div class="grid md:grid-cols-3 gap-8 mb-10">
+    <div class="mb-10 grid gap-10 md:grid-cols-2 lg:grid-cols-4">
       <div>
-        <img src="/assets/img/logo.svg" alt="Mobius Integration" class="h-10 mb-3">
-        <p class="text-sm leading-relaxed">Custom AI tools for businesses that want to move faster, work smarter, and grow without limits.</p>
+        <img src="/assets/img/logo.svg" alt="Mobius Integration" class="mb-3 h-10 w-auto" style="max-width:160px;">
+        <p class="text-sm leading-relaxed">{{ site.tagline }} in {{ site.region }}. We build and look after websites, booking and follow-up tools for local businesses, at fixed prices.</p>
       </div>
+      <nav aria-label="Footer" class="grid gap-10 sm:grid-cols-2 md:col-span-2">
       <div>
-        <h4 class="text-white font-semibold mb-3">Quick Links</h4>
-        <ul class="space-y-2 text-sm">
-          <li><a href="/services/" class="hover:text-white transition-colors">Services</a></li>
-          <li><a href="/industries/" class="hover:text-white transition-colors">Industries</a></li>
-          <li><a href="/portfolio/" class="hover:text-white transition-colors">Portfolio</a></li>
-          <li><a href="/pricing/" class="hover:text-white transition-colors">Pricing</a></li>
-          <li><a href="/blog/" class="hover:text-white transition-colors">Blog</a></li>
-          <li><a href="/about/" class="hover:text-white transition-colors">About Us</a></li>
+        <h2 class="mb-3 text-base font-semibold text-white">Explore</h2>
+        <ul class="text-sm">
+          {%- for item in site.nav %}
+          <li><a href="{{ item.href }}" class="inline-block py-1.5 hover:text-white hover:underline">{{ item.label }}</a></li>
+          {%- endfor %}
         </ul>
       </div>
       <div>
-        <h4 class="text-white font-semibold mb-3">Get in Touch</h4>
+        <h2 class="mb-3 text-base font-semibold text-white">More</h2>
+        <ul class="text-sm">
+          <li><a href="/faq/" class="inline-block py-1.5 hover:text-white hover:underline">FAQ</a></li>
+          <li><a href="/free-checkup/" class="inline-block py-1.5 hover:text-white hover:underline">Free Tech Checkup</a></li>
+          <li><a href="/accessibility/" class="inline-block py-1.5 hover:text-white hover:underline">Accessibility</a></li>
+          <li><a href="/privacy/" class="inline-block py-1.5 hover:text-white hover:underline">Privacy</a></li>
+          <li><a href="/terms/" class="inline-block py-1.5 hover:text-white hover:underline">Terms</a></li>
+        </ul>
+      </div>
+      </nav>
+      <div>
+        <h2 class="mb-3 text-base font-semibold text-white">Get in touch</h2>
         <ul class="space-y-2 text-sm">
-          <li><a href="mailto:{{ site.email }}" class="hover:text-white transition-colors">{{ site.email }}</a></li>
-          <li><a href="/contact/" class="hover:text-white transition-colors">Contact Us</a></li>
-          <li><a href="/contact/#booking" class="hover:text-white transition-colors">Book a Free Demo</a></li>
-          <li><a href="/faq/" class="hover:text-white transition-colors">FAQ</a></li>
+          {%- if site.email %}
+          <li><a href="mailto:{{ site.email }}" class="inline-block py-1.5 text-white underline hover:no-underline">{{ site.email }}</a></li>
+          {%- endif %}
+          <li>Replies within {{ site.responseTime }}</li>
+          <li>{{ site.callHours }}</li>
+          <li>Serving {{ site.areas | join(", ") }}</li>
         </ul>
       </div>
     </div>
-    <div class="border-t border-gray-800 pt-6 flex flex-col md:flex-row justify-between items-center text-sm gap-3">
-      <p>&copy; {{ site.year }} Mobius Integration. All rights reserved.</p>
-      <div class="flex gap-5">
-        <a href="/privacy/" class="hover:text-white transition-colors">Privacy Policy</a>
-        <a href="/terms/" class="hover:text-white transition-colors">Terms of Service</a>
-      </div>
+    <div class="border-t border-gray-700 pt-6 text-sm">
+      <p>&copy; {{ site.year }} {{ site.title }}. All rights reserved.</p>
     </div>
   </div>
 </footer>

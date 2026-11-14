@@ -1,0 +1,8 @@
+# Cloudflare Pages configuration for the Mobius Integration site.
+# Deploy with: npm run deploy
+name = "mobius-integration"
+pages_build_output_dir = "_site"
+compatibility_date = "2025-01-01"
+
+# The contact form stores leads in a KV namespace bound as LEADS.
+# The binding is added here once the namespace exists (wrangler kv namespace create LEADS).

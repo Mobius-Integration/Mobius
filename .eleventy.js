@@ -15,6 +15,14 @@ module.exports = function (eleventyConfig) {
    */
   eleventyConfig.addPassthroughCopy("src/assets");
 
+  // Cloudflare Pages reads security/cache headers from a `_headers` file at the output root.
+  eleventyConfig.addPassthroughCopy({ "src/_headers": "_headers" });
+
+  // A sitemap needs absolute URLs. With no SITE_URL set (see src/_data/site.js), publish none.
+  if (!(process.env.SITE_URL || "").trim()) {
+    eleventyConfig.ignores.add("src/sitemap.njk");
+  }
+
   /* --------------------------------------------------
    * 2. Custom collections
    * --------------------------------------------------
@@ -28,8 +36,9 @@ module.exports = function (eleventyConfig) {
   });
 
   eleventyConfig.addFilter("readableDate", (dateObj) => {
+    // UTC so a front-matter date like 2026-11-13 never prints as the day before.
     return new Date(dateObj).toLocaleDateString("en-US", {
-      year: "numeric", month: "long", day: "numeric"
+      year: "numeric", month: "long", day: "numeric", timeZone: "UTC"
     });
   });
 

@@ -1,96 +1,101 @@
 ---
 layout: base
-title: Portfolio
+title: Example Projects
 permalink: /portfolio/
-description: See the types of AI tools Mobius Integration builds — from customer support automation to document intelligence and workflow systems.
+description: "Illustrative examples of what each Mobius package covers for a local business. These are hypothetical, not client case studies."
 ---
+{# Each example is a hypothetical. "pkg" is a package id from src/_data/packages.js; the name is looked up so it never drifts. #}
+{% set examples = [
+  {
+    id: "restaurant",
+    pkg: "tuneup",
+    kind: "Website tune-up for a restaurant",
+    situation: "A restaurant's reservation button can't be reached with a keyboard, the menu is a photo with no text, and a screen reader announces the booking form's fields as just \"edit text.\"",
+    plan: "We would test the pages guests use most, fix the labels, contrast, link names and menu text, and walk through the reservation flow by keyboard and screen reader. Anything that only the reservation vendor can fix goes to them as a clear written request.",
+    result: "The owner ends up with fixes on the site, a before-and-after report to keep on file, and an accessibility statement that matches what is actually true."
+  },
+  {
+    id: "appointments",
+    pkg: "sprint",
+    kind: "Automation sprint for an appointment business",
+    situation: "A salon owner answers new inquiries when there's a gap between clients, sends reminders by hand and has no way to follow up with no-shows or customers who haven't been back in months.",
+    plan: "We would set up an instant reply to new inquiries, online booking with confirmations, reminders before each appointment, an automatic offer of a new time after a no-show, review requests and a win-back message.",
+    result: "The owner ends up with a follow-up system that runs without anyone remembering to do it, and a written record of what was set up."
+  },
+  {
+    id: "new-shop",
+    pkg: "launch",
+    kind: "Website launch for a new shop",
+    situation: "A shop is about to open with a social media page and nothing else. There's no website, no business email on its own domain, and the Google listing is half filled in.",
+    plan: "We would write and build a small site, set up the domain and business email, add a contact form that reaches the owner, and set up the Google Business Profile.",
+    result: "The owner ends up with a site built mobile-first and to WCAG 2.1 AA, accounts registered in their own name, and a Google listing they can edit themselves."
+  },
+  {
+    id: "office",
+    pkg: "custom",
+    kind: "Custom tool for an office",
+    situation: "An office retypes the same client details from an intake form into a spreadsheet, then again into the accounting software, and the same few questions arrive by phone every week.",
+    plan: "We would scope the problem on a free call, then quote a fixed price in writing. The work could include connecting the intake form to the other systems and an assistant that answers common questions from the office's own documents.",
+    result: "The owner ends up with a written fixed quote before any work starts, and if they go ahead, a tool built around how the office already works."
+  },
+  {
+    id: "multi-location",
+    pkg: "partner-plus",
+    kind: "Ongoing tech partner for a multi-location business",
+    situation: "A business with several locations has a different booking tool at each one, hours that don't match online, and a handful of vendors who each blame the others when something breaks.",
+    plan: "We would run monthly health checks, make the changes each location needs, plan the next quarter together and deal with the other vendors on the owner's behalf.",
+    result: "The owner ends up with one team to call, a monthly report in plain English and a month-to-month plan with no long-term contract."
+  },
+  {
+    id: "not-sure",
+    pkg: "checkup",
+    kind: "Free checkup for an owner who isn't sure where to start",
+    situation: "An owner suspects the website is slow, the booking page is awkward and the Google listing is out of date, but doesn't know which problem matters most or whom to ask.",
+    plan: "We would hold a 20-minute call, check the website on mobile and for accessibility, test the booking or contact flow start to finish and review the Google Business Profile.",
+    result: "The owner ends up with a written report that ranks the top fixes, and can use it with us, with another vendor, or not at all."
+  }
+] %}
 
-<section class="bg-white py-20 px-4">
-  <div class="container mx-auto max-w-5xl">
+<section class="section bg-white">
+  <div class="wrap-narrow">
+    <p class="eyebrow">Examples</p>
+    <h1 class="mt-4 text-4xl font-extrabold leading-tight tracking-tight text-gray-900 md:text-5xl">Example projects</h1>
+    <p class="lede mt-6">Here's what each package looks like in practice, using made-up situations that local businesses commonly run into.</p>
 
-    <div class="text-center mb-14">
-      <h1 class="text-4xl font-bold text-gray-900 mb-4">What We Can Build</h1>
-      <p class="text-xl text-gray-600 max-w-2xl mx-auto">We're early-stage and growing — here's a look at the types of projects we build and the problems we solve.</p>
-    </div>
-
-    <div class="grid md:grid-cols-2 gap-8">
-
-      <div class="bg-gray-50 rounded-2xl p-8 border border-gray-100 hover:border-indigo-200 hover:shadow-md transition">
-        <div class="flex items-center gap-3 mb-4">
-          <div class="bg-indigo-100 text-indigo-700 rounded-lg p-2 text-xl">🤖</div>
-          <span class="text-sm font-semibold text-indigo-600 uppercase tracking-wide">Finance / Any Industry</span>
-        </div>
-        <h2 class="text-xl font-bold text-gray-900 mb-2">AI Customer Support System</h2>
-        <p class="text-gray-600 text-sm mb-4"><strong>Problem:</strong> High inquiry volume overwhelming support teams, slow response times, inconsistent answers.</p>
-        <p class="text-gray-600 text-sm mb-4"><strong>Solution:</strong> AI-powered support bot trained on your knowledge base, with smart routing and seamless human escalation.</p>
-        <p class="text-gray-700 text-sm font-medium">Expected outcome: 40–60% reduction in response time, fewer support tickets requiring human intervention.</p>
-      </div>
-
-      <div class="bg-gray-50 rounded-2xl p-8 border border-gray-100 hover:border-purple-200 hover:shadow-md transition">
-        <div class="flex items-center gap-3 mb-4">
-          <div class="bg-purple-100 text-purple-700 rounded-lg p-2 text-xl">📄</div>
-          <span class="text-sm font-semibold text-purple-600 uppercase tracking-wide">Legal / Finance / HR</span>
-        </div>
-        <h2 class="text-xl font-bold text-gray-900 mb-2">Contract Analysis Tool</h2>
-        <p class="text-gray-600 text-sm mb-4"><strong>Problem:</strong> Teams spend hours manually reviewing contracts for risky clauses, deadlines, and obligations.</p>
-        <p class="text-gray-600 text-sm mb-4"><strong>Solution:</strong> AI that reads contracts, highlights key clauses, flags risks, and generates a structured summary in seconds.</p>
-        <p class="text-gray-700 text-sm font-medium">Expected outcome: Contract review time cut by 50–70%, fewer missed obligations and risks.</p>
-      </div>
-
-      <div class="bg-gray-50 rounded-2xl p-8 border border-gray-100 hover:border-cyan-200 hover:shadow-md transition">
-        <div class="flex items-center gap-3 mb-4">
-          <div class="bg-cyan-100 text-cyan-700 rounded-lg p-2 text-xl">📊</div>
-          <span class="text-sm font-semibold text-cyan-600 uppercase tracking-wide">Any Industry</span>
-        </div>
-        <h2 class="text-xl font-bold text-gray-900 mb-2">Sales Pipeline Intelligence</h2>
-        <p class="text-gray-600 text-sm mb-4"><strong>Problem:</strong> Sales data is scattered across tools — no clear view of pipeline health, conversion rates, or bottlenecks.</p>
-        <p class="text-gray-600 text-sm mb-4"><strong>Solution:</strong> Unified analytics dashboard with AI-driven insights, forecasting, and automated weekly reports.</p>
-        <p class="text-gray-700 text-sm font-medium">Expected outcome: Better forecasting accuracy, faster identification of at-risk deals, less time in spreadsheets.</p>
-      </div>
-
-      <div class="bg-gray-50 rounded-2xl p-8 border border-gray-100 hover:border-green-200 hover:shadow-md transition">
-        <div class="flex items-center gap-3 mb-4">
-          <div class="bg-green-100 text-green-700 rounded-lg p-2 text-xl">⚡</div>
-          <span class="text-sm font-semibold text-green-600 uppercase tracking-wide">HR / Operations</span>
-        </div>
-        <h2 class="text-xl font-bold text-gray-900 mb-2">Employee Onboarding Assistant</h2>
-        <p class="text-gray-600 text-sm mb-4"><strong>Problem:</strong> Onboarding is inconsistent, time-consuming, and relies on busy team members answering the same questions repeatedly.</p>
-        <p class="text-gray-600 text-sm mb-4"><strong>Solution:</strong> AI assistant that guides new hires through the onboarding process, answers questions, and tracks completion.</p>
-        <p class="text-gray-700 text-sm font-medium">Expected outcome: Faster time-to-productivity, consistent onboarding experience, freed-up HR time.</p>
-      </div>
-
-      <div class="bg-gray-50 rounded-2xl p-8 border border-gray-100 hover:border-orange-200 hover:shadow-md transition">
-        <div class="flex items-center gap-3 mb-4">
-          <div class="bg-orange-100 text-orange-700 rounded-lg p-2 text-xl">📦</div>
-          <span class="text-sm font-semibold text-orange-600 uppercase tracking-wide">Retail / Logistics</span>
-        </div>
-        <h2 class="text-xl font-bold text-gray-900 mb-2">Inventory Demand Forecasting</h2>
-        <p class="text-gray-600 text-sm mb-4"><strong>Problem:</strong> Over-stocking and under-stocking cost money and hurt customer satisfaction — current forecasting relies on gut feel.</p>
-        <p class="text-gray-600 text-sm mb-4"><strong>Solution:</strong> ML-based demand forecasting model trained on your historical sales data, with automated alerts.</p>
-        <p class="text-gray-700 text-sm font-medium">Expected outcome: Reduced inventory costs, fewer stockouts, smarter purchasing decisions.</p>
-      </div>
-
-      <div class="bg-gray-50 rounded-2xl p-8 border border-gray-100 hover:border-pink-200 hover:shadow-md transition">
-        <div class="flex items-center gap-3 mb-4">
-          <div class="bg-pink-100 text-pink-700 rounded-lg p-2 text-xl">✉️</div>
-          <span class="text-sm font-semibold text-pink-600 uppercase tracking-wide">Marketing / Sales</span>
-        </div>
-        <h2 class="text-xl font-bold text-gray-900 mb-2">Email Outreach Personalization</h2>
-        <p class="text-gray-600 text-sm mb-4"><strong>Problem:</strong> Generic outreach emails get ignored. Personalization at scale is too time-intensive to do manually.</p>
-        <p class="text-gray-600 text-sm mb-4"><strong>Solution:</strong> AI system that generates personalized outreach at scale — trained on your voice, offer, and prospect data.</p>
-        <p class="text-gray-700 text-sm font-medium">Expected outcome: Higher reply rates, better quality leads, consistent messaging across the team.</p>
-      </div>
-
+    <div class="mt-8 rounded-2xl border-2 border-indigo-600 bg-indigo-50 p-6" role="note" aria-labelledby="examples-note">
+      <p id="examples-note" class="font-bold text-gray-900">These are illustrative examples, not client case studies.</p>
+      <p class="mt-2 text-gray-800">Mobius is a new firm and we haven't published any client work yet. Nothing below describes a real business or a real result. We'll publish real projects here, with each client's permission, as they are completed.</p>
     </div>
   </div>
 </section>
 
-<section class="bg-gradient-to-br from-indigo-600 to-purple-700 py-16 px-4 text-white text-center">
-  <div class="container mx-auto max-w-xl">
-    <h2 class="text-3xl font-bold mb-4">Have Something Specific in Mind?</h2>
-    <p class="text-indigo-100 mb-8">We've built projects like these — and we can build something custom for your exact situation. Let's talk.</p>
-    <a href="/contact/#booking" class="bg-white text-indigo-700 font-bold px-8 py-4 rounded-lg hover:bg-indigo-50 transition text-lg inline-block">
-      Book a Free Discovery Call
-    </a>
+<section class="section bg-gray-50" aria-labelledby="examples-heading">
+  <div class="wrap">
+    <h2 id="examples-heading" class="sr-only">Six example projects</h2>
+    <ul class="grid list-none gap-6 p-0 md:grid-cols-2">
+      {% for ex in examples %}
+      <li class="card flex flex-col">
+        <p class="eyebrow self-start">Illustrative example</p>
+        <h3 class="mt-3 text-xl font-bold text-gray-900">{{ ex.kind }}</h3>
+        <h4 class="mt-4 text-sm font-bold uppercase tracking-wide text-gray-700">The situation</h4>
+        <p class="mt-1 text-gray-700">{{ ex.situation }}</p>
+        <h4 class="mt-4 text-sm font-bold uppercase tracking-wide text-gray-700">What we would do</h4>
+        <p class="mt-1 text-gray-700">{{ ex.plan }}</p>
+        <h4 class="mt-4 text-sm font-bold uppercase tracking-wide text-gray-700">What the owner ends up with</h4>
+        <p class="mt-1 text-gray-700">{{ ex.result }}</p>
+        {% for p in packages.all %}{% if p.id == ex.pkg %}
+        <p class="mt-6 pt-2">Package: <a class="link font-semibold" href="/pricing/#{{ p.id }}">{{ p.name }}<span class="sr-only"> on the packages page</span></a></p>
+        {% endif %}{% endfor %}
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+</section>
+
+<section class="section band-dark on-dark">
+  <div class="wrap-narrow text-center">
+    <h2 class="text-3xl font-bold text-white md:text-4xl">See what we'd find at your business</h2>
+    <p class="mt-4 text-lg text-indigo-100">The Free Tech Checkup is a 20-minute call and a written report on your own website, booking flow and Google presence.</p>
+    <a class="btn-light mt-8" href="{{ site.cta.href }}">Book my free checkup</a>
   </div>
 </section>

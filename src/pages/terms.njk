@@ -1,27 +1,32 @@
 ---
 layout: base
-title: Terms of Service
+title: Terms of Use
 permalink: /terms/
+description: "Plain-language terms for using the Mobius website: general information only, prices may change, and each project is covered by its own written agreement."
+date: Last Modified
 ---
 
-<section class="bg-white py-20 px-4">
-  <div class="container mx-auto max-w-3xl prose prose-gray">
-    <h1>Terms of Service</h1>
-    <p class="text-gray-500 text-sm">Last updated: {{ site.year }}</p>
-    <p>By using the Mobius Integration website or engaging our services, you agree to these terms.</p>
+<section class="section bg-white">
+  <div class="wrap-narrow">
+    <p class="eyebrow">Terms</p>
+    <h1 class="mt-4 text-4xl font-extrabold leading-tight tracking-tight text-gray-900 md:text-5xl">Terms of use</h1>
+    <p class="mt-4 text-gray-700">This is a plain-language summary of the terms for using this website. Last updated: <time>{{ page.date | readableDate }}</time>.</p>
 
-    <h2>Services</h2>
-    <p>Mobius Integration provides AI consulting and custom tool development services to businesses. Specific terms for each engagement are outlined in individual project agreements.</p>
+    <h2 class="h-section mt-12">General information only</h2>
+    <p class="mt-4 text-lg text-gray-700">The content on this website is general information about our services. It is not legal, financial or other professional advice, and it isn't tailored to your situation.</p>
 
-    <h2>Website Use</h2>
-    <p>This website is provided for informational purposes. You may not use it for any unlawful purpose or in a way that could harm Mobius Integration or its users.</p>
+    <h2 class="h-section mt-12">Accessibility services are not legal advice</h2>
+    <p class="mt-4 text-lg text-gray-700">Mobius is not a law firm. Our accessibility audits and fixes test and improve a website against WCAG 2.1 AA. They are not legal advice, and we do not guarantee that any website complies with any law. For legal questions, talk to an attorney.</p>
 
-    <h2>Intellectual Property</h2>
-    <p>All website content is the property of Mobius Integration unless otherwise noted. Custom tools built for clients are governed by the terms of the individual project agreement.</p>
+    <h2 class="h-section mt-12">Packages and prices</h2>
+    <p class="mt-4 text-lg text-gray-700">The packages and prices on this site may change. When we work together, the price and scope of your project are set in a written agreement before work starts, and that agreement governs the engagement.</p>
 
-    <h2>Contact</h2>
-    <p>Questions? Email us at <a href="mailto:{{ site.email }}">{{ site.email }}</a>.</p>
+    <h2 class="h-section mt-12">No warranties on this website</h2>
+    <p class="mt-4 text-lg text-gray-700">We work to keep this website accurate and available, but we provide it as is, without warranties of any kind. Examples shown on this site are illustrative, not promises of results.</p>
 
-    <p class="text-gray-400 text-sm italic">Full terms of service coming soon. For project-specific terms, these are included in your project agreement.</p>
+    <h2 class="h-section mt-12">Questions</h2>
+    <p class="mt-4 text-lg text-gray-700">Ask us through the <a class="link" href="/contact/">contact form</a>{% if site.email %} or by email at <a class="link" href="mailto:{{ site.email }}">{{ site.email }}</a>{% endif %}.</p>
+
+    <p class="mt-12 text-gray-700">See also our <a class="link" href="/privacy/">privacy policy</a>.</p>
   </div>
 </section>
