@@ -8,6 +8,9 @@
 // can answer straight from their inbox.
 
 import { EmailMessage } from "cloudflare:email";
+import { checkSite } from "../../shared/site-check.js";
+import { buildMime } from "../../shared/mime.js";
+import { runDraft } from "../../shared/ai.js";
 
 const PACKAGES = {
   checkup: { name: "Free Tech Checkup", points: 10 },
@@ -18,14 +21,6 @@ const PACKAGES = {
   partner: { name: "Tech Partner (monthly)", points: 25 },
   "partner-plus": { name: "Tech Partner Plus (monthly)", points: 30 },
 };
-
-const BOOKING_HINTS = [
-  ["Resy", /resy\.com/i], ["OpenTable", /opentable\./i], ["Tock", /exploretock\.com/i],
-  ["Calendly", /calendly\.com/i], ["Acuity", /acuityscheduling\.com/i], ["Square Appointments", /squareup\.com\/appointments|square\.site\/book/i],
-  ["Vagaro", /vagaro\.com/i], ["Booksy", /booksy\.com/i], ["Mindbody", /mindbodyonline\.com|mindbody\.io/i],
-  ["Zocdoc", /zocdoc\.com/i], ["Setmore", /setmore\.com/i], ["Fresha", /fresha\.com/i],
-  ["GoHighLevel", /leadconnectorhq\.com|msgsndr\.com/i], ["Housecall Pro", /housecallpro\.com/i], ["Jobber", /getjobber\.com/i],
-];
 
 export default {
   async fetch(request, env) {
@@ -41,7 +36,7 @@ export default {
     if (!lead || typeof lead !== "object" || !lead.email) return new Response("Bad request", { status: 400 });
     if (!env.ALERT_TO) return new Response("ALERT_TO not configured", { status: 500 });
 
-    const check = lead.site_url ? await checkSite(lead.site_url) : null;
+    const check = lead.site_url ? await checkSite(lead.site_url, { maxBytes: 300 * 1024, httpFallback: true }) : null;
     const score = scoreLead(lead, check);
     const draft = await draftReply(env, lead, check).catch((e) => {
       console.error("lead-alert: draft failed:", e && e.message);
@@ -70,111 +65,6 @@ export default {
     return Response.json({ ok: true, score: score.total });
   },
 };
-
-// ---------------------------------------------------------------------------
-// Read-only website check
-
-async function checkSite(input) {
-  const started = Date.now();
-  let url;
-  try {
-    url = new URL(/^https?:\/\//i.test(input) ? input : `https://${input}`);
-  } catch {
-    return { ok: false, skipped: true, error: "Skipped: that isn't a valid web address." };
-  }
-  if (!/^https?:$/.test(url.protocol)) return { ok: false, skipped: true, error: "Skipped: only http and https addresses are checked." };
-  const host = url.hostname.toLowerCase();
-  if (host === "localhost" || /^[\d.]+$/.test(host) || host.includes(":") || !host.includes(".")) {
-    return { ok: false, skipped: true, error: "Skipped: not a public website address." };
-  }
-
-  let res;
-  try {
-    res = await fetch(url.toString(), {
-      redirect: "follow",
-      // A normal browser identity, plus our name, so sites that block unknown bots still let
-      // the one-page check through while it stays clear who is asking.
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36 MobiusCheckup/1.0 (+https://mobiusintegration.com)",
-        Accept: "text/html",
-      },
-      signal: AbortSignal.timeout(8000),
-    });
-  } catch (e) {
-    const timedOut = e && (e.name === "TimeoutError" || e.name === "AbortError");
-    return {
-      ok: false,
-      error: timedOut ? "The site didn't respond within 8 seconds." : "The site refused or dropped the connection.",
-      url: url.toString(),
-    };
-  }
-  if (res.status >= 400) {
-    return { ok: false, error: `The site answered with an error (HTTP ${res.status}).`, url: res.url || url.toString(), status: res.status, ms: Date.now() - started };
-  }
-  const ms = Date.now() - started;
-  const finalUrl = res.url || url.toString();
-  const type = res.headers.get("content-type") || "";
-  if (!type.includes("html")) return { ok: false, error: `The address returned ${type || "no content type"}, not a web page.`, url: finalUrl, status: res.status, ms };
-
-  const htmlText = await readCapped(res, 300 * 1024); // keep parsing inside the free plan CPU budget
-  const issues = [];
-  const good = [];
-
-  const https = finalUrl.startsWith("https://");
-  (https ? good : issues).push(https ? "Loads over HTTPS" : "Doesn't load over HTTPS (browsers mark it not secure)");
-
-  const viewport = /<meta[^>]+name=["']viewport["'][^>]*>/i.test(htmlText);
-  (viewport ? good : issues).push(viewport ? "Has a mobile viewport tag" : "No mobile viewport tag, so it may render tiny on phones");
-
-  const title = (htmlText.match(/<title[^>]*>([\s\S]*?)<\/title>/i) || [])[1];
-  if (!title || !title.trim()) issues.push("No page title");
-  const desc = /<meta[^>]+name=["']description["'][^>]*content=["'][^"']{10,}/i.test(htmlText);
-  if (!desc) issues.push("No meta description for search results");
-
-  const imgs = htmlText.match(/<img\b[^>]*>/gi) || [];
-  const noAlt = imgs.filter((t) => !/\salt\s*=/.test(t)).length;
-  if (noAlt) issues.push(`${noAlt} of ${imgs.length} images have no alt text`);
-
-  const labelFor = new Set([...htmlText.matchAll(/<label[^>]*\sfor=["']([^"']+)["']/gi)].map((m) => m[1]));
-  const fields = (htmlText.match(/<(input|select|textarea)\b[^>]*>/gi) || [])
-    .filter((t) => !/type=["']?(hidden|submit|button|image|reset)/i.test(t));
-  const unlabeled = fields.filter((t) => {
-    if (/aria-label(ledby)?\s*=\s*["'][^"']+/i.test(t)) return false;
-    const id = (t.match(/\sid=["']([^"']+)["']/i) || [])[1];
-    return !(id && labelFor.has(id));
-  }).length;
-  if (unlabeled) issues.push(`${unlabeled} form field${unlabeled > 1 ? "s" : ""} on the home page without a label`);
-
-  const booking = BOOKING_HINTS.filter(([, re]) => re.test(htmlText)).map(([n]) => n);
-  if (booking.length) good.push(`Online booking found: ${booking.join(", ")}`);
-  else if (!/book (now|online|a table|an appointment)|reserv(e|ation)|schedule (an|your|a)|appointment/i.test(htmlText)) issues.push("No online booking or scheduling found on the home page");
-
-  if (ms > 3000) issues.push(`Slow first response (${(ms / 1000).toFixed(1)}s)`);
-
-  return { ok: true, url: finalUrl, status: res.status, ms, title: title ? title.trim().slice(0, 120) : "", issues, good, booking };
-}
-
-async function readCapped(res, max) {
-  const reader = res.body.getReader();
-  const chunks = [];
-  let size = 0;
-  while (size < max) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    chunks.push(value);
-    size += value.length;
-  }
-  try { await reader.cancel(); } catch {}
-  const buf = new Uint8Array(Math.min(size, max));
-  let off = 0;
-  for (const c of chunks) {
-    const part = c.subarray(0, Math.min(c.length, buf.length - off));
-    buf.set(part, off);
-    off += part.length;
-    if (off >= buf.length) break;
-  }
-  return new TextDecoder().decode(buf);
-}
 
 // ---------------------------------------------------------------------------
 // Transparent lead score (0-100). Higher = more worth a fast reply.
@@ -222,24 +112,9 @@ async function draftReply(env, lead, check) {
     { role: "user", content: facts },
   ];
 
-  // Models get retired; try the preferred one first and fall back. Check the catalog
-  // (Cloudflare dashboard > Workers AI > Models) if both ever stop working.
-  const models = ["@cf/google/gemma-4-26b-a4b-it", "@cf/meta/llama-3.3-70b-instruct-fp8-fast"]; // gemma-4 first: about 5x fewer neurons per draft
-  let lastErr;
-  for (const model of models) {
-    try {
-      const out = await env.AI.run(model, { messages, max_tokens: 350 });
-      const text = String(
-        (out && (out.response || (out.choices && out.choices[0] && out.choices[0].message && out.choices[0].message.content) || out.result)) || ""
-      ).trim();
-      if (text) return text.slice(0, 1500);
-    } catch (e) {
-      lastErr = e;
-      console.error(`lead-alert: model ${model} failed:`, e && e.message);
-    }
-  }
-  if (lastErr) throw lastErr;
-  return null;
+  // Gemma 4 (thinking off) first, then Llama 3.3; see ../../shared/ai.js.
+  const out = await runDraft(env, messages, { maxTokens: 350 });
+  return out ? out.text.slice(0, 1500) : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -296,38 +171,6 @@ function renderEmail(env, lead, check, score, draft) {
   for (const [k, p] of score.parts) h.push(`<li>+${p} ${esc(k)}</li>`);
   h.push(`</ul><p style="margin-top:16px;color:#4b5563">Hit Reply to answer the lead directly.</p></div>`);
   return { text: t.join("\n"), html: h.join("") };
-}
-
-// ---------------------------------------------------------------------------
-// Minimal MIME builder (UTF-8, multipart/alternative, base64 bodies)
-
-function buildMime({ from, to, replyTo, subject, text, html, domain }) {
-  const boundary = "b_" + crypto.randomUUID().replace(/-/g, "");
-  const clean = (s) => String(s).replace(/[\r\n]+/g, " ").trim();
-  const headers = [
-    `From: ${clean(from)}`,
-    `To: ${clean(to)}`,
-    replyTo ? `Reply-To: ${clean(replyTo)}` : null,
-    `Subject: ${encodeHeader(clean(subject).slice(0, 180))}`,
-    `Date: ${new Date().toUTCString()}`,
-    `Message-ID: <${crypto.randomUUID()}@${domain}>`,
-    "MIME-Version: 1.0",
-    `Content-Type: multipart/alternative; boundary="${boundary}"`,
-  ].filter(Boolean);
-  const part = (type, body) => [`--${boundary}`, `Content-Type: ${type}; charset=UTF-8`, "Content-Transfer-Encoding: base64", "", b64(body)].join("\r\n");
-  return headers.join("\r\n") + "\r\n\r\n" + part("text/plain", text) + "\r\n" + part("text/html", html) + `\r\n--${boundary}--\r\n`;
-}
-
-function encodeHeader(s) {
-  return /^[\x20-\x7e]*$/.test(s) ? s : `=?UTF-8?B?${b64(s, false)}?=`;
-}
-
-function b64(s, wrap = true) {
-  const bytes = new TextEncoder().encode(s);
-  let bin = "";
-  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-  const out = btoa(bin);
-  return wrap ? out.replace(/.{1,76}/g, "$&\r\n").trimEnd() : out;
 }
 
 function isEmail(s) {

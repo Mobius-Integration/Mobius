@@ -1,0 +1,35 @@
+# Weekly prospecting digest for the founder. Nothing here is ever sent to a prospect.
+# See README.md. Deploy (owner only): cd workers/prospector && npx wrangler deploy
+# Secrets:  npx wrangler secret put FOUNDER_TO       (required: the founder's verified address)
+#           npx wrangler secret put MAILING_ADDRESS  (optional: postal address for the email footer)
+name = "mobius-prospector"
+main = "src/index.js"
+compatibility_date = "2026-11-01"
+workers_dev = false
+preview_urls = false
+
+[triggers]
+# UTC. Harvest Monday ~6-7am ET, check a small batch every 15 minutes, digest Tuesday ~8-9am ET.
+crons = ["0 11 * * MON", "*/15 * * * *", "0 13 * * TUE"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "mobius-prospector"
+database_id = "03234a5b-cf65-40d6-b823-c4aa29381fba"
+migrations_dir = "migrations"
+
+[ai]
+binding = "AI"
+
+# Sends only to the founder's address (enforced in code by sendToFounder).
+[[send_email]]
+name = "MAILER"
+
+[vars]
+FROM_ADDRESS = "prospects@mobiusintegration.com"
+OPS_ADDRESS = "ops@mobiusintegration.com"
+SITE_NAME = "Mobius Integration"
+BBOX = "27.60,-82.85,28.10,-82.25"
+CHECKS_PER_RUN = "3"
+DIGEST_SIZE = "5"
+# Secrets (wrangler secret put): FOUNDER_TO (required), MAILING_ADDRESS (optional)
