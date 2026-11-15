@@ -116,7 +116,7 @@ async function checkSite(input) {
   const type = res.headers.get("content-type") || "";
   if (!type.includes("html")) return { ok: false, error: `The address returned ${type || "no content type"}, not a web page.`, url: finalUrl, status: res.status, ms };
 
-  const htmlText = await readCapped(res, 2 * 1024 * 1024);
+  const htmlText = await readCapped(res, 300 * 1024); // keep parsing inside the free plan CPU budget
   const issues = [];
   const good = [];
 
@@ -224,7 +224,7 @@ async function draftReply(env, lead, check) {
 
   // Models get retired; try the preferred one first and fall back. Check the catalog
   // (Cloudflare dashboard > Workers AI > Models) if both ever stop working.
-  const models = ["@cf/meta/llama-3.3-70b-instruct-fp8-fast", "@cf/google/gemma-4-26b-a4b-it"];
+  const models = ["@cf/google/gemma-4-26b-a4b-it", "@cf/meta/llama-3.3-70b-instruct-fp8-fast"]; // gemma-4 first: about 5x fewer neurons per draft
   let lastErr;
   for (const model of models) {
     try {
