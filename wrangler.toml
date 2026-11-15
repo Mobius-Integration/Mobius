@@ -16,6 +16,6 @@ binding = "LEAD_ALERT"
 service = "mobius-lead-alert"
 
 # functions/_middleware.js sends www and the pages.dev address to this host.
-# Leave empty until the custom domain is attached and serving the site.
+# Set to "" to switch the redirect off.
 [vars]
-CANONICAL_HOST = ""
+CANONICAL_HOST = "mobiusintegration.com"

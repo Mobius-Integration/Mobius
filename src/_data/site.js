@@ -1,8 +1,8 @@
 // Single source of truth for site-wide facts. Templates read these as `site.*`.
 // PRODUCTION_URL is where the site is live today. When a custom domain is connected,
 // change it here (or set SITE_URL at build time) and canonical links and the sitemap follow.
-// CONTACT_EMAIL stays empty until a working mailbox exists, so no dead address is published.
-const PRODUCTION_URL = "https://mobius-dq3.pages.dev";
+// hello@ forwards to the owner inbox via Cloudflare Email Routing. Set CONTACT_EMAIL to override.
+const PRODUCTION_URL = "https://mobiusintegration.com";
 const url = (process.env.SITE_URL || PRODUCTION_URL).replace(/\/+$/, "");
 
 module.exports = {
@@ -11,7 +11,7 @@ module.exports = {
   description:
     "Mobius Integration is a Tampa Bay tech partner for local businesses: websites, accessibility fixes, booking and follow-up automation, Google presence, and custom AI tools, in fixed-price packages.",
   url, // "" until a real URL is set; templates must omit canonical/absolute links when empty
-  email: process.env.CONTACT_EMAIL || "", // "" hides every mailto link; the contact form is the primary channel
+  email: process.env.CONTACT_EMAIL || "hello@mobiusintegration.com", // "" hides every mailto link; the contact form is the primary channel
   region: "Tampa Bay",
   areas: ["Tampa", "St. Petersburg", "Clearwater"],
   responseTime: "one business day",
