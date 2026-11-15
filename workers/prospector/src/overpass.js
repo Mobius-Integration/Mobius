@@ -6,7 +6,14 @@
 // CPU note: the result is requested as CSV so parsing is a cheap split, and rows are written with
 // multi-row INSERTs inside a few db.batch() calls (a batch counts as one D1 query).
 
-const ENDPOINTS = ["https://overpass-api.de/api/interpreter", "https://overpass.private.coffee/api/interpreter"];
+// The bare overpass-api.de host answers Cloudflare's network with HTTP 521 (checked 2026-11-15), while its
+// official aliases lz4. and z. answer normally, so the Worker uses those. Worst case per run is
+// 3 x 150 s plus 2 x 30 s waits, well inside the 15-minute limit for cron handlers.
+const ENDPOINTS = [
+  "https://lz4.overpass-api.de/api/interpreter",
+  "https://z.overpass-api.de/api/interpreter",
+  "https://overpass.private.coffee/api/interpreter",
+];
 const USER_AGENT = "MobiusProspector/1.0 (+https://mobiusintegration.com)";
 const RETRY_STATUS = new Set([429, 502, 503, 504]);
 
@@ -249,8 +256,8 @@ export async function runHarvestTile(env, opts = {}) {
   return true;
 }
 
-// One Overpass query for one tile, then upsert. Same fallback as before: on 429/5xx or a network
-// error wait 30 s and try the mirror once.
+// One Overpass query for one tile, then upsert. On 429/5xx or a network error, wait 30 s and try the
+// next endpoint (each endpoint once).
 export async function harvestTile(env, bbox, { sleep = (ms) => new Promise((r) => setTimeout(r, ms)) } = {}) {
   const db = env.DB;
   const query = buildQuery(bbox);
@@ -267,7 +274,7 @@ export async function harvestTile(env, bbox, { sleep = (ms) => new Promise((r) =
     }
   }
   if (csv === undefined) {
-    await logRun(db, "harvest_tile", false, { bbox, error: "both Overpass endpoints failed", errors });
+    await logRun(db, "harvest_tile", false, { bbox, error: "all Overpass endpoints failed", errors });
     return { ok: false, errors };
   }
 
