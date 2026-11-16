@@ -9,8 +9,9 @@ workers_dev = false
 preview_urls = false
 
 [triggers]
-# UTC. Harvest Monday ~6-7am ET, check a small batch every 15 minutes, digest Tuesday ~8-9am ET.
-crons = ["0 11 * * MON", "*/15 * * * *", "0 13 * * TUE"]
+# UTC. Check a small batch every 15 minutes, digest Tuesday ~8-9am ET. No cloud harvest: public Overpass
+# servers refuse Cloudflare, so the prospect list is refreshed from the PC with scripts/harvest-local.mjs.
+crons = ["*/15 * * * *", "0 13 * * TUE"]
 
 [[d1_databases]]
 binding = "DB"

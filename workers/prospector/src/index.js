@@ -29,10 +29,14 @@ export default {
     const kind = { [CRON_HARVEST]: "harvest", [CRON_CHECK]: "check", [CRON_DIGEST]: "digest" }[controller.cron];
     if (!kind) return;
     try {
-      if (kind === "harvest") await planHarvest(env); // no Overpass query: queues this week's tiles
+      // Harvesting only happens where HARVEST_HERE is "true": scripts/harvest-local.mjs sets it when it
+      // runs this code on the founder's PC. Public Overpass servers refuse Cloudflare's network, so the
+      // deployed Worker never harvests; it only checks prospects and sends the digest.
+      const harvestHere = env.HARVEST_HERE === "true";
+      if (kind === "harvest") { if (harvestHere) await planHarvest(env); } // no Overpass query: queues the tiles
       else if (kind === "check") {
-        // While tiles are queued, this run harvests one tile and does no checks.
-        if (!(await runHarvestTile(env))) await checkBatch(env);
+        // While tiles are queued (local harvest), this run harvests one tile and does no checks.
+        if (!(harvestHere && (await runHarvestTile(env)))) await checkBatch(env);
       }
       else await sendDigest(env, num(env.DIGEST_SIZE, 5, 1, 10));
     } catch (e) {

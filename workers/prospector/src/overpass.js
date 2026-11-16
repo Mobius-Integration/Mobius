@@ -88,6 +88,7 @@ function skippedDomain(domain) {
 }
 
 const clip = (s, n) => String(s || "").replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, n);
+const unquote = (s) => (s.length >= 2 && s[0] === '"' && s[s.length - 1] === '"' ? s.slice(1, -1).replace(/""/g, '"') : s);
 
 // CSV text -> kept prospects. Pure function so it can be benchmarked and tested without a network.
 export function parseHarvest(csv) {
@@ -101,7 +102,8 @@ export function parseHarvest(csv) {
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i];
     if (!line) continue;
-    const f = line.split("\t");
+    // Overpass CSV wraps a value in double quotes when it contains a comma ("Frijouf, Rust & Pyle").
+    const f = line.split("\t").map(unquote);
     if (f.length < 13) continue;
     stats.parsed++;
     const name = clip(f[2], 120);

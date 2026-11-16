@@ -15,17 +15,19 @@ A Cloudflare Worker that finds local Tampa Bay businesses with websites, does on
 
 ## How it works
 
-| Cron (UTC) | What it does |
+**The harvest runs on the founder's PC, not in the cloud.** Public Overpass servers answer Cloudflare's network with HTTP 521 or time out (seen 2026-11-15 on overpass-api.de, its lz4./z. aliases and private.coffee), but answer a home connection normally. `node scripts/harvest-local.mjs` (from this folder) runs this Worker's own code with `wrangler dev`, with the D1 binding pointed at the live database and `HARVEST_HERE="true"`. It plans the harvest, then harvests one tile per trigger until the queue is empty. That is about 6 Overpass queries and a few minutes; monthly is plenty. The deployed Worker has no `HARVEST_HERE`, so it never queries Overpass.
+
+| Trigger | What it does |
 | --- | --- |
-| `0 11 * * MON` | **Plan the harvest.** No Overpass query. Resets every prospect's `sightings` to 0 and queues 6 map tiles (`BBOX` split into a 2 x 3 grid) in `meta['harvest_queue']`. |
-| `*/15 * * * *` | **While tiles are queued: harvest ONE tile** (one Overpass query for that tile, CSV; falls back to the next of three endpoints after 30 s; no checks this run). A failed tile goes to the end of the queue with an attempt counter and is dropped (and logged) after 3 failed attempts. Drops social/aggregator links, chains and big national names, maps each to an audience id, and upserts into D1 (`src/overpass.js`). **When the queue is empty: check batch.** Takes up to `CHECKS_PER_RUN` new prospects, checks `robots.txt`, runs `checkSite()` from `../shared/site-check.js` (with the HTTP fallback below), stores the result and an opportunity score 0-100 (`src/score.js`). Idle runs cost two cheap queries. |
-| `0 13 * * TUE` | **Digest.** Picks the top `DIGEST_SIZE` checked prospects by score, drafts an outreach email for each with Workers AI (Gemma 4, then Llama 3.3 as fallback, then a plain template), appends the required footer in code, and emails one digest to the founder (`src/digest.js`). |
+| Plan (`0 11 * * MON`, local harvest only) | No Overpass query. Resets every prospect's `sightings` to 0 and queues 6 map tiles (`BBOX` split into a 2 x 3 grid) in `meta['harvest_queue']`. |
+| `*/15 * * * *` | **Local harvest only, while tiles are queued: harvest ONE tile.** One Overpass query for that tile, as CSV. It falls back to the next of three endpoints after 30 s and does no checks this run. A failed tile goes to the end of the queue with an attempt counter and is dropped (and logged) after 3 failed attempts. Drops social/aggregator links, chains and big national names, maps each to an audience id, and upserts into D1 (`src/overpass.js`). **Otherwise, in the cloud: check batch.** Takes up to `CHECKS_PER_RUN` new prospects, checks `robots.txt`, runs `checkSite()` from `../shared/site-check.js` (with the HTTP fallback below), and stores the result and an opportunity score 0-100 (`src/score.js`). Idle runs cost two cheap queries. |
+| `0 13 * * TUE` | **Digest.** Picks the top `DIGEST_SIZE` checked prospects by score and drafts an outreach email for each with Workers AI (Gemma 4, then Llama 3.3 as fallback, then a plain template). Appends the required footer in code and emails one digest to the founder (`src/digest.js`). |
 
 The digest email has `Reply-To` set to `OPS_ADDRESS`; an Email Routing rule sends that address to this Worker's `email` handler, so the founder can reply with commands.
 
 ### Chain filter across tiles
 
-In each tile, a domain shared by 3 or more OpenStreetMap objects is skipped, and the denylist applies. Each upsert adds the domain's count in that tile to `prospects.sightings` (reset on Monday), so a domain that adds up to 3 or more across tiles is a chain: the check batch and the digest only consider rows with `sightings < 3`. Known gaps: an object that spans a tile edge can be counted in both tiles, and a chain skipped in one tile (3+ there) but seen once in another is still pitched from the second.
+In each tile, a domain shared by 3 or more OpenStreetMap objects is skipped, and the denylist applies. Each upsert adds the domain's count in that tile to `prospects.sightings` (reset when a harvest is planned), so a domain that adds up to 3 or more across tiles is a chain: the check batch and the digest only consider rows with `sightings < 3`. Known gaps: an object that spans a tile edge can be counted in both tiles, and a chain skipped in one tile (3+ there) but seen once in another is still pitched from the second.
 
 ### HTTP-only sites
 
@@ -55,10 +57,10 @@ Drafts are from Mario Barillas, aimed at 90-140 words (accepted if 60-170), say 
 
 - **10 ms CPU, 50 subrequests, 50 D1 queries per invocation.**
 - Check batch: 1 select, then at most `3 * CHECKS_PER_RUN` fetches (robots, home page, and an `http://` retry only when HTTPS fails to connect), then one `db.batch()` write. Parsing is regex-only on at most 150 KB per page.
-- Harvest tile: one Overpass request per 15-minute run, for one sixth of `BBOX`; rows written with multi-row `INSERT ... ON CONFLICT` statements in a few `db.batch()` calls. Parsing costs roughly 5 microseconds per OpenStreetMap row on a cold isolate, so a tile with up to about 2,000 rows fits in 10 ms. If a tile is ever bigger, raise `GRID_COLS`/`GRID_ROWS` in `src/overpass.js` (a tile counts an attempt before it runs, so a run killed by the CPU limit can't loop forever; it is dropped after 3 attempts). `STATUS` shows the last runs, including failed and dropped tiles.
+- Harvest tile (local runs only): one Overpass request per trigger, for one sixth of `BBOX`; rows written with multi-row `INSERT ... ON CONFLICT` statements in a few `db.batch()` calls. Parsing costs roughly 5 microseconds per OpenStreetMap row on a cold isolate, so a tile with up to about 2,000 rows fits in 10 ms. If a tile is ever bigger, raise `GRID_COLS`/`GRID_ROWS` in `src/overpass.js` (a tile counts an attempt before it runs, so a run killed by the CPU limit can't loop forever; it is dropped after 3 attempts). `STATUS` shows the last runs, including failed and dropped tiles.
 - Check batch: parsing a typical home page costs a few ms on a cold isolate, so `CHECKS_PER_RUN` is 3; lower it if runs get killed.
 - Digest: 1 select, up to `DIGEST_SIZE` AI calls, 1 send, 1 batch write.
-- 3 of the 5 cron triggers allowed per account are used.
+- 2 of the 5 cron triggers allowed per account are used.
 
 ## Setup (owner only; this repo never contains secrets)
 
@@ -68,6 +70,7 @@ npx wrangler d1 migrations apply mobius-prospector --remote   # 0001_init and 00
 npx wrangler secret put FOUNDER_TO        # the founder's verified address
 npx wrangler secret put MAILING_ADDRESS   # optional, for the email footer
 npx wrangler deploy
+node scripts/harvest-local.mjs            # fill the prospect list from this PC (repeat monthly)
 ```
 
 Then add an Email Routing rule that sends `ops@mobiusintegration.com` to the `mobius-prospector` Worker, and make sure `FOUNDER_TO` is a verified destination address for `send_email`.
