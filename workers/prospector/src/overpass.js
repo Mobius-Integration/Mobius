@@ -45,6 +45,9 @@ out tags;`;
 const SKIP_DOMAINS = [
   "facebook.com", "instagram.com", "yelp.com", "linktr.ee", "tiktok.com", "x.com", "twitter.com",
   "google.com", "sites.google.com", "business.site", "square.site",
+  // Government, military and school sites aren't small-business prospects (matched as suffixes).
+  "gov", "mil", "edu", "fl.us",
+  "macdillfss.com", // MacDill Air Force Base services
 ];
 // National and regional chains we don't pitch.
 const CHAIN_NAME = /^(publix|walgreens|cvs|walmart|starbucks|mcdonald|subway|dunkin|7[- ]?eleven|wawa|adventhealth|baycare|hca\b|tampa general hospital)/i;
