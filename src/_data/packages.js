@@ -25,21 +25,22 @@ const oneTime = [
     id: "tuneup",
     name: "Website & Accessibility Tune-Up",
     price: "From $497",
-    priceNote: "one-time",
+    priceNote: "$497 fix plan, or from $997 done for you",
     tagline: "Fix the problems visitors and automated scanners find on the site you already have.",
     bestFor: "Businesses with an existing website that's hard to use or flagged in a checkup.",
     includes: [
-      "Fixes on up to 5 key pages: labels, contrast, alt text, link names, headings",
-      "Keyboard and screen-reader pass on your booking or contact flow",
-      "An accessibility statement that matches what's true about your site",
+      "Fix Plan ($497): step-by-step fixes your own web team can follow, in priority order",
       "Written requests to your vendors for the parts only they can fix",
+      "An accessibility statement that matches what's true about your site",
+      "A 30-minute handoff with your web team, and one re-test within 60 days",
+      "Done for you (from $997): we make the fixes, including a keyboard and screen-reader pass on your booking or contact flow",
       "Before-and-after report you can keep on file"
     ],
-    timeline: "Typically 1 week",
+    timeline: "Fix Plan in 5 business days; fixes typically 1 week",
     cta: { label: "Start with a free checkup", href: "/free-checkup/" },
     featured: false,
     finePrint:
-      "We fix and document what we find against WCAG 2.1 AA. We are not a law firm, and no one can honestly guarantee legal compliance."
+      "The Fix Plan fee is credited in full if you have us make the fixes within 30 days. We fix and document what we find against WCAG 2.1 AA. We are not a law firm, and no one can honestly guarantee legal compliance."
   },
   {
     id: "sprint",
