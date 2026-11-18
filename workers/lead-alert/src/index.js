@@ -11,6 +11,7 @@ import { EmailMessage } from "cloudflare:email";
 import { checkSite } from "../../shared/site-check.js";
 import { buildMime } from "../../shared/mime.js";
 import { runDraft } from "../../shared/ai.js";
+import { classifyLead } from "./pitch.js";
 
 const PACKAGES = {
   checkup: { name: "Free Tech Checkup", points: 10 },
@@ -36,22 +37,39 @@ export default {
     if (!lead || typeof lead !== "object" || !lead.email) return new Response("Bad request", { status: 400 });
     if (!env.ALERT_TO) return new Response("ALERT_TO not configured", { status: 500 });
 
-    const check = lead.site_url ? await checkSite(lead.site_url, { maxBytes: 300 * 1024, httpFallback: true }) : null;
-    const score = scoreLead(lead, check);
-    const draft = await draftReply(env, lead, check).catch((e) => {
-      console.error("lead-alert: draft failed:", e && e.message);
-      return null;
+    // Most early form submissions are people selling to us (see ./pitch.js). They still reach the
+    // owner, labeled, but skip the website check, the score and the drafted reply.
+    const ownDomain = String(env.ALERT_FROM || "").split("@")[1] || "";
+    const sort = await classifyLead(env, lead, ownDomain).catch((e) => {
+      console.error("lead-alert: pitch check failed:", e && e.message);
+      return { verdict: "lead", reasons: [], ai: null, forged: false, scam: false };
     });
 
-    const subject = `New lead (score ${score.total}): ${lead.business || lead.name}` +
-      (PACKAGES[lead.interest] ? ` · ${PACKAGES[lead.interest].name}` : "");
-    const { text, html } = renderEmail(env, lead, check, score, draft);
+    let subject, text, html;
+    let score = null;
+    if (sort.verdict === "pitch") {
+      subject = `Sales pitch, not a lead: ${lead.name || lead.email}` +
+        (lead.business && lead.business !== lead.name ? ` (${lead.business})` : "");
+      ({ text, html } = renderPitchEmail(lead, sort));
+    } else {
+      const check = lead.site_url ? await checkSite(lead.site_url, { maxBytes: 300 * 1024, httpFallback: true }) : null;
+      score = scoreLead(lead, check);
+      const draft = await draftReply(env, lead, check).catch((e) => {
+        console.error("lead-alert: draft failed:", e && e.message);
+        return null;
+      });
+      subject = (sort.verdict === "maybe" ? "Possible sales pitch? " : "") +
+        `New lead (score ${score.total}): ${lead.business || lead.name}` +
+        (PACKAGES[lead.interest] ? ` · ${PACKAGES[lead.interest].name}` : "");
+      ({ text, html } = renderEmail(env, lead, check, score, draft, sort));
+    }
 
     try {
       const raw = buildMime({
         from: `${env.SITE_NAME || "Website"} leads <${env.ALERT_FROM}>`,
         to: env.ALERT_TO,
-        replyTo: isEmail(lead.email) ? lead.email : null,
+        // A forged sender (our own domain or a lookalike) gets no Reply-To: there's no one to answer.
+        replyTo: isEmail(lead.email) && !sort.forged ? lead.email : null,
         subject,
         text,
         html,
@@ -62,7 +80,7 @@ export default {
       console.error("lead-alert: send failed:", e && e.message);
       return new Response("Send failed", { status: 502 });
     }
-    return Response.json({ ok: true, score: score.total });
+    return Response.json({ ok: true, verdict: sort.verdict, score: score ? score.total : null });
   },
 };
 
@@ -120,16 +138,71 @@ async function draftReply(env, lead, check) {
 // ---------------------------------------------------------------------------
 // Email rendering
 
-function renderEmail(env, lead, check, score, draft) {
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+function detailRows(lead) {
   const pkg = PACKAGES[lead.interest];
-  const rows = [
+  return [
     ["Name", lead.name], ["Email", lead.email], ["Business", lead.business], ["Website", lead.site_url],
     ["Phone", lead.phone], ["Interested in", pkg ? pkg.name : "Not sure yet"], ["Best time to call", lead.preferred_time],
     ["Came from", lead.source === "free-checkup" ? "Free Tech Checkup page" : lead.source === "contact" ? "Contact page" : lead.source],
     ["Received", lead.received_at],
   ].filter(([, v]) => v);
+}
+
+// Someone selling to us: say why we think so, show what they sent, and skip everything else.
+function renderPitchEmail(lead, sort) {
+  const rows = detailRows(lead);
+  const why = sort.reasons.slice(0, 4);
+  if (sort.ai && sort.ai.reason) why.push(`AI check: ${sort.ai.reason}`);
+  const advice = sort.forged
+    ? "The sender address is fake, so there is no one real to reply to."
+    : "You don't need to reply. A reply tells their list that someone reads this inbox.";
+  const scam = sort.scam
+    ? "Don't click their link or pay for this. Google lists websites for free; your site can be submitted through Google Search Console at no cost."
+    : "";
+  const closing = sort.forged
+    ? "We skipped the website check, the score and the drafted reply."
+    : "We skipped the website check, the score and the drafted reply. If we got this one wrong, hit Reply and answer them like any lead.";
+
+  const t = ["Sales pitch, not a lead", "", `Our filter thinks this person is selling to you, not buying. ${advice}`];
+  if (scam) t.push("", scam);
+  t.push("", "Why we think so:");
+  for (const w of why) t.push(`  - ${w}`);
+  t.push("");
+  for (const [k, v] of rows) t.push(`${k}: ${v}`);
+  if (lead.message) t.push("", "Message:", lead.message);
+  t.push("", closing);
+
+  const h = [];
+  h.push(`<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#1f2937;max-width:640px">`);
+  h.push(`<h1 style="font-size:20px;margin:0 0 8px">Sales pitch, not a lead</h1>`);
+  h.push(`<p style="margin:0 0 12px">Our filter thinks this person is selling to you, not buying. ${esc(advice)}</p>`);
+  if (scam) h.push(`<p style="margin:0 0 12px;padding:8px 12px;border-left:3px solid #b45309;background:#fffbeb"><strong>${esc(scam)}</strong></p>`);
+  h.push(`<h2 style="font-size:16px;margin:16px 0 4px">Why we think so</h2><ul style="margin:0 0 12px;padding-left:20px">`);
+  for (const w of why) h.push(`<li>${esc(w)}</li>`);
+  h.push(`</ul><table style="border-collapse:collapse;margin-bottom:16px">`);
+  for (const [k, v] of rows) h.push(`<tr><th scope="row" style="text-align:left;padding:4px 12px 4px 0;color:#4b5563;font-weight:600;vertical-align:top">${esc(k)}</th><td style="padding:4px 0">${esc(v)}</td></tr>`);
+  h.push(`</table>`);
+  if (lead.message) h.push(`<h2 style="font-size:16px;margin:16px 0 4px">Message</h2><p style="white-space:pre-wrap;margin:0">${esc(lead.message)}</p>`);
+  h.push(`<p style="margin-top:16px;color:#4b5563">${esc(closing)}</p></div>`);
+  return { text: t.join("\n"), html: h.join("") };
+}
+
+function renderEmail(env, lead, check, score, draft, sort) {
+  const pkg = PACKAGES[lead.interest];
+  const rows = detailRows(lead);
+  let warn = "";
+  if (sort && sort.verdict === "maybe") {
+    const lc = (s) => s.charAt(0).toLowerCase() + s.slice(1);
+    const why = sort.ai && sort.ai.reason
+      ? `Our AI check says: ${sort.ai.reason.replace(/[.\s]+$/, "")}.`
+      : `Things that look off: ${sort.reasons.slice(0, 3).map(lc).join("; ")}.`;
+    warn = `Possible sales pitch. ${why} Read the message before you reply.`;
+  }
 
   const t = [];
+  if (warn) t.push(warn, "");
   t.push(`New lead, score ${score.total}/100`, "");
   for (const [k, v] of rows) t.push(`${k}: ${v}`);
   if (lead.message) t.push("", "Message:", lead.message);
@@ -147,9 +220,9 @@ function renderEmail(env, lead, check, score, draft) {
   if (draft) t.push("", "Draft reply (AI-written, review before sending):", "", draft);
   t.push("", "Hit Reply to answer the lead directly.");
 
-  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const h = [];
   h.push(`<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#1f2937;max-width:640px">`);
+  if (warn) h.push(`<p style="margin:0 0 12px;padding:8px 12px;border-left:3px solid #b45309;background:#fffbeb"><strong>${esc(warn)}</strong></p>`);
   h.push(`<h1 style="font-size:20px;margin:0 0 4px">New lead: ${esc(lead.business || lead.name)}</h1>`);
   h.push(`<p style="margin:0 0 16px;font-size:16px"><strong>Score ${score.total}/100</strong>${pkg ? ` · ${esc(pkg.name)}` : ""}</p>`);
   h.push(`<table style="border-collapse:collapse;margin-bottom:16px">`);

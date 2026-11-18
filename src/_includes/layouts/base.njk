@@ -1,4 +1,4 @@
-{%- set pageTitle = (title + " | " + site.title) if (title and title != "Home") else (site.title + " | " + site.tagline) -%}
+{%- set pageTitle = (title + " | " + site.title) if (title and title != "Home") else (site.title + " | " + site.homeTitle) -%}
 {%- set pageDescription = description or site.description -%}
 <!DOCTYPE html>
 <html lang="en">
