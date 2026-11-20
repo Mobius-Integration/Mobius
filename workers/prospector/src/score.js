@@ -1,7 +1,9 @@
 // Opportunity score, 0-100: how much a quick, friendly offer is likely to help this business.
 // `parts` labels are written for a human to read in the digest.
 
-const BOOKING_CATEGORIES = new Set(["restaurants", "dental-medical", "medspa-salon", "fitness", "home-services"]);
+// Business types where online booking matters. Elsewhere (a gallery, a law office) "no online booking"
+// is neither scored nor mentioned in a draft.
+export const BOOKING_CATEGORIES = new Set(["restaurants", "dental-medical", "medspa-salon", "fitness", "home-services"]);
 const CATEGORY_WEIGHT = { "dental-medical": 10, professional: 10, "medspa-salon": 5, restaurants: 5 };
 
 // prospect: { category, phone }; check: result of checkSite() (ok, ms, metrics) or a failed one.

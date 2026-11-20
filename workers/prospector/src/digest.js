@@ -5,7 +5,7 @@
 // Everything that came from OpenStreetMap or from a prospect's website is untrusted text. It is
 // escaped in the HTML, and in AI prompts it is fenced and labelled as data.
 
-import { scoreFromRow } from "./score.js";
+import { scoreFromRow, BOOKING_CATEGORIES } from "./score.js";
 import { runDraft } from "../../shared/ai.js";
 
 
@@ -171,7 +171,7 @@ export async function buildDigest(env, limit) {
   if (prospects.length < 1) return null;
 
   const items = await Promise.all(prospects.map(async (p) => {
-    const issues = rankFindings(parseJson(p.issues_json, []));
+    const issues = rankFindings(parseJson(p.issues_json, []).filter((i) => !/^No online booking/.test(i) || BOOKING_CATEGORIES.has(p.category)));
     const good = parseJson(p.good_json, []);
     const raw = await draftOutreach(env, p, issues);
     const draft = { ...raw, body: withFoundingLine(raw.body, foundingLine(env)) };
