@@ -13,6 +13,8 @@ module.exports = {
     "Mobius Integration is a Tampa Bay tech partner for local businesses: websites, accessibility fixes, booking and follow-up automation, Google presence, and custom AI tools, in fixed-price packages.",
   url, // "" until a real URL is set; templates must omit canonical/absolute links when empty
   email: process.env.CONTACT_EMAIL || "hello@mobiusintegration.com", // "" hides every mailto link; the contact form is the primary channel
+  phone: "(813) 798-9191", // Google Voice business line; rings through, voicemail during the workday
+  phoneHref: "+18137989191",
   region: "Tampa Bay",
   areas: ["Tampa", "St. Petersburg", "Clearwater"],
   responseTime: "one business day",

@@ -30,6 +30,9 @@ description: Contact Mobius Integration, a Tampa Bay tech partner. Send a messag
           <li>We reply within {{ site.responseTime }}.</li>
           <li>{{ site.callHours }}.</li>
           <li>We serve local businesses across {{ site.region }}, including {{ site.areas | join(", ") }}.</li>
+          {% if site.phone %}
+          <li>Phone: <a class="link" href="tel:{{ site.phoneHref }}">{{ site.phone }}</a>. Leave a voicemail and we call back within {{ site.responseTime }}.</li>
+          {% endif %}
           {% if site.email %}
           <li>Email: <a class="link" href="mailto:{{ site.email }}">{{ site.email }}</a></li>
           {% endif %}

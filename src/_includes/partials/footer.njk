@@ -32,6 +32,9 @@
           {%- if site.email %}
           <li><a href="mailto:{{ site.email }}" class="inline-block py-1.5 text-white underline hover:no-underline">{{ site.email }}</a></li>
           {%- endif %}
+          {%- if site.phone %}
+          <li><a href="tel:{{ site.phoneHref }}" class="inline-block py-1.5 text-white underline hover:no-underline">{{ site.phone }}</a></li>
+          {%- endif %}
           <li>Replies within {{ site.responseTime }}</li>
           <li>{{ site.callHours }}</li>
           <li>Serving {{ site.areas | join(", ") }}</li>

@@ -34,6 +34,9 @@
 {%- if site.url %}
       "url": {{ site.url | dump | safe }},
 {%- endif %}
+{%- if site.phone %}
+      "telephone": {{ site.phoneHref | dump | safe }},
+{%- endif %}
       "areaServed": [
 {%- for area in site.areas %}
         { "@type": "City", "name": {{ area | dump | safe }} }{% if not loop.last %},{% endif %}
