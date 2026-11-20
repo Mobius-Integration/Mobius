@@ -12,12 +12,13 @@ export function scoreProspect(prospect, check) {
   const m = check.metrics || {};
   const parts = [["Base", 10]];
   if (!m.https) parts.push(["Page doesn't load over HTTPS", 15]);
-  if (!m.viewport) parts.push(["No mobile viewport tag", 15]);
+  // viewport/hasTitle/hasDesc can be null (page cut off before </head>): unknown never scores.
+  if (m.viewport === false) parts.push(["No mobile viewport tag", 15]);
   if (m.imgsNoAlt > 0) parts.push([`${m.imgsNoAlt} images without alt text`, Math.min(15, Math.floor(m.imgsNoAlt / 5) * 5)]);
   if (m.fieldsUnlabeled > 0) parts.push([`${m.fieldsUnlabeled} unlabeled form fields`, 10]);
   if (m.noBooking && BOOKING_CATEGORIES.has(prospect.category)) parts.push(["No online booking found", 15]);
   if (check.ms > 3000) parts.push(["Slow first response (over 3 s)", 5]);
-  if (!m.hasTitle || !m.hasDesc) parts.push(["Missing page title or description", 5]);
+  if (m.hasTitle === false || m.hasDesc === false) parts.push(["Missing page title or description", 5]);
   if (prospect.phone) parts.push(["Has a phone number listed", 5]);
   const weight = CATEGORY_WEIGHT[prospect.category];
   if (weight) parts.push([`Business type is a good fit (${prospect.category})`, weight]);
@@ -35,7 +36,7 @@ export function scoreFromRow(row, issues) {
     ok: true,
     ms: row.ms || 0,
     metrics: {
-      https: !!row.https, viewport: !!row.viewport, imgsNoAlt: row.imgs_no_alt || 0, fieldsUnlabeled: row.fields_unlabeled || 0,
+      https: !!row.https, viewport: row.viewport == null ? null : !!row.viewport, imgsNoAlt: row.imgs_no_alt || 0, fieldsUnlabeled: row.fields_unlabeled || 0,
       noBooking: has(/^No online booking/), hasTitle: !has(/^No page title/), hasDesc: !has(/^No meta description/),
     },
   });

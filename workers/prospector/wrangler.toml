@@ -31,7 +31,9 @@ FROM_ADDRESS = "prospects@mobiusintegration.com"
 OPS_ADDRESS = "ops@mobiusintegration.com"
 SITE_NAME = "Mobius Integration"
 BBOX = "27.60,-82.85,28.10,-82.25"
-CHECKS_PER_RUN = "3"
+# Two per run keeps the cloud inside the free plan's 10 ms CPU (about 3-4 ms per full-size page).
+# Bulk re-checks run from the PC instead: node scripts/check-local.mjs --requeue
+CHECKS_PER_RUN = "2"
 DIGEST_SIZE = "5"
 # The honest founding-client paragraph in every draft defaults to DEFAULT_FOUNDING_LINE in src/digest.js.
 # Once the three founding spots are filled, turn it off with:  FOUNDING_LINE = ""

@@ -134,14 +134,15 @@ async function robotsBlocked(domain) {
 
 async function checkOne(p) {
   if (await robotsBlocked(p.domain)) return { p, robots: true };
-  const check = await checkSite(p.website, { maxBytes: HOME_PAGE_MAX_BYTES, userAgent: USER_AGENT, timeoutMs: 8000, httpFallback: true });
+  // expectName: a page that never mentions the business (placeholder, resold or hijacked domain) isn't checked.
+  const check = await checkSite(p.website, { maxBytes: HOME_PAGE_MAX_BYTES, userAgent: USER_AGENT, timeoutMs: 8000, httpFallback: true, expectName: p.name });
   return { p, check };
 }
 
 export async function checkBatch(env) {
   const db = env.DB;
   const { results } = await db.prepare(
-    `SELECT id, domain, website, category, phone FROM prospects
+    `SELECT id, domain, website, name, category, phone FROM prospects
       WHERE status = 'new' AND sightings < 3 AND domain NOT IN (SELECT value FROM suppression)
       ORDER BY first_seen, id LIMIT ?`
   ).bind(num(env.CHECKS_PER_RUN, 5, 1, 10)).all();
@@ -169,7 +170,7 @@ export async function checkBatch(env) {
          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
       ).bind(
         p.id, c.ok ? 1 : 0, c.status ?? null, c.ms ?? null, c.url ? String(c.url).slice(0, 500) : null,
-        c.ok ? (m.https ? 1 : 0) : null, c.ok ? (m.viewport ? 1 : 0) : null, c.ok ? m.imgsTotal : null, c.ok ? m.imgsNoAlt : null, c.ok ? m.fieldsUnlabeled : null,
+        c.ok ? (m.https ? 1 : 0) : null, c.ok && m.viewport != null ? (m.viewport ? 1 : 0) : null, c.ok ? m.imgsTotal : null, c.ok ? m.imgsNoAlt : null, c.ok ? m.fieldsUnlabeled : null,
         c.ok ? (c.booking && c.booking.length ? c.booking.join(", ") : m.noBooking ? "" : "mentioned") : null,
         c.ok ? JSON.stringify(c.issues) : null, c.ok ? JSON.stringify(c.good) : null, c.ok ? null : String(c.error || "").slice(0, 300)
       ),
