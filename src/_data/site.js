@@ -19,6 +19,9 @@ module.exports = {
   areas: ["Tampa", "St. Petersburg", "Clearwater"],
   responseTime: "one business day",
   callHours: "Evening and weekend calls available",
+  // Founding-client offer on the pricing page. Matches the founding line in the prospector's drafts
+  // (workers/prospector/src/digest.js). Set to false, and FOUNDING_LINE to "", once three clients sign.
+  foundingClients: true,
   founders: [
     { name: "Mario Barillas", role: "Founder & CEO" },
     { name: "Eduardo Molina", role: "Co-Founder & Partner" }

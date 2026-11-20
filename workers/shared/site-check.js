@@ -43,39 +43,62 @@ export async function checkSite(input, opts = {}) {
     signal: AbortSignal.timeout(timeoutMs),
   });
   const isTimeout = (e) => e && (e.name === "TimeoutError" || e.name === "AbortError");
+  const errText = (e) => `${e && e.message} ${e && e.cause && (e.cause.code || e.cause.message)}`;
+  const isDnsError = (e) => /ENOTFOUND|EAI_AGAIN|getaddrinfo|dns|name not resolved/i.test(errText(e));
+  const isCertError = (e) => /CERT|certificate|self[- ]signed|UNABLE_TO_VERIFY|ALTNAME/i.test(errText(e));
+  // In a Worker, a broken origin comes back as a Cloudflare status instead of an exception:
+  // 530 = the domain no longer resolves; 525/526 = TLS handshake failed / invalid certificate.
+  const DEAD_SITE = "The web address no longer leads to a working website (its domain doesn't resolve).";
 
   let res;
   let fellBack = false;
+  let certBroken = false;
   let requested = url.toString();
+  // Opt-in: an HTTPS failure that isn't a timeout may mean the site only works over plain HTTP (or
+  // its certificate is broken). Make one more GET over http:// so it doesn't look closed.
+  const tryPlain = async () => {
+    const plain = new URL(url.toString());
+    plain.protocol = "http:";
+    const r = await get(plain.toString());
+    requested = plain.toString();
+    fellBack = true;
+    return r;
+  };
   try {
     res = await get(url.toString());
   } catch (e) {
     let failure = e;
-    // Opt-in: an HTTPS connection or TLS failure (not an HTTP status, not a timeout) may mean the
-    // site only speaks plain HTTP. Make one more GET over http:// so it doesn't look closed.
-    if (opts.httpFallback && url.protocol === "https:" && !isTimeout(e)) {
-      const plain = new URL(url.toString());
-      plain.protocol = "http:";
-      try {
-        res = await get(plain.toString());
-        requested = plain.toString();
-        fellBack = true;
-      } catch (e2) {
-        failure = e2;
-      }
+    if (isCertError(e)) certBroken = true;
+    if (opts.httpFallback && url.protocol === "https:" && !isTimeout(e) && !isDnsError(e)) {
+      try { res = await tryPlain(); } catch (e2) { failure = e2; }
     }
     if (!res) {
       return {
         ok: false,
-        error: isTimeout(failure) ? `The site didn't respond within ${Math.round(timeoutMs / 1000)} seconds.` : "The site refused or dropped the connection.",
+        error: isTimeout(failure) ? `The site didn't respond within ${Math.round(timeoutMs / 1000)} seconds.`
+          : isDnsError(failure) ? DEAD_SITE
+          : certBroken ? "The site's security certificate is invalid, so browsers show a warning page instead of the site."
+          : "The site refused or dropped the connection.",
         url: url.toString(),
         ms: Date.now() - started,
       };
     }
   }
+  if ((res.status === 525 || res.status === 526) && !fellBack) {
+    certBroken = true;
+    try { await res.body.cancel(); } catch {}
+    let plainRes = null;
+    if (opts.httpFallback && url.protocol === "https:") { try { plainRes = await tryPlain(); } catch {} }
+    if (!plainRes || plainRes.status >= 400) {
+      if (plainRes) { try { await plainRes.body.cancel(); } catch {} }
+      return { ok: false, error: "The site's security certificate is invalid, so browsers show a warning page instead of the site.", url: url.toString(), status: res.status, ms: Date.now() - started };
+    }
+    res = plainRes;
+  }
   if (res.status >= 400) {
     try { await res.body.cancel(); } catch {}
-    return { ok: false, error: `The site answered with an error (HTTP ${res.status}).`, url: res.url || url.toString(), status: res.status, ms: Date.now() - started };
+    const error = res.status === 530 ? DEAD_SITE : `The site answered with an error (HTTP ${res.status}).`;
+    return { ok: false, error, url: res.url || url.toString(), status: res.status, ms: Date.now() - started };
   }
   const ms = Date.now() - started;
   const finalUrl = res.url || requested;
@@ -86,11 +109,18 @@ export async function checkSite(input, opts = {}) {
   }
 
   const htmlText = await readCapped(res, maxBytes); // keep parsing inside the free plan CPU budget
+
+  // A parked or placeholder domain is not a real site: a tiny page with no body that only redirects, or a
+  // known parking host. Findings from it ("no viewport tag", "no title") would be false, so don't report them.
+  if (htmlText.length < 1500 && (!/<body[\s>]/i.test(htmlText) || /\/lander|forsale|parkedpages|afternic|sedo\.com|hugedomains|dan\.com/i.test(htmlText))) {
+    return { ok: false, error: "The address looks like a parked or placeholder page, not a real website.", url: finalUrl, status: res.status, ms };
+  }
   const issues = [];
   const good = [];
 
   const https = finalUrl.startsWith("https://");
-  (https ? good : issues).push(https ? "Loads over HTTPS" : "Doesn't load over HTTPS (browsers mark it not secure)");
+  if (https) good.push("Loads over HTTPS");
+  else issues.push(certBroken ? "The HTTPS address shows a browser security warning (invalid certificate)" : "Doesn't load over HTTPS (browsers mark it not secure)");
 
   const viewport = /<meta[^>]+name=["']viewport["'][^>]*>/i.test(htmlText);
   (viewport ? good : issues).push(viewport ? "Has a mobile viewport tag" : "No mobile viewport tag, so it may render tiny on phones");
@@ -100,16 +130,27 @@ export async function checkSite(input, opts = {}) {
   const desc = /<meta[^>]+name=["']description["'][^>]*content=["'][^"']{10,}/i.test(htmlText);
   if (!desc) issues.push("No meta description for search results");
 
-  const imgs = htmlText.match(/<img\b[^>]*>/gi) || [];
-  const noAlt = imgs.filter((t) => !/\salt\s*=/.test(t)).length;
+  // Count only what a screen reader would meet, and accept every naming technique that axe-core's
+  // image-alt and label rules accept, so a finding we quote holds up when someone runs a standard tool.
+  // <noscript> fallbacks never render in a normal browser (the Facebook pixel lives there), and
+  // hidden elements, 1-pixel trackers and fields taken out of the tab order (spam honeypots) are skipped.
+  const visibleHtml = htmlText.replace(/<noscript\b[\s\S]*?<\/noscript>/gi, "");
+  const hiddenTag = (t) => /\saria-hidden=["']?true|\shidden(\s|>|=|\/)|display\s*:\s*none|visibility\s*:\s*hidden/i.test(t);
+  const named = (t) => /\saria-label(ledby)?\s*=\s*["']\s*[^"'\s]/i.test(t) || /\stitle\s*=\s*["']\s*[^"'\s]/i.test(t);
+
+  const imgs = (visibleHtml.match(/<img\b[^>]*>/gi) || [])
+    .filter((t) => !hiddenTag(t) && !/\s(width|height)=["']?[01](["'\s>]|px)/i.test(t));
+  const noAlt = imgs.filter((t) => !/\salt\s*=/i.test(t) && !named(t) && !/\srole=["']?(presentation|none)\b/i.test(t)).length;
   if (noAlt) issues.push(`${noAlt} of ${imgs.length} images have no alt text`);
 
-  const labelFor = new Set([...htmlText.matchAll(/<label[^>]*\sfor=["']([^"']+)["']/gi)].map((m) => m[1]));
-  const fields = (htmlText.match(/<(input|select|textarea)\b[^>]*>/gi) || [])
-    .filter((t) => !/type=["']?(hidden|submit|button|image|reset)/i.test(t));
+  const labelFor = new Set([...visibleHtml.matchAll(/<label\b[^>]*\sfor=["']?([^"'\s>]+)/gi)].map((m) => m[1]));
+  // A field inside a <label> element is labelled by it (an implicit label), so drop those blocks first.
+  const outsideLabels = visibleHtml.replace(/<label\b[^>]*>[\s\S]*?<\/label>/gi, "");
+  const fields = (outsideLabels.match(/<(input|select|textarea)\b[^>]*>/gi) || [])
+    .filter((t) => !/\stype=["']?(hidden|submit|button|image|reset)\b/i.test(t) && !hiddenTag(t) && !/\stabindex=["']?-1\b/i.test(t));
   const unlabeled = fields.filter((t) => {
-    if (/aria-label(ledby)?\s*=\s*["'][^"']+/i.test(t)) return false;
-    const id = (t.match(/\sid=["']([^"']+)["']/i) || [])[1];
+    if (named(t) || /\splaceholder\s*=\s*["']\s*[^"'\s]/i.test(t)) return false;
+    const id = (t.match(/\sid=["']?([^"'\s>]+)/i) || [])[1];
     return !(id && labelFor.has(id));
   }).length;
   if (unlabeled) issues.push(`${unlabeled} form field${unlabeled > 1 ? "s" : ""} on the home page without a label`);

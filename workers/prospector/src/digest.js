@@ -33,6 +33,9 @@ export async function pickProspects(db, limit) {
        FROM prospects p
        JOIN checks c ON c.id = (SELECT MAX(id) FROM checks WHERE prospect_id = p.id)
       WHERE p.status = 'checked' AND p.sightings < 3 AND p.domain NOT IN (SELECT value FROM suppression)
+        -- Belt and braces for checks stored before the parked-page guard: a page with no images, no
+        -- viewport tag and no title is a redirect stub or parking page, not a business website.
+        AND NOT (COALESCE(c.imgs_total, 0) = 0 AND c.viewport = 0 AND c.issues_json LIKE '%No page title%')
       ORDER BY p.score DESC, p.id
       LIMIT ?`
   ).bind(limit).all();
@@ -57,6 +60,26 @@ export function footerText(env) {
     "",
     "This is a marketing email from Mobius Integration. Reply STOP and I won't email you again.",
   ].join("\n");
+}
+
+// The honest "founding client" offer, inserted by code (never written by the AI) so it can't drift
+// into invented discounts or claims. Set FOUNDING_LINE to "" in wrangler.toml once the founding
+// spots are filled. Keep it free of prices and percentages (see FORBIDDEN): numbers come on the call.
+export const DEFAULT_FOUNDING_LINE =
+  "We're new in Tampa Bay, so our first three clients get a founding rate. In exchange, we ask to share the before-and-after as a case study, only with your OK.";
+
+export function foundingLine(env) {
+  const v = env && env.FOUNDING_LINE;
+  return typeof v === "string" ? v.trim() : DEFAULT_FOUNDING_LINE;
+}
+
+// Put the founding paragraph just before the closing question (the last paragraph), so the email
+// still ends by asking for a reply.
+export function withFoundingLine(body, line) {
+  if (!line) return body;
+  const paras = String(body).trim().split(/\n\s*\n/);
+  if (paras.length < 2) return `${paras[0]}\n\n${line}`;
+  return [...paras.slice(0, -1), line, paras[paras.length - 1]].join("\n\n");
 }
 
 export function templateDraft(p, findings) {
@@ -150,7 +173,8 @@ export async function buildDigest(env, limit) {
   const items = await Promise.all(prospects.map(async (p) => {
     const issues = rankFindings(parseJson(p.issues_json, []));
     const good = parseJson(p.good_json, []);
-    const draft = await draftOutreach(env, p, issues);
+    const raw = await draftOutreach(env, p, issues);
+    const draft = { ...raw, body: withFoundingLine(raw.body, foundingLine(env)) };
     return { p, issues, good, draft, full: `${draft.body}\n\n${footerText(env)}` };
   }));
 

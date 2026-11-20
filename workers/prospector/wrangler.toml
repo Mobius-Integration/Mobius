@@ -33,4 +33,6 @@ SITE_NAME = "Mobius Integration"
 BBOX = "27.60,-82.85,28.10,-82.25"
 CHECKS_PER_RUN = "3"
 DIGEST_SIZE = "5"
+# The honest founding-client paragraph in every draft defaults to DEFAULT_FOUNDING_LINE in src/digest.js.
+# Once the three founding spots are filled, turn it off with:  FOUNDING_LINE = ""
 # Secrets (wrangler secret put): FOUNDER_TO (required), MAILING_ADDRESS (optional)
