@@ -4,3 +4,4 @@ _planning/
 .wrangler/
 .dev.vars
 workers/prospector/wrangler.harvest-local.toml
+workers/prospector/wrangler.check-local.toml

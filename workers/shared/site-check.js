@@ -227,7 +227,9 @@ const NAME_GENERIC = new Set((
   "nails nail hair barber barbershop beauty studio studios fitness gym yoga pilates dance wellness health medical dental " +
   "dentistry family clinic center care chiropractic law firm attorney attorneys lawyer lawyers group associates office offices " +
   "services service solutions realty real estate properties homes construction roofing plumbing electric heating air cooling " +
-  "pest landscaping cleaning auto repair tampa bay pete petersburg saint clearwater florida brandon riverview largo dunedin oldsmar"
+  "pest landscaping cleaning auto repair tampa bay pete petersburg saint clearwater florida brandon riverview largo dunedin oldsmar " +
+  "lakeland plant city wesley chapel zephyrhills lutz odessa trinity seminole pinellas pasco hillsborough polk valrico seffner ruskin " +
+  "apollo beach palm harbor tarpon springs port richey hudson dade temple terrace carrollwood westchase gulfport safety"
 ).split(" "));
 const normWords = (s) => ` ${String(s || "").toLowerCase().normalize("NFKD").replace(/\p{M}/gu, "").replace(/['\u2019`]/g, "").replace(/[^a-z0-9]+/g, " ").trim()} `;
 export function mentionsName(name, text) {

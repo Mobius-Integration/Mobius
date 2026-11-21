@@ -1,17 +1,26 @@
-# Weekly prospecting digest for the founder. Nothing here is ever sent to a prospect.
+# Prospecting digest and board for the founder. Nothing here is ever sent to a prospect.
 # See README.md. Deploy (owner only): cd workers/prospector && npx wrangler deploy
 # Secrets:  npx wrangler secret put FOUNDER_TO       (required: the founder's verified address)
 #           npx wrangler secret put MAILING_ADDRESS  (optional: postal address for the email footer)
+#           npx wrangler secret put ACTION_KEY       (optional: signs the board links; without it the Worker
+#                                                     generates a random key once and keeps it in D1)
 name = "mobius-prospector"
 main = "src/index.js"
 compatibility_date = "2026-11-01"
 workers_dev = false
 preview_urls = false
+# The founder's prospect board lives under the site's own domain (signed links only, see src/board.js).
+routes = [{ pattern = "mobiusintegration.com/ops/*", zone_name = "mobiusintegration.com" }]
 
 [triggers]
-# UTC. Check a small batch every 15 minutes, digest Tuesday ~8-9am ET. No cloud harvest: public Overpass
-# servers refuse Cloudflare, so the prospect list is refreshed from the PC with scripts/harvest-local.mjs.
-crons = ["*/15 * * * *", "0 13 * * TUE"]
+# UTC. Check a batch every 15 minutes; weekday digest at 13:00 UTC (8 AM Eastern in winter, 9 AM in summer).
+# No cloud harvest: public Overpass servers refuse Cloudflare, so the prospect list is refreshed from the
+# PC with scripts/harvest-local.mjs.
+crons = ["*/15 * * * *", "0 13 * * MON-FRI"]
+
+# Workers Paid (since 2026-11-20): 30 s of CPU per invocation instead of 10 ms.
+[limits]
+cpu_ms = 30000
 
 [[d1_databases]]
 binding = "DB"
@@ -30,11 +39,16 @@ name = "MAILER"
 FROM_ADDRESS = "prospects@mobiusintegration.com"
 OPS_ADDRESS = "ops@mobiusintegration.com"
 SITE_NAME = "Mobius Integration"
-BBOX = "27.60,-82.85,28.10,-82.25"
-# Two per run keeps the cloud inside the free plan's 10 ms CPU (about 3-4 ms per full-size page).
-# Bulk re-checks run from the PC instead: node scripts/check-local.mjs --requeue
-CHECKS_PER_RUN = "2"
+BOARD_ORIGIN = "https://mobiusintegration.com"
+# Hillsborough, Pinellas and Pasco plus Lakeland and Plant City (south,west,north,east), as a 4 x 5 grid
+# of tiles no bigger than the 2 x 3 grid of the original, smaller box.
+BBOX = "27.60,-82.85,28.40,-81.85"
+GRID = "4x5"
+CHECKS_PER_RUN = "10"
+# Each weekday: up to DIGEST_SIZE new picks, but never more than READY_CAP waiting on the board.
 DIGEST_SIZE = "5"
+READY_CAP = "15"
+# Only prospects with at least one real finding (a score of 30 means base + one 15-point finding + phone).
+MIN_SCORE = "30"
 # The honest founding-client paragraph in every draft defaults to DEFAULT_FOUNDING_LINE in src/digest.js.
 # Once the three founding spots are filled, turn it off with:  FOUNDING_LINE = ""
-# Secrets (wrangler secret put): FOUNDER_TO (required), MAILING_ADDRESS (optional)

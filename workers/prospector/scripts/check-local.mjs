@@ -2,16 +2,17 @@
 //
 // Why here: many small-business sites, or their hosts' bot filters, refuse requests from Cloudflare's
 // network (HTTP 403/429/520, timeouts), while a home connection gets through. This runs the Worker's
-// own check code locally with `wrangler dev`, with the D1 binding pointed at the live database, ten
+// own check code locally with `wrangler dev`, with the D1 binding pointed at the live database, twenty
 // prospects per batch, until nothing is queued. Same polite one-page check, same honest User-Agent,
-// same robots.txt rule as the cloud. The Tuesday digest keeps running in the cloud.
+// same robots.txt rule as the cloud. While it runs (PC_CHECK heartbeat) the cloud's own check batches
+// pause, so they don't race it. The weekday digest keeps running in the cloud.
 //
 // Usage, from workers/prospector:
 //   node scripts/check-local.mjs             check whatever is queued (status 'new')
 //   node scripts/check-local.mjs --requeue   first re-queue every waiting 'checked' prospect and every
 //                                            'unreachable' one except dead domains (HTTP 530), so they
 //                                            are re-checked with the current checker
-// About 10-25 minutes for ~1,000 prospects.
+// About 10-20 minutes for ~1,000 prospects.
 import { spawn, execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -21,7 +22,7 @@ import { fileURLToPath } from "node:url";
 const DIR = join(dirname(fileURLToPath(import.meta.url)), "..");
 const TEMP_CONFIG = "wrangler.check-local.toml";
 const PORT = 8813;
-const PER_BATCH = 10; // the Worker's own cap for CHECKS_PER_RUN
+const PER_BATCH = 20; // the Worker caps CHECKS_PER_RUN at 25
 const QUEUED = "status = 'new' AND sightings < 3 AND domain NOT IN (SELECT value FROM suppression)";
 
 function d1(sql) {
@@ -53,10 +54,12 @@ console.log(`${total} prospects queued; checking ${PER_BATCH} at a time from thi
 const base = readFileSync(join(DIR, "wrangler.toml"), "utf8");
 const config = base
   .replace(/^\[triggers\][\s\S]*?^crons = .*$/m, "")
+  .replace(/^routes = .*$/m, "")
   .replace('migrations_dir = "migrations"', 'migrations_dir = "migrations"\nremote = true')
-  .replace(/^CHECKS_PER_RUN = .*$/m, `CHECKS_PER_RUN = "${PER_BATCH}"`);
+  .replace(/^CHECKS_PER_RUN = .*$/m, `CHECKS_PER_RUN = "${PER_BATCH}"\nPC_CHECK = "true"`);
 if (!config.includes("remote = true")) throw new Error("Could not point the D1 binding at the live database.");
 if (!config.includes(`CHECKS_PER_RUN = "${PER_BATCH}"`)) throw new Error("Could not set the batch size.");
+if (!config.includes('PC_CHECK = "true"')) throw new Error("Could not mark this as a PC run.");
 writeFileSync(join(DIR, TEMP_CONFIG), config);
 
 const dev = spawn("npx", ["wrangler", "dev", "--config", TEMP_CONFIG, "--test-scheduled", "--port", String(PORT)], {

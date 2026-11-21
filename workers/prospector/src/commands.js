@@ -1,10 +1,12 @@
-// Founder commands sent by email to ops@. Pure parsing, no I/O except reading the raw message.
+// Founder commands sent by email to ops@ (the fallback for the board's buttons). Pure parsing, no I/O
+// except reading the raw message.
 //
 //   SENT <domain>            mark the outreach as sent
 //   SKIP <domain>            don't pitch this one
 //   STOP <domain-or-email>   never contact (adds to the suppression list)
 //   MORE                     send another digest now
 //   STATUS                   counts per status and recent runs
+//   BOARD                    reply with a fresh link to the prospect board
 //
 // Only lines BEFORE the quoted reply count, so commands inside quoted text are ignored.
 
@@ -88,6 +90,32 @@ function decodeBody(body, encoding, charset) {
 }
 
 // ---------------------------------------------------------------------------
+// Headers
+
+// RFC 2047 encoded words ("=?UTF-8?B?...?=") in a header value, decoded. Anything malformed stays as is.
+export function decodeMimeHeader(value) {
+  return String(value || "")
+    .replace(/(\?=)\s+(=\?)/g, "$1$2") // whitespace between adjacent encoded words is not part of the text
+    .replace(/=\?([^?\s]+)\?([BbQq])\?([^?]*)\?=/g, (all, charset, kind, data) => {
+      try {
+        const bin = kind.toUpperCase() === "B"
+          ? atob(data)
+          : data.replace(/_/g, " ").replace(/=([0-9A-Fa-f]{2})/g, (m, hex) => String.fromCharCode(parseInt(hex, 16)));
+        return new TextDecoder(charset).decode(Uint8Array.from(bin, (c) => c.charCodeAt(0)));
+      } catch {
+        return all;
+      }
+    });
+}
+
+// Every email address in a header value like `"Joe" <joe@x.com>, ann@y.com`, lowercased, at most 20.
+export function addressesIn(value) {
+  return [...String(value || "").matchAll(/[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,24}/g)]
+    .map((m) => m[0].toLowerCase())
+    .slice(0, 20);
+}
+
+// ---------------------------------------------------------------------------
 // Commands
 
 // Lines of the new message only: stop at the quoted reply.
@@ -120,10 +148,10 @@ export function parseCommands(text) {
   for (const line of newMessageLines(text)) {
     const t = line.trim();
     if (!t) continue;
-    const m = /^(SENT|SKIP|STOP|MORE|STATUS)\b\s*(.*)$/i.exec(t);
+    const m = /^(SENT|SKIP|STOP|MORE|STATUS|BOARD)\b\s*(.*)$/i.exec(t);
     if (!m) { unknown.push(t.slice(0, 120)); continue; }
     const cmd = m[1].toUpperCase();
-    if (cmd === "MORE" || cmd === "STATUS") {
+    if (cmd === "MORE" || cmd === "STATUS" || cmd === "BOARD") {
       commands.push({ cmd });
       continue;
     }

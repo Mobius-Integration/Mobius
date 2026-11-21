@@ -1,29 +1,38 @@
 # mobius-prospector
 
-A Cloudflare Worker that finds local Tampa Bay businesses with websites, does one polite read-only check of each home page, and emails the founder a weekly digest of the best prospects with drafted outreach emails.
+A Cloudflare Worker that finds local Tampa Bay businesses with websites, does one polite read-only check of each home page, and every weekday morning emails the founder the best new prospects with drafted outreach emails and tap buttons. A prospect board on the site's own domain holds everything waiting to be sent.
 
-**Nothing is ever sent to a prospect automatically.** The founder reads the digest, finds the contact route on the prospect's own website, and sends any email himself, one at a time.
+**Nothing is ever sent to a prospect automatically.** The founder reads each draft and sends it himself, one at a time.
 
 ## Rules this Worker follows
 
 1. **Mail goes to the founder only.** The single send path is `sendToFounder()` in `src/index.js`. It has no recipient parameter: it always sends to the `FOUNDER_TO` secret and refuses if that is missing, malformed, or doesn't match the message's `To` header.
-2. **No email-address harvesting.** It stores only what OpenStreetMap publishes about a business: name, website, phone, city, category. It never scrapes, guesses or stores email addresses of prospects.
-3. **Polite, read-only checks.** One GET of the home page plus `/robots.txt` per prospect, short timeouts (3 s and 8 s), an identifying User-Agent (`... MobiusProspector/1.0; +https://mobiusintegration.com`), a 150 KB read cap, redirects only. If the `User-agent: *` group of `robots.txt` has `Disallow: /`, the site is skipped (`robots_skip`). It never submits forms.
-4. **Fits the Workers Free plan.** Every handler does a small slice of work and exits (see "Free plan budget").
-5. **Untrusted input.** Website HTML and OpenStreetMap text are escaped in HTML output, fenced as data in AI prompts, and AI drafts are rejected (replaced by a plain template) if they use forbidden words.
-6. **No secrets in the repo.** The founder's address is the secret `FOUNDER_TO`; the optional postal address for the email footer is the secret `MAILING_ADDRESS`.
+2. **No bulk email harvesting.** The prospect list holds only what OpenStreetMap publishes about a business: name, website, phone, city, category. Only for a prospect picked for a digest (a handful a day) does the Worker look up the contact route the business publishes on its own website: its contact page link, and an email address shown there as a `mailto:` link or as text (`src/contacts.js`). It never guesses an address, never decodes an address a site hides from bots (Cloudflare email protection, HTML-entity encoding), and skips addresses credited to a web designer.
+3. **Polite, read-only checks.** One GET of the home page plus `/robots.txt` per prospect, short timeouts (3 s and 8 s), an identifying User-Agent (`... MobiusProspector/1.0; +https://mobiusintegration.com`), a 150 KB read cap, redirects only. If the `User-agent: *` group of `robots.txt` has `Disallow: /`, the site is skipped (`robots_skip`). It never submits forms. The contact lookup adds at most one more GET (the contact page).
+4. **Untrusted input.** Website HTML and OpenStreetMap text are escaped in HTML output, fenced as data in AI prompts, and AI drafts are rejected (replaced by a plain template) if they use forbidden words.
+5. **No secrets in the repo.** The founder's address is the secret `FOUNDER_TO`; the optional postal address for the email footer is the secret `MAILING_ADDRESS`. The board's signing key is the optional secret `ACTION_KEY`, or a random key the Worker generates once and keeps in D1.
 
 ## How it works
 
-**The harvest runs on the founder's PC, not in the cloud.** Public Overpass servers answer Cloudflare's network with HTTP 521 or time out (seen 2026-11-15 on overpass-api.de, its lz4./z. aliases and private.coffee), but answer a home connection normally. `node scripts/harvest-local.mjs` (from this folder) runs this Worker's own code with `wrangler dev`, with the D1 binding pointed at the live database and `HARVEST_HERE="true"`. It plans the harvest, then harvests one tile per trigger until the queue is empty. That is about 6 Overpass queries and a few minutes; monthly is plenty. The deployed Worker has no `HARVEST_HERE`, so it never queries Overpass.
+**The harvest runs on the founder's PC, not in the cloud.** Public Overpass servers answer Cloudflare's network with HTTP 521 or time out (seen 2026-11-15), but answer a home connection normally. `node scripts/harvest-local.mjs` (from this folder) runs this Worker's own code with `wrangler dev`, with the D1 binding pointed at the live database and `HARVEST_HERE="true"`. It plans the harvest, then harvests one tile per trigger until the queue is empty: 20 tiles (`BBOX` as a `GRID` of 4 x 5, covering Hillsborough, Pinellas, Pasco, Plant City and Lakeland), one Overpass query each, about 15-25 minutes. Monthly is plenty. Then `node scripts/check-local.mjs` checks the new prospects from the same PC, because many small-business sites refuse Cloudflare's network. While a PC run is working it keeps a heartbeat in `meta`, and the cloud's own check batches pause so they don't race it.
 
 | Trigger | What it does |
 | --- | --- |
-| Plan (`0 11 * * MON`, local harvest only) | No Overpass query. Resets every prospect's `sightings` to 0 and queues 6 map tiles (`BBOX` split into a 2 x 3 grid) in `meta['harvest_queue']`. |
-| `*/15 * * * *` | **Local harvest only, while tiles are queued: harvest ONE tile.** One Overpass query for that tile, as CSV. It falls back to the next of three endpoints after 30 s and does no checks this run. A failed tile goes to the end of the queue with an attempt counter and is dropped (and logged) after 3 failed attempts. Drops social/aggregator links, chains and big national names, maps each to an audience id, and upserts into D1 (`src/overpass.js`). **Otherwise, in the cloud: check batch.** Takes up to `CHECKS_PER_RUN` new prospects, checks `robots.txt`, runs `checkSite()` from `../shared/site-check.js` (with the HTTP fallback below), and stores the result and an opportunity score 0-100 (`src/score.js`). Idle runs cost two cheap queries. |
-| `0 13 * * TUE` | **Digest.** Picks the top `DIGEST_SIZE` checked prospects by score and drafts an outreach email for each with Workers AI (Gemma 4, then Llama 3.3 as fallback, then a plain template). Appends the required footer in code and emails one digest to the founder (`src/digest.js`). |
+| Plan (`0 11 * * MON`, local harvest only) | No Overpass query. Resets every prospect's `sightings` to 0 and queues the tiles in `meta['harvest_queue']`. |
+| `*/15 * * * *` | **Local harvest only, while tiles are queued: harvest ONE tile** (one Overpass query, three endpoints with 30 s between tries, a failed tile is retried up to 3 times). Drops social/aggregator links, chains and big national names, maps each to an audience id, and upserts into D1 (`src/overpass.js`). **Otherwise: check batch.** Takes up to `CHECKS_PER_RUN` new prospects, checks `robots.txt`, runs `checkSite()` from `../shared/site-check.js` (with the HTTP fallback below), and stores the result and an opportunity score 0-100 (`src/score.js`). |
+| `0 13 * * MON-FRI` | **Weekday digest.** If fewer than `READY_CAP` prospects are waiting on the board, picks up to `DIGEST_SIZE` checked prospects with a score of at least `MIN_SCORE`, looks up each one's contact route, drafts an outreach email with Workers AI (Gemma 4, then Llama 3.3, then a plain template), appends the required footer in code and emails one digest to the founder (`src/digest.js`). A full board gets no new picks; on Mondays it gets a reminder instead. |
 
-The digest email has `Reply-To` set to `OPS_ADDRESS`; an Email Routing rule sends that address to this Worker's `email` handler, so the founder can reply with commands.
+### The prospect board
+
+`https://mobiusintegration.com/ops/b/<expiry>/<signature>`, served by this Worker on the route `mobiusintegration.com/ops/*` (`src/board.js`). Every digest carries a fresh link; each works for 45 days. The signature is HMAC-SHA256 over the expiry (`src/tokens.js`), so only links this Worker issued work. Pages are never cached or indexed, send no Referer to the sites they link to, allow only their own nonce'd inline script and style, and accept state changes only as JSON from their own script.
+
+Each prospect has:
+
+- **Write in Gmail** (and **Mail app**): opens the draft, addressed to them when their site lists an email, with a hidden copy (Bcc) to `OPS_ADDRESS`. When the founder sends it, that copy reaches this Worker's `email` handler, which marks the prospect sent (`src/marks.js`: matched by the address, their website's domain, or the drafted subject). Nothing is forwarded. A copy that matches nobody gets the founder a short note instead.
+- **Sent ✓** (for contact forms and phone calls), **Skip**, **Never contact** (adds the domain to the suppression list), **They replied**, and **Undo** for each.
+- **Get 5 more**: drafts the next `DIGEST_SIZE` prospects straight onto the board, without an email.
+
+The buttons in the digest email open the board with `?do=<action>&id=<n>`. The board's script applies it (link scanners that don't run scripts change nothing), shows it, and offers Undo. Every change is logged in `events`.
 
 ### Chain filter across tiles
 
@@ -33,44 +42,47 @@ In each tile, a domain shared by 3 or more OpenStreetMap objects is skipped, and
 
 The stored URL is `https://`. If that GET fails with a connection or TLS error (not an HTTP status, not a timeout), the check makes one more GET to `http://`. If it works, the check is recorded with `https = 0`, so "doesn't load over HTTPS" is a real finding instead of the site looking closed. The fallback is the opt-in `httpFallback` option of `checkSite()`; lead-alert opts in too.
 
-### Commands (reply to the digest, one per line)
+### Commands (the email fallback for the board)
+
+Reply to any prospector email (it goes to `OPS_ADDRESS`), one command per line:
 
 | Command | Effect |
 | --- | --- |
-| `SENT <domain>` | Mark the outreach and prospect as sent |
+| `SENT <domain>` | Mark the prospect as sent |
 | `SKIP <domain>` | Don't pitch this one |
-| `STOP <domain-or-email>` | Add to the suppression list (lowercase) and mark a matching prospect suppressed. For an email address, a prospect on that address's domain is suppressed too |
+| `STOP <domain-or-email>` | Add to the suppression list (lowercase) and mark a matching prospect never contact. For an email address, a prospect on that address's domain is suppressed too |
 | `MORE` | Build and send another digest now with the next `DIGEST_SIZE` prospects |
 | `STATUS` | Reply with counts per status and the last 5 runs |
+| `BOARD` | Reply with a fresh board link |
 
-Only the founder's address is accepted (anything else is rejected with `Not accepted`). Only the lines before the quoted reply are read, so commands inside quoted text are ignored. The Worker answers with a short confirmation to the founder listing what changed and any lines it didn't understand.
+Only the founder's address is accepted (anything else is rejected with `Not accepted`), and nothing is acted on when the receiving server recorded a DMARC failure. Only the lines before the quoted reply are read. Every reply carries a board link.
 
 ### Score
 
-Starts at 10. Adds: no HTTPS +15, no mobile viewport +15, images without alt +5 per 5 (max +15), unlabeled form fields +10, no booking found (restaurants, dental-medical, medspa-salon, fitness, home-services) +15, slow (> 3 s) +5, missing title or description +5, has phone +5, category weight (dental-medical +10, professional +10, medspa-salon +5, restaurants +5). Unreachable sites score 0 and are never pitched. Capped at 100.
+Starts at 10. Adds: no HTTPS +15, no mobile viewport +15, images without alt +5 per 5 (max +15), unlabeled form fields +10, no booking found (restaurants, dental-medical, medspa-salon, fitness, home-services) +15, slow (> 3 s) +5, missing title or description +5, has phone +5, category weight (dental-medical +10, professional +10, medspa-salon +5, restaurants +5). Unreachable sites score 0 and are never pitched. Capped at 100. The digest skips anything under `MIN_SCORE` (30: at least one real finding).
 
 ### Draft rules
 
-Drafts are from Mario Barillas, aimed at 70-100 words (accepted if 50-140). They say it was a quick read-only look at the public home page, and mention only the measured findings (at most two), framed as worth a look. They contain no links, and end with one question offering a short write-up with screenshots: links and attachments from a new sender hurt deliverability, and a question invites a reply. The business name must appear in the subject or body. They never claim a violation of the ADA or any law, mention lawsuits, deadlines, statistics or prices, or promise compliance. A draft that breaks any of these rules is discarded for the next model, then for the template. Drafting goes through `../shared/ai.js` (Gemma 4 with thinking turned off, then Llama 3.3), shared with lead-alert: Gemma 4 is a reasoning model and otherwise spends its whole token budget thinking and returns nothing. The footer (name, company, mailing address, "Reply STOP...") is added by code, not by the AI. The footer shows `[mailing address required before sending]` until the `MAILING_ADDRESS` secret is set.
+Drafts are from Mario Barillas, aimed at 70-100 words (accepted if 50-140). They say it was a quick read-only look at the public home page, and mention only the measured findings (at most two), framed as worth a look. They contain no links, and end with one question offering a short write-up with screenshots: links and attachments from a new sender hurt deliverability, and a question invites a reply. The business name must appear in the subject or body. They never claim a violation of the ADA or any law, mention lawsuits, deadlines, statistics or prices, or promise compliance. A draft that breaks any of these rules is discarded for the next model, then for the template. The honest founding-client paragraph (`FOUNDING_LINE`) and the footer (name, company, mailing address, "Reply STOP...") are added by code, not by the AI.
 
-## Free plan budget
+## Budget (Workers Paid since 2026-11-20)
 
-- **10 ms CPU, 50 subrequests, 50 D1 queries per invocation.**
-- Check batch: 1 select, then at most `3 * CHECKS_PER_RUN` fetches (robots, home page, and an `http://` retry only when HTTPS fails to connect), then one `db.batch()` write. Parsing is regex-only on at most 150 KB per page.
-- Harvest tile (local runs only): one Overpass request per trigger, for one sixth of `BBOX`; rows written with multi-row `INSERT ... ON CONFLICT` statements in a few `db.batch()` calls. Parsing costs roughly 5 microseconds per OpenStreetMap row on a cold isolate, so a tile with up to about 2,000 rows fits in 10 ms. If a tile is ever bigger, raise `GRID_COLS`/`GRID_ROWS` in `src/overpass.js` (a tile counts an attempt before it runs, so a run killed by the CPU limit can't loop forever; it is dropped after 3 attempts). `STATUS` shows the last runs, including failed and dropped tiles.
-- Check batch: parsing a typical home page costs a few ms on a cold isolate, so `CHECKS_PER_RUN` is 3; lower it if runs get killed.
-- Digest: 1 select, up to `DIGEST_SIZE` AI calls, 1 send, 1 batch write.
-- 2 of the 5 cron triggers allowed per account are used.
+- 30 s of CPU per invocation (`[limits] cpu_ms`) and far more subrequests than the free plan's 50.
+- Check batch: `CHECKS_PER_RUN` (10) prospects in parallel, each at most 3 fetches (robots, home page, an `http://` retry), about 3-4 ms of CPU per full-size page, one `db.batch()` write.
+- Digest and "Get more": up to `DIGEST_SIZE` AI drafts (within the free daily Workers AI allowance) and up to 2 contact-lookup GETs per pick.
+- 2 cron triggers.
 
 ## Setup (owner only; this repo never contains secrets)
 
 ```
 cd workers/prospector
-npx wrangler d1 migrations apply mobius-prospector --remote   # 0001_init and 0002_harvest_tiles
+npx wrangler d1 migrations apply mobius-prospector --remote   # 0001_init, 0002_harvest_tiles, 0003_board
 npx wrangler secret put FOUNDER_TO        # the founder's verified address
 npx wrangler secret put MAILING_ADDRESS   # optional, for the email footer
-npx wrangler deploy
+npx wrangler deploy                       # also creates the route mobiusintegration.com/ops/*
 node scripts/harvest-local.mjs            # fill the prospect list from this PC (repeat monthly)
+node scripts/check-local.mjs              # check the new prospects from this PC (--requeue re-checks everyone)
+node scripts/contacts-local.mjs           # fill in contact routes the cloud couldn't load
 ```
 
 Then add an Email Routing rule that sends `ops@mobiusintegration.com` to the `mobius-prospector` Worker, and make sure `FOUNDER_TO` is a verified destination address for `send_email`.
@@ -79,22 +91,22 @@ Then add an Email Routing rule that sends `ops@mobiusintegration.com` to the `mo
 
 ```
 cd workers/prospector
-printf 'FOUNDER_TO=founder@example.test\n' > .dev.vars          # git-ignored
+printf 'FOUNDER_TO=founder@example.test\nACTION_KEY=local-test-key-at-least-32-characters\n' > .dev.vars   # git-ignored
 npx wrangler d1 migrations apply mobius-prospector --local
-npx wrangler dev --test-scheduled --local --port 8799
+npx wrangler dev --test-scheduled --port 8799
 ```
 
 Trigger handlers (the URL-encoded cron string selects the handler):
 
 ```
-curl "http://127.0.0.1:8799/__scheduled?cron=0+11+*+*+MON"      # plan: queue 6 tiles (no Overpass query)
-curl "http://127.0.0.1:8799/__scheduled?cron=*%2F15+*+*+*+*"    # harvests ONE tile (a real Overpass query: be polite) while the queue is non-empty, then check batches
-curl "http://127.0.0.1:8799/__scheduled?cron=0+13+*+*+TUE"      # digest
+curl "http://127.0.0.1:8799/__scheduled?cron=0+11+*+*+MON"         # plan: queue the tiles (no Overpass query)
+curl "http://127.0.0.1:8799/__scheduled?cron=*%2F15+*+*+*+*"       # harvests ONE tile (a real Overpass query: be polite) while the queue is non-empty, then check batches
+curl "http://127.0.0.1:8799/__scheduled?cron=0+13+*+*+MON-FRI"     # digest
 curl -X POST "http://127.0.0.1:8799/cdn-cgi/handler/email?from=founder@example.test&to=ops@mobiusintegration.com" --data-binary @test.eml
 ```
 
-Local `send_email` writes the message to a file instead of sending. The AI binding is not available with `--local`; the digest then uses the plain template draft. Run `wrangler dev` without `--local` to call the real Workers AI service (D1 and email stay local). Delete the `.wrangler/` folder when done.
+A test email needs `Message-ID` and `Date` headers. Local `send_email` writes the message to a file instead of sending. Workers AI always runs remotely (small usage charges). Delete `.dev.vars` and the `.wrangler/` folder when done.
 
 ## Data and attribution
 
-Business data (c) OpenStreetMap contributors (openstreetmap.org/copyright), used under the ODbL. The database contains no email addresses of prospects. The suppression list can hold addresses the founder explicitly STOPs.
+Business data (c) OpenStreetMap contributors (openstreetmap.org/copyright), used under the ODbL. Email addresses in the database are only those the businesses publish on their own websites, for prospects that were in a digest, plus addresses the founder emailed or explicitly STOPped.

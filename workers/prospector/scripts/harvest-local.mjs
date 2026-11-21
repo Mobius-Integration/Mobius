@@ -6,7 +6,8 @@
 // and the Tuesday digest keep running in the cloud.
 //
 // Usage, from workers/prospector:   node scripts/harvest-local.mjs
-// About 6 Overpass queries, one at a time, a few minutes in total. Monthly is plenty.
+// One Overpass query per tile (GRID in wrangler.toml, 20 tiles since 2026-11-20), one at a time with a
+// pause between them: about 15-25 minutes. Monthly is plenty.
 import { spawn, execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -16,7 +17,7 @@ import { fileURLToPath } from "node:url";
 const DIR = join(dirname(fileURLToPath(import.meta.url)), "..");
 const TEMP_CONFIG = "wrangler.harvest-local.toml";
 const PORT = 8812;
-const MAX_TILE_RUNS = 18; // 6 tiles x 3 attempts, the same cap the Worker uses
+const ATTEMPTS_PER_TILE = 3; // the same cap the Worker uses
 
 function d1(sql) {
   // npx needs a shell on Windows, and the shell splits arguments on spaces, so the SQL is wrapped in
@@ -38,6 +39,7 @@ const tilesLeft = () => {
 const base = readFileSync(join(DIR, "wrangler.toml"), "utf8");
 const config = base
   .replace(/^\[triggers\][\s\S]*?^crons = .*$/m, "")
+  .replace(/^routes = .*$/m, "")
   .replace('migrations_dir = "migrations"', 'migrations_dir = "migrations"\nremote = true')
   .replace(/^\[vars\]$/m, '[vars]\nHARVEST_HERE = "true"');
 if (!config.includes("remote = true")) throw new Error("Could not point the D1 binding at the live database.");
@@ -81,9 +83,10 @@ try {
     req.on("error", reject);
   });
 
-  await trigger("0 11 * * MON"); // plan: reset sightings, queue the 6 tiles
-  console.log(`Queued ${tilesLeft()} tiles.`);
-  for (let i = 0; i < MAX_TILE_RUNS; i++) {
+  await trigger("0 11 * * MON"); // plan: reset sightings, queue the tiles
+  const queuedTiles = tilesLeft();
+  console.log(`Queued ${queuedTiles} tiles.`);
+  for (let i = 0; i < queuedTiles * ATTEMPTS_PER_TILE; i++) {
     const left = tilesLeft();
     if (left === 0) break;
     console.log(`Harvesting a tile (${left} left)...`);
@@ -92,7 +95,7 @@ try {
   }
 
   const [runs, totals] = d1(
-    "SELECT ok, substr(detail, 1, 120) AS detail FROM runs WHERE kind = 'harvest_tile' ORDER BY id DESC LIMIT 6; " +
+    `SELECT ok, substr(detail, 1, 120) AS detail FROM runs WHERE kind = 'harvest_tile' ORDER BY id DESC LIMIT ${queuedTiles}; ` +
     "SELECT COUNT(*) AS prospects, SUM(sightings >= 3) AS chains FROM prospects",
   );
   for (const r of runs.results) console.log(r.ok ? "ok  " : "FAIL", r.detail);

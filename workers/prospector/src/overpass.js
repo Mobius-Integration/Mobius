@@ -194,6 +194,15 @@ const MAX_ATTEMPTS = 3;
 export const GRID_COLS = 2;
 export const GRID_ROWS = 3;
 
+// GRID = "<cols>x<rows>" in wrangler.toml (for example "4x5"); each side 1-12. Keep each tile no bigger
+// than about 0.25 x 0.17 degrees over the dense Tampa and St. Pete core, the size that worked in 2026-11.
+export function gridFor(env) {
+  const m = /^(\d{1,2})x(\d{1,2})$/.exec(String((env && env.GRID) || "").trim());
+  if (!m) return [GRID_COLS, GRID_ROWS];
+  const clamp = (n) => Math.min(12, Math.max(1, Number(n)));
+  return [clamp(m[1]), clamp(m[2])];
+}
+
 // "south,west,north,east" -> cols x rows tiles in the same format, sharing exact edge values so
 // together they cover the box with no gaps. Row-major, south to north.
 export function splitBbox(bbox, cols = GRID_COLS, rows = GRID_ROWS) {
@@ -223,7 +232,7 @@ async function saveQueue(db, queue) {
 export async function planHarvest(env) {
   const db = env.DB;
   const left = (await loadQueue(db)).length;
-  const tiles = splitBbox(env.BBOX || "27.60,-82.85,28.10,-82.25");
+  const tiles = splitBbox(env.BBOX || "27.60,-82.85,28.10,-82.25", ...gridFor(env));
   await db.batch([
     db.prepare("UPDATE prospects SET sightings = 0"),
     db.prepare("INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
