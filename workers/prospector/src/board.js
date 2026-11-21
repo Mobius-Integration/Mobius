@@ -15,7 +15,7 @@
 
 import { checkBoard, checkDevice, deviceCookie, boardPath, boardUrl, homeUrl, homeText } from "./tokens.js";
 import { markProspect, statusLabel, ACTIONS } from "./marks.js";
-import { esc, button, CATEGORY_LABELS, findingsFor, prepareItems, recordDigest } from "./digest.js";
+import { esc, button, formText, CATEGORY_LABELS, findingsFor, prepareItems, recordDigest } from "./digest.js";
 import { composeLinks, platformOf, writeLink } from "./compose.js";
 import { hostOf } from "./contacts.js";
 import { sendToFounder } from "./mail.js";
@@ -140,7 +140,7 @@ function card(r, env, platform) {
 <p class="meta"><a href="${esc(site)}" target="_blank" rel="noopener noreferrer">${esc(hostOf(site) || r.domain)}</a></p>
 ${issues.length ? `<ul class="findings">${issues.map((i) => `<li>${esc(i)}</li>`).join("")}</ul>` : ""}
 <p class="contact">${contactLine(r)}</p>
-<details class="draft"><summary>Draft: ${esc(r.draft_subject)}</summary><pre>${esc(r.draft_body)}</pre><button type="button" class="btn small" data-copy>Copy message</button></details>
+<details class="draft"><summary>Draft: ${esc(r.draft_subject)}</summary><pre>${esc(r.draft_body)}</pre><button type="button" class="btn small" data-copy="${esc(formText(r.draft_body))}">Copy message</button></details>
 <div class="row when-ready"><a class="btn primary" href="${esc(write.href)}"${write.newTab ? ' target="_blank" rel="noopener noreferrer"' : ""}>Write in Gmail</a><a class="btn" href="${esc(links.mailto)}">Other mail app</a></div>
 <div class="row when-ready"><button type="button" class="btn" data-act="sent">Sent ✓</button><button type="button" class="btn" data-act="skip">Skip</button><button type="button" class="btn danger" data-act="never">Never contact</button></div>
 <div class="row when-sent"><button type="button" class="btn" data-act="replied">They replied</button><button type="button" class="btn" data-act="unreplied">Not a reply</button><button type="button" class="btn danger" data-act="never">Never contact</button><button type="button" class="btn" data-act="undo">Undo</button></div>
@@ -166,7 +166,8 @@ ${ready.length ? ready.map((r) => card(r, env, platform)).join("\n") : `<p class
 ${done.length ? `<section aria-labelledby="h-done"><h2 id="h-done">Done in the last 30 days</h2>\n${done.map((r) => card(r, env, platform)).join("\n")}\n</section>` : ""}
 <footer class="how"><h2>How this works</h2><ul>
 <li><strong>Write in Gmail</strong> opens the drafted email in the Gmail app on your phone (Gmail on the web on a computer), addressed to them when their site lists an email. Read it, change anything you like, and send it from your Mobius account. A hidden copy goes to ${ops}, and this board marks it sent by itself.</li>
-<li>Using their contact form? Tap <strong>Copy message</strong>, paste it into the form, then tap <strong>Sent ✓</strong>.</li>
+<li><strong>Your signature:</strong> Gmail adds your Mobius signature (name, phone, website) under the draft; check it's there the first time you write from your phone. On a computer, Gmail leaves it off emails that open already written, so click the pen icon (Insert signature) in the bottom toolbar before sending.</li>
+<li>Using their contact form? Tap <strong>Copy message</strong> (it ends with your name, phone and website instead of the email-only lines), paste it into the form, then tap <strong>Sent ✓</strong>.</li>
 <li><strong>They replied</strong> keeps the reply count honest. <strong>Never contact</strong> puts them on the do-not-contact list; use it whenever someone asks you to stop.</li>
 <li>Every tap can be undone.</li>
 <li><strong>Keep it one tap away:</strong> bookmark this page or add it to your Home Screen. On this phone or computer it keeps opening the board, and so does <a href="${esc(homeUrl(env))}">${esc(homeText(env))}</a>. On any other device, that address emails you a fresh link.</li>
@@ -421,8 +422,8 @@ const SCRIPT = `
     }
     var copy = t.closest("[data-copy]");
     if (copy) {
-      var pre = copy.closest(".draft").querySelector("pre");
-      navigator.clipboard.writeText(pre.textContent).then(function () {
+      var text = copy.getAttribute("data-copy") || copy.closest(".draft").querySelector("pre").textContent;
+      navigator.clipboard.writeText(text).then(function () {
         say("Message copied. Paste it into their contact form, then tap Sent.");
       }, function () {
         say("Couldn't copy. Select the text and copy it instead.");
