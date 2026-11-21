@@ -65,32 +65,37 @@ export function findingsFor(p) {
 // ---------------------------------------------------------------------------
 // Drafting
 
-// How every draft ends: a first-name sign-off, then the one line CAN-SPAM requires (it's an ad, the
-// postal address, how to opt out). Name, title, phone and website come from the Gmail signature on
-// mario@ (set up 2026-11-21, copy in _planning/email-signature.html), which Gmail adds below the
-// draft. Gmail on a computer leaves the signature off pre-filled emails, so the compliance line keeps
-// the address: every email stays compliant even without the signature, and nothing appears twice.
+// How every draft ends: a plain-text signature, then the one line CAN-SPAM requires (it's an ad, the
+// postal address, how to opt out). Gmail adds the founder's Gmail signature only to emails he starts
+// himself: on the web and in the phone app alike it leaves it off any email that opens already
+// written (tested 2026-11-21, including a real send from the phone), which is what every Write
+// email button does. So the drafts carry the signature, as plain text, which also suits cold-email
+// deliverability. The rich Gmail signature (_planning/email-signature.html) covers everything else.
 export const COMPLIANCE_PREFIX = "This is a marketing email from Mobius Integration";
+export const TEXT_SIGNATURE = ["Mario Barillas", "Founder, Mobius Integration", "(813) 798-9191 · mobiusintegration.com"].join("\n");
 
 export function footerText(env) {
   const address = env && env.MAILING_ADDRESS
     ? String(env.MAILING_ADDRESS).replace(/[\r\n]+/g, ", ").replace(/[\s.,]+$/, "")
     : "[mailing address required before sending]";
-  return ["Mario", "", `${COMPLIANCE_PREFIX}, ${address}. Reply STOP and I won't email you again.`].join("\n");
+  return `${TEXT_SIGNATURE}\n\n${COMPLIANCE_PREFIX}, ${address}. Reply STOP and I won't email you again.`;
 }
 
-// Contact forms get no Gmail signature, so a message pasted into one ends with this instead.
-export const TEXT_SIGNATURE = ["Mario Barillas", "Founder, Mobius Integration", "(813) 798-9191 · mobiusintegration.com"].join("\n");
+const SIGN_OFF = /^\s*(mario( barillas)?|best( regards)?,?|thanks,?|thank you,?|regards,?|cheers,?)\s*$/i;
 
-// A draft as it goes into a contact form: the email-only ending (sign-off and compliance line, or the
-// older name-and-address block) replaced by the text signature.
+// A draft as it goes into a contact form: the email-only compliance line dropped, and any older ending
+// (a bare sign-off, or the name-and-address block of the first drafts) replaced by the text signature.
 export function formText(body) {
-  const s = String(body || "");
-  const ends = [s.lastIndexOf(`\n\nMario\n\n${COMPLIANCE_PREFIX}`), s.lastIndexOf("\n\nMario Barillas\nMobius Integration")].filter((i) => i >= 0);
-  const cut = ends.length ? Math.max(...ends) : s.length;
-  const lines = s.slice(0, cut).trimEnd().split("\n");
+  let s = String(body || "").replace(/\r/g, "");
+  const compliance = s.lastIndexOf(`\n\n${COMPLIANCE_PREFIX}`);
+  if (compliance >= 0) s = s.slice(0, compliance);
+  const oldBlock = s.lastIndexOf("\n\nMario Barillas\nMobius Integration");
+  if (oldBlock >= 0) s = s.slice(0, oldBlock);
+  s = s.trimEnd();
+  if (s.endsWith(`\n${TEXT_SIGNATURE}`)) return s;
+  const lines = s.split("\n");
   // Any sign-off left over (a bare "Mario Barillas", "Thanks,") would repeat the signature's name.
-  while (lines.length > 1 && /^\s*(mario( barillas)?|best( regards)?,?|thanks,?|thank you,?|regards,?|cheers,?)\s*$/i.test(lines[lines.length - 1])) lines.pop();
+  while (lines.length > 1 && SIGN_OFF.test(lines[lines.length - 1])) lines.pop();
   return `${lines.join("\n").trimEnd()}\n\n${TEXT_SIGNATURE}`;
 }
 

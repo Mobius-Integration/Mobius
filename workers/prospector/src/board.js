@@ -166,8 +166,8 @@ ${ready.length ? ready.map((r) => card(r, env, platform)).join("\n") : `<p class
 ${done.length ? `<section aria-labelledby="h-done"><h2 id="h-done">Done in the last 30 days</h2>\n${done.map((r) => card(r, env, platform)).join("\n")}\n</section>` : ""}
 <footer class="how"><h2>How this works</h2><ul>
 <li><strong>Write in Gmail</strong> opens the drafted email in the Gmail app on your phone (Gmail on the web on a computer), addressed to them when their site lists an email. Read it, change anything you like, and send it from your Mobius account. A hidden copy goes to ${ops}, and this board marks it sent by itself.</li>
-<li><strong>Your signature:</strong> Gmail adds your Mobius signature (name, phone, website) under the draft; check it's there the first time you write from your phone. On a computer, Gmail leaves it off emails that open already written, so click the pen icon (Insert signature) in the bottom toolbar before sending.</li>
-<li>Using their contact form? Tap <strong>Copy message</strong> (it ends with your name, phone and website instead of the email-only lines), paste it into the form, then tap <strong>Sent ✓</strong>.</li>
+<li>Each draft already ends with your signature (name, title, phone, website) and the one-line notice the law requires in marketing emails. Gmail never adds its own signature to an email that opens already written, so nothing appears twice.</li>
+<li>Using their contact form? Tap <strong>Copy message</strong> (it leaves out the email-only notice), paste it into the form, then tap <strong>Sent ✓</strong>.</li>
 <li><strong>They replied</strong> keeps the reply count honest. <strong>Never contact</strong> puts them on the do-not-contact list; use it whenever someone asks you to stop.</li>
 <li>Every tap can be undone.</li>
 <li><strong>Keep it one tap away:</strong> bookmark this page or add it to your Home Screen. On this phone or computer it keeps opening the board, and so does <a href="${esc(homeUrl(env))}">${esc(homeText(env))}</a>. On any other device, that address emails you a fresh link.</li>
