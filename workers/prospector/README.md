@@ -28,7 +28,7 @@ A Cloudflare Worker that finds local Tampa Bay businesses with websites, does on
 
 Each prospect has:
 
-- **Write in Gmail** (and **Mail app**): opens the draft, addressed to them when their site lists an email, with a hidden copy (Bcc) to `OPS_ADDRESS`. When the founder sends it, that copy reaches this Worker's `email` handler, which marks the prospect sent (`src/marks.js`: matched by the address, their website's domain, or the drafted subject). Nothing is forwarded. A copy that matches nobody gets the founder a short note instead.
+- **Write in Gmail** opens the draft in the Gmail app on an iPhone or Android phone (Gmail on the web on a computer; **Other mail app** uses `mailto:`), addressed to them when their site lists an email, with a hidden copy (Bcc) to `OPS_ADDRESS`. When the founder sends it, that copy reaches this Worker's `email` handler, which marks the prospect sent (`src/marks.js`: matched by the address, their website's domain, or the drafted subject). Nothing is forwarded. A copy that matches nobody gets the founder a short note instead.
 - **Sent ✓** (for contact forms and phone calls), **Skip**, **Never contact** (adds the domain to the suppression list), **They replied**, and **Undo** for each.
 - **Get 5 more**: drafts the next `DIGEST_SIZE` prospects straight onto the board, without an email.
 

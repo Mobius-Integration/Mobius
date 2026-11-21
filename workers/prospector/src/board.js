@@ -11,7 +11,7 @@
 import { checkBoard } from "./tokens.js";
 import { markProspect, statusLabel, ACTIONS } from "./marks.js";
 import { esc, CATEGORY_LABELS, findingsFor, prepareItems, recordDigest } from "./digest.js";
-import { composeLinks } from "./compose.js";
+import { composeLinks, platformOf, writeLink } from "./compose.js";
 import { hostOf } from "./contacts.js";
 
 const ROUTE = /^\/ops\/b\/(\d{9,11})\/([A-Za-z0-9_-]{43})(?:\/(mark|more))?\/?$/;
@@ -34,7 +34,7 @@ export async function handleOps(request, env) {
 
   if (!sub) {
     if (request.method !== "GET" && request.method !== "HEAD") return json(405, { ok: false, error: "Use GET." });
-    return boardPage(env, base, Number(m[1]));
+    return boardPage(env, base, Number(m[1]), platformOf(request.headers.get("user-agent")));
   }
   if (request.method !== "POST") return json(405, { ok: false, error: "Use POST." });
   // The page's own script sends JSON. A form on another site can't (that would need a CORS preflight,
@@ -104,10 +104,11 @@ function contactLine(r) {
   return `No email or contact page found automatically. Check <a href="${esc(site)}" target="_blank" rel="noopener noreferrer">their site</a>, or call.`;
 }
 
-function card(r, env) {
+function card(r, env, platform) {
   const site = r.final_url || r.website;
   const issues = findingsFor(r).slice(0, 4);
   const links = composeLinks(env, { to: r.contact_email, subject: r.draft_subject, body: r.draft_body });
+  const write = writeLink(links, platform);
   const tel = r.phone ? String(r.phone).replace(/[^\d+]/g, "") : "";
   return `<article class="card" id="p${r.id}" data-id="${r.id}" data-status="${esc(r.status)}" data-replied="${r.replied_at ? 1 : 0}">
 <div class="card-head"><h3>${esc(r.name)}</h3><span class="chip">Score ${esc(r.score)}</span></div>
@@ -116,7 +117,7 @@ function card(r, env) {
 ${issues.length ? `<ul class="findings">${issues.map((i) => `<li>${esc(i)}</li>`).join("")}</ul>` : ""}
 <p class="contact">${contactLine(r)}</p>
 <details class="draft"><summary>Draft: ${esc(r.draft_subject)}</summary><pre>${esc(r.draft_body)}</pre><button type="button" class="btn small" data-copy>Copy message</button></details>
-<div class="row when-ready"><a class="btn primary" href="${esc(links.gmail)}" target="_blank" rel="noopener noreferrer">Write in Gmail</a><a class="btn" href="${esc(links.mailto)}">Mail app</a></div>
+<div class="row when-ready"><a class="btn primary" href="${esc(write.href)}"${write.newTab ? ' target="_blank" rel="noopener noreferrer"' : ""}>Write in Gmail</a><a class="btn" href="${esc(links.mailto)}">Other mail app</a></div>
 <div class="row when-ready"><button type="button" class="btn" data-act="sent">Sent ✓</button><button type="button" class="btn" data-act="skip">Skip</button><button type="button" class="btn danger" data-act="never">Never contact</button></div>
 <div class="row when-sent"><button type="button" class="btn" data-act="replied">They replied</button><button type="button" class="btn" data-act="unreplied">Not a reply</button><button type="button" class="btn danger" data-act="never">Never contact</button><button type="button" class="btn" data-act="undo">Undo</button></div>
 <div class="row when-closed"><button type="button" class="btn" data-act="undo">Undo</button></div>
@@ -124,7 +125,7 @@ ${issues.length ? `<ul class="findings">${issues.map((i) => `<li>${esc(i)}</li>`
 </article>`;
 }
 
-async function boardPage(env, base, exp) {
+async function boardPage(env, base, exp, platform) {
   const { ready, done, stats } = await loadBoard(env);
   const size = num(env.DIGEST_SIZE, 5, 1, 10);
   const until = new Date(exp * 1000).toLocaleDateString("en-US", { timeZone: "America/New_York", month: "long", day: "numeric" });
@@ -137,11 +138,11 @@ async function boardPage(env, base, exp) {
 <button type="button" class="btn primary" id="more" data-size="${size}">Get ${size} more</button>
 </header>
 <section aria-labelledby="h-ready"><h2 id="h-ready">Ready to send</h2>
-${ready.length ? ready.map((r) => card(r, env)).join("\n") : `<p class="empty">Nothing waiting. Tap Get ${size} more, or wait for tomorrow morning's email.</p>`}
+${ready.length ? ready.map((r) => card(r, env, platform)).join("\n") : `<p class="empty">Nothing waiting. Tap Get ${size} more, or wait for tomorrow morning's email.</p>`}
 </section>
-${done.length ? `<section aria-labelledby="h-done"><h2 id="h-done">Done in the last 30 days</h2>\n${done.map((r) => card(r, env)).join("\n")}\n</section>` : ""}
+${done.length ? `<section aria-labelledby="h-done"><h2 id="h-done">Done in the last 30 days</h2>\n${done.map((r) => card(r, env, platform)).join("\n")}\n</section>` : ""}
 <footer class="how"><h2>How this works</h2><ul>
-<li><strong>Write in Gmail</strong> opens the drafted email, addressed to them when their site lists an email. Read it, change anything you like, and send. A hidden copy goes to ${ops}, and this board marks it sent by itself.</li>
+<li><strong>Write in Gmail</strong> opens the drafted email in the Gmail app on your phone (Gmail on the web on a computer), addressed to them when their site lists an email. Read it, change anything you like, and send it from your Mobius account. A hidden copy goes to ${ops}, and this board marks it sent by itself.</li>
 <li>Using their contact form? Tap <strong>Copy message</strong>, paste it into the form, then tap <strong>Sent ✓</strong>.</li>
 <li><strong>They replied</strong> keeps the reply count honest. <strong>Never contact</strong> puts them on the do-not-contact list; use it whenever someone asks you to stop.</li>
 <li>Every tap can be undone. This link works until ${esc(until)}; each morning's email brings a fresh one, or email BOARD to ${ops}.</li>

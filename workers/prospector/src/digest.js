@@ -259,7 +259,7 @@ export async function buildDigest(env, limit) {
     h.push(`<p style="margin:10px 0 0">${contactHtml(contact)}</p>`);
     h.push(`<p style="margin:12px 0 2px"><strong>Draft email</strong> <span style="color:#4b5563">(${esc(draft.model)})</span><br>Subject: ${esc(draft.subject)}</p>`);
     h.push(`<pre style="white-space:pre-wrap;font-family:inherit;font-size:14px;margin:0;border-left:3px solid #4338ca;padding:8px 12px;background:#f5f3ff">${esc(full)}</pre>`);
-    h.push(`<p style="margin:10px 0 0">${button(links.mailto, "Write email", "primary")}${button(links.gmail, "Gmail on the web")}</p>`);
+    h.push(`<p style="margin:10px 0 0">${button(links.mailto, "Write email", "primary")}${button(links.gmail, "Gmail on a computer")}</p>`);
     h.push(`<p style="margin:0">${button(act(p, "sent"), "Sent ✓")}${button(act(p, "skip"), "Skip")}${button(act(p, "never"), "Never contact", "danger")}</p>`);
   });
 
