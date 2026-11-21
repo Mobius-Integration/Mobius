@@ -4,42 +4,66 @@
 // the founder. Pages are never cached or indexed, send no Referer to the sites they link to, and allow
 // only their own inline script and style (CSP nonce).
 //
-//   GET  /ops/b/<exp>/<sig>          the board (?do=<action>&id=<n> applies a digest button, undoable)
+//   GET  /ops                        the permanent address: a remembered device goes straight to a fresh
+//                                    board link; anyone else gets one button, "Email me a fresh link"
+//   POST /ops/link                   email a fresh board link to the founder (only ever to FOUNDER_TO;
+//                                    one per 10 minutes, at most 5 a day)
+//   GET  /ops/b/<exp>/<sig>          the board (?do=<action>&id=<n> applies a digest button, undoable);
+//                                    remembers this device (src/tokens.js)
 //   POST /ops/b/<exp>/<sig>/mark     {"id": n, "action": "sent|skip|never|replied|unreplied|undo"}
 //   POST /ops/b/<exp>/<sig>/more     draft DIGEST_SIZE more prospects onto the board (no email)
 
-import { checkBoard } from "./tokens.js";
+import { checkBoard, checkDevice, deviceCookie, boardPath, boardUrl, homeUrl, homeText } from "./tokens.js";
 import { markProspect, statusLabel, ACTIONS } from "./marks.js";
-import { esc, CATEGORY_LABELS, findingsFor, prepareItems, recordDigest } from "./digest.js";
+import { esc, button, CATEGORY_LABELS, findingsFor, prepareItems, recordDigest } from "./digest.js";
 import { composeLinks, platformOf, writeLink } from "./compose.js";
 import { hostOf } from "./contacts.js";
+import { sendToFounder } from "./mail.js";
 
 const ROUTE = /^\/ops\/b\/(\d{9,11})\/([A-Za-z0-9_-]{43})(?:\/(mark|more))?\/?$/;
 const num = (v, dflt, min, max) => Math.min(max, Math.max(min, Number.isFinite(parseInt(v, 10)) ? parseInt(v, 10) : dflt));
+const isGet = (request) => request.method === "GET" || request.method === "HEAD";
+// The page's own script sends JSON. A form on another site can't (that would need a CORS preflight,
+// which this Worker never approves), so requiring it also blocks cross-site posts.
+const isJson = (request) => (request.headers.get("content-type") || "").toLowerCase().startsWith("application/json");
 
 export async function handleOps(request, env) {
   const url = new URL(request.url);
+  const cookie = request.headers.get("cookie");
+
+  if (url.pathname === "/ops" || url.pathname === "/ops/") {
+    if (!isGet(request)) return json(405, { ok: false, error: "Use GET." });
+    if ((await checkDevice(env, cookie)) === "ok") return toFreshBoard(env, url);
+    return linkPage(env, 200, "Prospect board", "This phone or computer hasn't opened the board lately.");
+  }
+  if (url.pathname === "/ops/link") {
+    if (request.method !== "POST") return json(405, { ok: false, error: "Use POST." });
+    if (!isJson(request)) return json(415, { ok: false, error: "Send JSON." });
+    const r = await emailBoardLink(env);
+    return json(r.ok ? 200 : 500, r);
+  }
+
   const m = ROUTE.exec(url.pathname);
   if (!m) return notFound();
   const verdict = await checkBoard(env, m[1], m[2]);
-  if (verdict === "bad") return notFound();
-  if (verdict === "expired") {
-    return shell({
-      status: 410, title: "Board link expired",
-      body: `<main class="wrap"><h1>This board link has expired</h1><p>Open the latest prospects email for a fresh link, or email <strong>BOARD</strong> to ${esc(env.OPS_ADDRESS || "the ops address")} and the link comes right back.</p></main>`,
-    });
+  const sub = m[3];
+  if (verdict !== "ok") {
+    // A bookmarked or Home Screen board whose link has passed its date still opens on a remembered device.
+    if (!sub && isGet(request) && (await checkDevice(env, cookie)) === "ok") return toFreshBoard(env, url);
+    if (sub) return verdict === "bad" ? json(404, { ok: false, error: "Not found." }) : json(410, { ok: false, error: "This board link has expired. Reload the page for a fresh one." });
+    if (verdict === "bad") return notFound();
+    return linkPage(env, 410, "This board link has expired", "Get a fresh one by email, or use the board button in the newest prospects email.");
   }
   const base = `/ops/b/${m[1]}/${m[2]}`;
-  const sub = m[3];
 
   if (!sub) {
-    if (request.method !== "GET" && request.method !== "HEAD") return json(405, { ok: false, error: "Use GET." });
-    return boardPage(env, base, Number(m[1]), platformOf(request.headers.get("user-agent")));
+    if (!isGet(request)) return json(405, { ok: false, error: "Use GET." });
+    const page = await boardPage(env, base, platformOf(request.headers.get("user-agent")));
+    page.headers.append("Set-Cookie", await deviceCookie(env));
+    return page;
   }
   if (request.method !== "POST") return json(405, { ok: false, error: "Use POST." });
-  // The page's own script sends JSON. A form on another site can't (that would need a CORS preflight,
-  // which this Worker never approves), so this also blocks cross-site posts.
-  if (!(request.headers.get("content-type") || "").toLowerCase().startsWith("application/json")) return json(415, { ok: false, error: "Send JSON." });
+  if (!isJson(request)) return json(415, { ok: false, error: "Send JSON." });
 
   if (sub === "mark") {
     let body;
@@ -125,10 +149,9 @@ ${issues.length ? `<ul class="findings">${issues.map((i) => `<li>${esc(i)}</li>`
 </article>`;
 }
 
-async function boardPage(env, base, exp, platform) {
+async function boardPage(env, base, platform) {
   const { ready, done, stats } = await loadBoard(env);
   const size = num(env.DIGEST_SIZE, 5, 1, 10);
-  const until = new Date(exp * 1000).toLocaleDateString("en-US", { timeZone: "America/New_York", month: "long", day: "numeric" });
   const ops = esc(env.OPS_ADDRESS || "ops@mobiusintegration.com");
   const body = `<main class="wrap">
 <header class="top">
@@ -145,7 +168,8 @@ ${done.length ? `<section aria-labelledby="h-done"><h2 id="h-done">Done in the l
 <li><strong>Write in Gmail</strong> opens the drafted email in the Gmail app on your phone (Gmail on the web on a computer), addressed to them when their site lists an email. Read it, change anything you like, and send it from your Mobius account. A hidden copy goes to ${ops}, and this board marks it sent by itself.</li>
 <li>Using their contact form? Tap <strong>Copy message</strong>, paste it into the form, then tap <strong>Sent ✓</strong>.</li>
 <li><strong>They replied</strong> keeps the reply count honest. <strong>Never contact</strong> puts them on the do-not-contact list; use it whenever someone asks you to stop.</li>
-<li>Every tap can be undone. This link works until ${esc(until)}; each morning's email brings a fresh one, or email BOARD to ${ops}.</li>
+<li>Every tap can be undone.</li>
+<li><strong>Keep it one tap away:</strong> bookmark this page or add it to your Home Screen. On this phone or computer it keeps opening the board, and so does <a href="${esc(homeUrl(env))}">${esc(homeText(env))}</a>. On any other device, that address emails you a fresh link.</li>
 </ul></footer>
 </main>
 <div id="toast" class="toast" role="status" aria-live="polite"><span id="toast-text"></span><button type="button" id="toast-undo" class="btn small" hidden>Undo</button></div>`;
@@ -153,7 +177,85 @@ ${done.length ? `<section aria-labelledby="h-done"><h2 id="h-done">Done in the l
 }
 
 // ---------------------------------------------------------------------------
+// The permanent address and fresh links
+
+// A remembered device: send it to a fresh board link. A digest button's ?do=&id= rides along, so the
+// board still applies it (undoably).
+async function toFreshBoard(env, url) {
+  const act = url.searchParams.get("do") || "", id = url.searchParams.get("id") || "";
+  const q = ACTIONS.has(act) && /^\d{1,9}$/.test(id) ? `?do=${act}&id=${id}` : "";
+  return new Response(null, {
+    status: 302,
+    headers: { Location: (await boardPath(env)) + q, "Cache-Control": "no-store", "Referrer-Policy": "no-referrer", "X-Robots-Tag": "noindex, nofollow", "Strict-Transport-Security": HSTS },
+  });
+}
+
+function linkPage(env, status, heading, lead) {
+  const body = `<main class="wrap narrow">
+<p class="eyebrow">Mobius Integration</p>
+<h1>${esc(heading)}</h1>
+<p>${esc(lead)}</p>
+<p><button type="button" class="btn primary" id="send-link">Email me a fresh link</button></p>
+<p id="link-msg" class="note" role="status" aria-live="polite"></p>
+<p class="muted">The link goes only to the board owner's inbox. Open it once on this phone or computer, and ${esc(homeText(env))} opens the board here from then on.</p>
+</main>`;
+  return shell({ status, title: heading, body, script: LINK_SCRIPT });
+}
+
+const LINK_GAP_SECONDS = 10 * 60;
+const LINK_DAILY_CAP = 5;
+
+// Email a fresh board link. The recipient is always the founder (sendToFounder has no recipient
+// parameter), so a stranger tapping the button can at most send the founder his own link, and the
+// limits keep that to one email per 10 minutes and 5 a day.
+export async function emailBoardLink(env, now = Date.now()) {
+  const db = env.DB;
+  const t = Math.floor(now / 1000);
+  const day = new Date(now).toISOString().slice(0, 10);
+  const row = await db.prepare("SELECT value FROM meta WHERE key = 'link_sends'").first();
+  let st = null;
+  try { st = JSON.parse(row ? row.value : "null"); } catch {}
+  const last = (st && Number(st.last)) || 0;
+  const count = st && st.day === day ? Number(st.count) || 0 : 0;
+  if (t - last < LINK_GAP_SECONDS) return { ok: true, sent: false, message: "A fresh link went to your inbox a few minutes ago. Check there (and spam) first." };
+  if (count >= LINK_DAILY_CAP) return { ok: true, sent: false, message: `${LINK_DAILY_CAP} links went out today already. Use the newest one in your inbox.` };
+
+  // Claim the send before sending, so two quick taps (or two devices) send one email, not two.
+  const next = JSON.stringify({ day, count: count + 1, last: t });
+  const claim = row
+    ? await db.prepare("UPDATE meta SET value = ? WHERE key = 'link_sends' AND value = ?").bind(next, row.value).run()
+    : await db.prepare("INSERT OR IGNORE INTO meta (key, value) VALUES ('link_sends', ?)").bind(next).run();
+  if (!claim.meta || !claim.meta.changes) return { ok: true, sent: false, message: "A fresh link is on its way. Check your inbox." };
+
+  try {
+    const board = await boardUrl(env);
+    const home = homeUrl(env), shown = homeText(env);
+    const text = [
+      "Here's a fresh link to your prospect board:", board, "",
+      `Open it on the phone or computer where you asked for it. After that, ${shown} opens the board there directly, so bookmark it or add it to your Home Screen.`, "",
+      `Didn't ask for this? Someone tapped "Email me a fresh link" on ${shown}. Links only ever come to this inbox, so there's nothing to do.`,
+    ].join("\n");
+    const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#1f2937;max-width:560px">`
+      + `<p style="margin:0 0 10px">Here's a fresh link to your prospect board.</p>`
+      + `<p style="margin:0 0 12px">${button(board, "Open your prospect board", "primary")}</p>`
+      + `<p style="margin:0 0 10px">Open it on the phone or computer where you asked for it. After that, <a href="${esc(home)}">${esc(shown)}</a> opens the board there directly, so bookmark it or add it to your Home Screen.</p>`
+      + `<p style="margin:0;color:#4b5563;font-size:13px">Didn't ask for this? Someone tapped "Email me a fresh link" on ${esc(shown)}. Links only ever come to this inbox, so there's nothing to do.</p></div>`;
+    await sendToFounder(env, "Your prospect board link", text, html);
+  } catch (e) {
+    console.error("prospector: board link email failed:", e && e.message);
+    // Hand the claim back so the next tap can try again.
+    try { await db.prepare("UPDATE meta SET value = ? WHERE key = 'link_sends' AND value = ?").bind(row ? row.value : "{}", next).run(); } catch {}
+    return { ok: false, sent: false, error: "Couldn't send the email right now. Try again in a minute." };
+  }
+  return { ok: true, sent: true, message: "Sent. Open the email from Mobius prospects and tap the link on this phone or computer." };
+}
+
+// ---------------------------------------------------------------------------
 // Responses
+
+// The device cookie is Secure, so it never travels over plain http. Browsers that have opened the board
+// over https remember to use https for this site from then on (no includeSubDomains, no preload list).
+const HSTS = "max-age=31536000";
 
 function notFound() {
   return shell({ status: 404, title: "Not found", body: `<main class="wrap"><h1>Not found</h1><p>This page doesn't exist.</p></main>` });
@@ -169,7 +271,7 @@ function json(status, data) {
 function shell({ status = 200, title, body, script = "", base = "" }) {
   const nonce = crypto.randomUUID().replace(/-/g, "");
   // email_off: the zone's email obfuscation would otherwise rewrite addresses into "[email protected]".
-  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer"><link rel="icon" href="/assets/img/logo.svg" type="image/svg+xml"><title>${esc(title)}</title><style nonce="${nonce}">${CSS}</style></head><body${base ? ` data-base="${esc(base)}"` : ""}><!--email_off-->${body}<!--/email_off-->${script ? `<script nonce="${nonce}">${script}</script>` : ""}</body></html>`;
+  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer"><link rel="icon" href="/assets/img/logo.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png"><meta name="apple-mobile-web-app-title" content="Prospects"><title>${esc(title)}</title><style nonce="${nonce}">${CSS}</style></head><body${base ? ` data-base="${esc(base)}"` : ""}><!--email_off-->${body}<!--/email_off-->${script ? `<script nonce="${nonce}">${script}</script>` : ""}</body></html>`;
   return new Response(html, {
     status,
     headers: {
@@ -179,6 +281,7 @@ function shell({ status = 200, title, body, script = "", base = "" }) {
       "X-Robots-Tag": "noindex, nofollow",
       "X-Content-Type-Options": "nosniff",
       "X-Frame-Options": "DENY",
+      "Strict-Transport-Security": HSTS,
       "Content-Security-Policy": `default-src 'none'; style-src 'nonce-${nonce}'; script-src 'nonce-${nonce}'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`,
     },
   });
@@ -191,6 +294,9 @@ const CSS = `
 html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
 .wrap{max-width:760px;margin:0 auto;padding:20px 16px 112px}
+.wrap.narrow{max-width:560px}
+.note{min-height:1.5em;font-weight:600}
+.muted{color:var(--muted)}
 .eyebrow{margin:0;color:var(--muted);font-size:13px;letter-spacing:.06em;text-transform:uppercase}
 h1{font-size:28px;line-height:1.2;margin:2px 0 6px}
 h2{font-size:18px;margin:30px 0 12px}
@@ -241,7 +347,29 @@ a{color:var(--brand)}
 @media (prefers-reduced-motion:reduce){.flash{animation:none}.toast{transition:none}}
 `;
 
-// The page's only script. No template literals inside, so it stays a plain string.
+// The "Email me a fresh link" page's only script. No template literals inside.
+const LINK_SCRIPT = `
+(function () {
+  var b = document.getElementById("send-link");
+  var msg = document.getElementById("link-msg");
+  b.addEventListener("click", function () {
+    b.disabled = true;
+    msg.textContent = "Sending...";
+    fetch("/ops/link", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" })
+      .then(function (res) { return res.json(); })
+      .then(function (d) {
+        msg.textContent = d.message || d.error || "Done.";
+        if (d.sent) b.textContent = "Sent \\u2713";
+        else if (!d.ok) b.disabled = false;
+      }, function () {
+        msg.textContent = "That didn't work. Check your connection and try again.";
+        b.disabled = false;
+      });
+  });
+})();
+`;
+
+// The board's only script. No template literals inside, so it stays a plain string.
 const SCRIPT = `
 (function () {
   var base = document.body.getAttribute("data-base");

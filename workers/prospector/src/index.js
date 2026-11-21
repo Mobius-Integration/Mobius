@@ -1,17 +1,15 @@
 // mobius-prospector: finds local Tampa Bay businesses with websites, checks their home pages
 // (read-only), and emails the FOUNDER a digest of drafted outreach with tap buttons. Nothing is ever
-// sent to a prospect: the only mail this Worker sends goes through sendToFounder() below.
+// sent to a prospect: the only mail this Worker sends goes through sendToFounder() in src/mail.js.
 //
 // Handlers:
 //   scheduled "0 11 * * MON"      plan a harvest (local runs on the founder's PC only, see src/overpass.js)
 //   scheduled "*/15 * * * *"      harvest ONE queued tile (PC only), or check a batch of new prospects
 //   scheduled "0 13 * * MON-FRI"  weekday digest: top up the board and email the new picks (src/digest.js)
-//   fetch  /ops/b/...             the founder's prospect board (src/board.js), served on mobiusintegration.com
+//   fetch  /ops, /ops/b/...       the founder's prospect board (src/board.js), served on mobiusintegration.com
 //   email  ops@                   the hidden copy of an email the founder sent (marks it sent), or reply
 //                                 commands: SENT / SKIP / STOP / MORE / STATUS / BOARD (src/commands.js)
 
-import { EmailMessage } from "cloudflare:email";
-import { buildMime } from "../../shared/mime.js";
 import { checkSite, readCapped } from "../../shared/site-check.js";
 import { planHarvest, runHarvestTile, logRun } from "./overpass.js";
 import { scoreProspect } from "./score.js";
@@ -21,6 +19,9 @@ import { handleOps } from "./board.js";
 import { markProspect, matchSentCopy } from "./marks.js";
 import { boardUrl } from "./tokens.js";
 import { PROSPECTOR_UA } from "./contacts.js";
+import { sendToFounder } from "./mail.js";
+
+export { sendToFounder };
 
 const CRON_HARVEST = "0 11 * * MON";
 const CRON_CHECK = "*/15 * * * *";
@@ -54,8 +55,7 @@ export default {
 
   async fetch(request, env) {
     const url = new URL(request.url);
-    if (url.pathname.startsWith("/ops/")) {
-      try {
+    if (url.pathname === "/ops" || url.pathname.startsWith("/ops/")) {      try {
         return await handleOps(request, env);
       } catch (e) {
         console.error("prospector: board failed:", e && e.message);
@@ -104,29 +104,6 @@ const num = (v, dflt, min, max) => Math.min(max, Math.max(min, parseInt(v, 10) |
 
 export function founderAddresses(env) {
   return [env.FOUNDER_TO, env.FOUNDER_FROM].map((a) => String(a || "").trim().toLowerCase()).filter((a) => a.includes("@"));
-}
-
-// ---------------------------------------------------------------------------
-// The only way this Worker sends mail. The recipient is never a parameter: it is env.FOUNDER_TO.
-
-export async function sendToFounder(env, subject, text, html) {
-  const to = env.FOUNDER_TO;
-  if (typeof to !== "string" || !/^[^\s@<>"',;]+@[^\s@<>"',;]+\.[^\s@<>"',;]+$/.test(to) || to.length > 254) {
-    throw new Error("FOUNDER_TO secret is not set to a single valid address; refusing to send");
-  }
-  if (!env.FROM_ADDRESS) throw new Error("FROM_ADDRESS is not set");
-  const raw = buildMime({
-    from: `"Mobius prospects" <${env.FROM_ADDRESS}>`,
-    to,
-    replyTo: env.OPS_ADDRESS,
-    subject,
-    text,
-    html,
-    domain: env.FROM_ADDRESS.split("@")[1],
-  });
-  const toHeader = /^To: (.*)$/m.exec(raw);
-  if (!toHeader || toHeader[1].trim().toLowerCase() !== to.toLowerCase()) throw new Error("recipient mismatch; refusing to send");
-  await env.MAILER.send(new EmailMessage(env.FROM_ADDRESS, to, raw));
 }
 
 // ---------------------------------------------------------------------------

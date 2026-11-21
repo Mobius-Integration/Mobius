@@ -24,7 +24,9 @@ A Cloudflare Worker that finds local Tampa Bay businesses with websites, does on
 
 ### The prospect board
 
-`https://mobiusintegration.com/ops/b/<expiry>/<signature>`, served by this Worker on the route `mobiusintegration.com/ops/*` (`src/board.js`). Every digest carries a fresh link; each works for 45 days. The signature is HMAC-SHA256 over the expiry (`src/tokens.js`), so only links this Worker issued work. Pages are never cached or indexed, send no Referer to the sites they link to, allow only their own nonce'd inline script and style, and accept state changes only as JSON from their own script.
+`https://mobiusintegration.com/ops/b/<expiry>/<signature>`, served by this Worker on the routes `mobiusintegration.com/ops` and `mobiusintegration.com/ops/*` (`src/board.js`). Every digest carries a fresh link; each works for 45 days. The signature is HMAC-SHA256 over the expiry (`src/tokens.js`), so only links this Worker issued work. Pages are never cached or indexed, send no Referer to the sites they link to, allow only their own nonce'd inline script and style, and accept state changes only as JSON from their own script.
+
+**Permanent address: `https://mobiusintegration.com/ops`.** Opening a genuine board link gives that browser a device cookie: `__Secure-ops`, HMAC over `device|<expiry>` (so a board signature can't pose as one), valid 180 days and renewed on every board visit, `HttpOnly; Secure; SameSite=Lax; Path=/ops`. With it, `/ops` and any bookmarked or Home Screen board whose link has expired redirect (302) to a fresh board link, and a digest button's `?do=&id=` rides along. Without it, `/ops` shows one button, **Email me a fresh link** (`POST /ops/link`, JSON only), which sends a fresh link through `sendToFounder()`. That has no recipient parameter, so a stranger can at most send the founder his own link, and it's limited to one email per 10 minutes and 5 a day (`meta.link_sends`). Board responses send HSTS (`max-age=31536000`, apex only), because the Secure cookie never travels over plain http. To sign every device out and kill every link at once, delete the signing key (`DELETE FROM meta WHERE key = 'action_key'`, or rotate `ACTION_KEY`); the next digest brings a new link.
 
 Each prospect has:
 
@@ -53,7 +55,7 @@ Reply to any prospector email (it goes to `OPS_ADDRESS`), one command per line:
 | `STOP <domain-or-email>` | Add to the suppression list (lowercase) and mark a matching prospect never contact. For an email address, a prospect on that address's domain is suppressed too |
 | `MORE` | Build and send another digest now with the next `DIGEST_SIZE` prospects |
 | `STATUS` | Reply with counts per status and the last 5 runs |
-| `BOARD` | Reply with a fresh board link |
+| `BOARD` | Reply with a fresh board link (or tap **Email me a fresh link** at `/ops`) |
 
 Only the founder's address is accepted (anything else is rejected with `Not accepted`), and nothing is acted on when the receiving server recorded a DMARC failure. Only the lines before the quoted reply are read. Every reply carries a board link.
 

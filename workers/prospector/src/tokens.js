@@ -49,21 +49,58 @@ export async function boardPath(env, now = Date.now()) {
   return `/ops/b/${exp}/${sig}`;
 }
 
+const originOf = (env) => String((env && env.BOARD_ORIGIN) || "https://mobiusintegration.com").replace(/\/+$/, "");
+
 export async function boardUrl(env, now) {
-  const origin = String(env.BOARD_ORIGIN || "https://mobiusintegration.com").replace(/\/+$/, "");
-  return origin + (await boardPath(env, now));
+  return originOf(env) + (await boardPath(env, now));
 }
 
-// "ok", "expired" (a genuine link past its date) or "bad". The signature is checked first, so a forged
-// link never learns anything about expiry.
-export async function checkBoard(env, exp, sig, now = Date.now()) {
+// The board's permanent address, https://mobiusintegration.com/ops (see the device cookie below).
+export const homeUrl = (env) => originOf(env) + "/ops";
+export const homeText = (env) => homeUrl(env).replace(/^https?:\/\//, "");
+
+// "ok", "expired" (genuine but past its date) or "bad". The signature is checked first, so a forged
+// value never learns anything about expiry.
+async function verify(env, purpose, exp, sig, now) {
   if (!/^\d{9,11}$/.test(exp || "") || !/^[A-Za-z0-9_-]{43}$/.test(sig || "")) return "bad";
   let good = false;
   try {
-    good = await crypto.subtle.verify("HMAC", await hmacKey(env), fromB64url(sig), enc.encode(`board|${exp}`));
+    good = await crypto.subtle.verify("HMAC", await hmacKey(env), fromB64url(sig), enc.encode(`${purpose}|${exp}`));
   } catch {
     return "bad";
   }
   if (!good) return "bad";
   return Number(exp) * 1000 > now ? "ok" : "expired";
+}
+
+export function checkBoard(env, exp, sig, now = Date.now()) {
+  return verify(env, "board", exp, sig, now);
+}
+
+// ---------------------------------------------------------------------------
+// Remembered devices. A browser that opens a genuine board link gets a signed cookie (HMAC over
+// "device|<expiry>", so a board link's signature can't stand in for one). With it, the permanent
+// address mobiusintegration.com/ops, and a bookmarked or Home Screen board whose link has passed its
+// date, open a fresh board link on that device. HttpOnly (no script can read it), Secure, SameSite=Lax,
+// and only ever sent to /ops. Each board visit renews it. To sign out every device and kill every board
+// link at once, delete the key: DELETE FROM meta WHERE key = 'action_key' (the Worker makes a new one).
+
+export const DEVICE_DAYS = 180;
+export const DEVICE_COOKIE = "__Secure-ops";
+
+export async function deviceCookie(env, now = Date.now()) {
+  const exp = Math.floor(now / 1000) + DEVICE_DAYS * 86400;
+  const sig = toB64url(await crypto.subtle.sign("HMAC", await hmacKey(env), enc.encode(`device|${exp}`)));
+  return `${DEVICE_COOKIE}=${exp}.${sig}; Path=/ops; Max-Age=${DEVICE_DAYS * 86400}; Secure; HttpOnly; SameSite=Lax`;
+}
+
+// "ok", "expired" or "bad" for the Cookie header of a request ("bad" when there's no device cookie).
+export function checkDevice(env, cookieHeader, now = Date.now()) {
+  let value = "";
+  for (const part of String(cookieHeader || "").split(";")) {
+    const i = part.indexOf("=");
+    if (i > 0 && part.slice(0, i).trim() === DEVICE_COOKIE) value = part.slice(i + 1).trim();
+  }
+  const m = /^(\d{9,11})\.([A-Za-z0-9_-]{43})$/.exec(value);
+  return m ? verify(env, "device", m[1], m[2], now) : Promise.resolve("bad");
 }

@@ -9,7 +9,7 @@ import { BOOKING_CATEGORIES } from "./score.js";
 import { runDraft } from "../../shared/ai.js";
 import { findContact, PROSPECTOR_UA } from "./contacts.js";
 import { composeLinks } from "./compose.js";
-import { boardUrl } from "./tokens.js";
+import { boardUrl, homeUrl, homeText } from "./tokens.js";
 
 export const CATEGORY_LABELS = {
   restaurants: "Restaurant or bar", "dental-medical": "Dental or medical practice", "medspa-salon": "Med spa or salon",
@@ -200,7 +200,7 @@ export async function prepareItems(env, limit) {
 // Building the digest email
 
 // Buttons that survive Gmail and other mail apps: a plain link with inline styles.
-function button(href, label, kind) {
+export function button(href, label, kind) {
   const look = kind === "primary"
     ? "background:#4338ca;border:1px solid #4338ca;color:#ffffff"
     : kind === "danger" ? "background:#ffffff;border:1px solid #d1d5db;color:#b42318" : "background:#ffffff;border:1px solid #9ca3af;color:#1f2937";
@@ -231,13 +231,14 @@ export async function buildDigest(env, limit) {
   const intro = "Drafts only: nothing has been sent to anyone. Tap Write email, read it, and send it yourself. Emails sent from that button are marked sent on your board automatically. Using their contact form instead? Paste the message there, then tap Sent.";
   const later = waiting ? `${waiting} earlier ${waiting === 1 ? "prospect is" : "prospects are"} still waiting on your board.` : "";
 
-  const t = [subject, "", intro, "", `Your prospect board: ${board}`];
+  const t = [subject, "", intro, "", `Your prospect board: ${board}`, `Anytime: ${homeUrl(env)} (bookmark it or add it to your Home Screen)`];
   if (later) t.push(later);
   const h = [];
   h.push(`<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#1f2937;max-width:680px">`);
   h.push(`<h1 style="font-size:20px;margin:0 0 6px">${esc(subject)}</h1>`);
   h.push(`<p style="margin:0 0 10px;color:#4b5563">${esc(intro)}</p>`);
   h.push(`<p style="margin:0 0 4px">${button(board, "Open your prospect board", "primary")}</p>`);
+  h.push(`<p style="margin:0 0 4px;color:#4b5563;font-size:13px">Anytime: <a href="${esc(homeUrl(env))}" style="color:#4338ca">${esc(homeText(env))}</a>. Bookmark it or add it to your Home Screen.</p>`);
   if (later) h.push(`<p style="margin:0;color:#4b5563">${esc(later)}</p>`);
 
   items.forEach(({ p, issues, good, draft, full, contact, links }, n) => {
@@ -266,7 +267,6 @@ export async function buildDigest(env, limit) {
   const foot = [
     `Write email opens the draft addressed to them (when their site lists an email), with a hidden copy to ${env.OPS_ADDRESS || "ops@"} so your board marks it sent. The other buttons open your board, where every tap can be undone.`,
     "Never send to an address you guessed. An email shown here comes from their own website.",
-    "Reply commands still work if you prefer them: SENT, SKIP or STOP plus the domain, or MORE, STATUS, BOARD.",
     "Business data © OpenStreetMap contributors (openstreetmap.org/copyright).",
   ];
   t.push("", "=".repeat(60), ...foot);

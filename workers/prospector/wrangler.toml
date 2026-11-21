@@ -10,7 +10,11 @@ compatibility_date = "2026-11-01"
 workers_dev = false
 preview_urls = false
 # The founder's prospect board lives under the site's own domain (signed links only, see src/board.js).
-routes = [{ pattern = "mobiusintegration.com/ops/*", zone_name = "mobiusintegration.com" }]
+# "/ops" itself is the board's permanent address; "/ops/*" doesn't match it, so it has its own route.
+routes = [
+  { pattern = "mobiusintegration.com/ops", zone_name = "mobiusintegration.com" },
+  { pattern = "mobiusintegration.com/ops/*", zone_name = "mobiusintegration.com" },
+]
 
 [triggers]
 # UTC. Check a batch every 15 minutes; weekday digest at 13:00 UTC (8 AM Eastern in winter, 9 AM in summer).
