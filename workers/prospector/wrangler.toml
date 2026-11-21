@@ -36,8 +36,14 @@ binding = "AI"
 name = "MAILER"
 
 [vars]
-FROM_ADDRESS = "prospects@mobiusintegration.com"
-OPS_ADDRESS = "ops@mobiusintegration.com"
+# Since 2026-11-20 Google Workspace handles mail for mobiusintegration.com itself (mario@, hello@), so
+# Cloudflare's Email Routing for this Worker runs on the subdomain in.mobiusintegration.com: digests
+# come from prospects@in, and ops@in (reply commands, the hidden copy of sent emails) reaches the Worker.
+FROM_ADDRESS = "prospects@in.mobiusintegration.com"
+OPS_ADDRESS = "ops@in.mobiusintegration.com"
+# The founder's Workspace address: accepted as a sender alongside FOUNDER_TO, and the account the
+# Write in Gmail button opens on a computer.
+FOUNDER_FROM = "mario@mobiusintegration.com"
 SITE_NAME = "Mobius Integration"
 BOARD_ORIGIN = "https://mobiusintegration.com"
 # Hillsborough, Pinellas and Pasco plus Lakeland and Plant City (south,west,north,east), as a 4 x 5 grid

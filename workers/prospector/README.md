@@ -85,7 +85,7 @@ node scripts/check-local.mjs              # check the new prospects from this PC
 node scripts/contacts-local.mjs           # fill in contact routes the cloud couldn't load
 ```
 
-Then add an Email Routing rule that sends `ops@mobiusintegration.com` to the `mobius-prospector` Worker, and make sure `FOUNDER_TO` is a verified destination address for `send_email`.
+Google Workspace handles mail for mobiusintegration.com itself (since 2026-11-20), so Cloudflare Email Routing for this Worker runs on the subdomain `in.mobiusintegration.com`: an Email Routing rule sends `ops@in.mobiusintegration.com` (`OPS_ADDRESS`) to the `mobius-prospector` Worker, digests come from `prospects@in.mobiusintegration.com`, and `FOUNDER_TO` must be a verified destination address for `send_email`. The founder may write from `FOUNDER_TO` or `FOUNDER_FROM` (his Workspace address).
 
 ## Run locally
 
@@ -102,7 +102,7 @@ Trigger handlers (the URL-encoded cron string selects the handler):
 curl "http://127.0.0.1:8799/__scheduled?cron=0+11+*+*+MON"         # plan: queue the tiles (no Overpass query)
 curl "http://127.0.0.1:8799/__scheduled?cron=*%2F15+*+*+*+*"       # harvests ONE tile (a real Overpass query: be polite) while the queue is non-empty, then check batches
 curl "http://127.0.0.1:8799/__scheduled?cron=0+13+*+*+MON-FRI"     # digest
-curl -X POST "http://127.0.0.1:8799/cdn-cgi/handler/email?from=founder@example.test&to=ops@mobiusintegration.com" --data-binary @test.eml
+curl -X POST "http://127.0.0.1:8799/cdn-cgi/handler/email?from=founder@example.test&to=ops@in.mobiusintegration.com" --data-binary @test.eml
 ```
 
 A test email needs `Message-ID` and `Date` headers. Local `send_email` writes the message to a file instead of sending. Workers AI always runs remotely (small usage charges). Delete `.dev.vars` and the `.wrangler/` folder when done.

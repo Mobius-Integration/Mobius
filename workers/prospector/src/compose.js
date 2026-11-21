@@ -39,7 +39,7 @@ export function gmailAndroidUrl({ to, bcc, subject, body }) {
 export function composeLinks(env, { to, subject, body }) {
   const m = { to, bcc: env.OPS_ADDRESS || "", subject, body };
   return {
-    gmail: gmailUrl({ ...m, account: env.FOUNDER_TO }),
+    gmail: gmailUrl({ ...m, account: env.FOUNDER_FROM || env.FOUNDER_TO }),
     ios: gmailIosUrl(m),
     android: gmailAndroidUrl(m),
     mailto: mailtoUrl(m),

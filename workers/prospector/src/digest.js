@@ -264,7 +264,7 @@ export async function buildDigest(env, limit) {
   });
 
   const foot = [
-    "Write email opens the draft addressed to them (when their site lists an email), with a hidden copy to ops@ so your board marks it sent. The other buttons open your board, where every tap can be undone.",
+    `Write email opens the draft addressed to them (when their site lists an email), with a hidden copy to ${env.OPS_ADDRESS || "ops@"} so your board marks it sent. The other buttons open your board, where every tap can be undone.`,
     "Never send to an address you guessed. An email shown here comes from their own website.",
     "Reply commands still work if you prefer them: SENT, SKIP or STOP plus the domain, or MORE, STATUS, BOARD.",
     "Business data © OpenStreetMap contributors (openstreetmap.org/copyright).",

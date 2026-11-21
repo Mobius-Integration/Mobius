@@ -66,8 +66,9 @@ export default {
   },
 
   async email(message, env, ctx) {
-    const founder = String(env.FOUNDER_TO || "").toLowerCase();
-    if (!founder || String(message.from || "").toLowerCase() !== founder) {
+    // The founder writes from his Gmail (FOUNDER_TO) or his Workspace address (FOUNDER_FROM).
+    const founders = founderAddresses(env);
+    if (!founders.length || !founders.includes(String(message.from || "").toLowerCase())) {
       message.setReject("Not accepted");
       return;
     }
@@ -82,7 +83,7 @@ export default {
       const ops = String(env.OPS_ADDRESS || "").toLowerCase();
       const visible = addressesIn(decodeMimeHeader(`${message.headers.get("to") || ""}, ${message.headers.get("cc") || ""}`));
       if (ops && !visible.includes(ops)) {
-        await handleSentCopy(env, message, founder, ops);
+        await handleSentCopy(env, message, founders, ops);
         return;
       }
       const text = extractPlainText(await readRawMessage(message.raw));
@@ -100,6 +101,10 @@ export default {
 };
 
 const num = (v, dflt, min, max) => Math.min(max, Math.max(min, parseInt(v, 10) || dflt));
+
+export function founderAddresses(env) {
+  return [env.FOUNDER_TO, env.FOUNDER_FROM].map((a) => String(a || "").trim().toLowerCase()).filter((a) => a.includes("@"));
+}
 
 // ---------------------------------------------------------------------------
 // The only way this Worker sends mail. The recipient is never a parameter: it is env.FOUNDER_TO.
@@ -259,8 +264,8 @@ async function sendBoardReminder(env, waiting) {
 // ---------------------------------------------------------------------------
 // The hidden copy of a sent email
 
-async function handleSentCopy(env, message, founder, ops) {
-  const to = addressesIn(decodeMimeHeader(message.headers.get("to") || "")).filter((a) => a !== founder && a !== ops).slice(0, 5);
+async function handleSentCopy(env, message, founders, ops) {
+  const to = addressesIn(decodeMimeHeader(message.headers.get("to") || "")).filter((a) => !founders.includes(a) && a !== ops).slice(0, 5);
   const subject = decodeMimeHeader(message.headers.get("subject") || "").replace(/\s+/g, " ").trim();
   const match = await matchSentCopy(env.DB, to, subject);
   let reason = "it doesn't match a prospect from your digests";

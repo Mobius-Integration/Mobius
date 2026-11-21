@@ -19,5 +19,8 @@ name = "MAILER"
 binding = "AI"
 
 [vars]
-ALERT_FROM = "leads@mobiusintegration.com"
+# Since 2026-11-20 Google Workspace handles mail for mobiusintegration.com itself, so Cloudflare's
+# Email Routing (which sends these alerts) runs on the subdomain in.mobiusintegration.com.
+ALERT_FROM = "leads@in.mobiusintegration.com"
+OWN_DOMAIN = "mobiusintegration.com"
 SITE_NAME = "Mobius Integration"

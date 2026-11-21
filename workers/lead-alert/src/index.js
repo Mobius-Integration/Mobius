@@ -39,7 +39,8 @@ export default {
 
     // Most early form submissions are people selling to us (see ./pitch.js). They still reach the
     // owner, labeled, but skip the website check, the score and the drafted reply.
-    const ownDomain = String(env.ALERT_FROM || "").split("@")[1] || "";
+    // Our own domain (forged-sender check). Alerts send from a mail subdomain, so it's set on its own.
+    const ownDomain = String(env.OWN_DOMAIN || String(env.ALERT_FROM || "").split("@")[1] || "").toLowerCase();
     const sort = await classifyLead(env, lead, ownDomain).catch((e) => {
       console.error("lead-alert: pitch check failed:", e && e.message);
       return { verdict: "lead", reasons: [], ai: null, forged: false, scam: false };
