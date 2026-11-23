@@ -33,7 +33,7 @@ export const hostOf = (u) => {
   try { return new URL(u).hostname.toLowerCase().replace(/^www\./, ""); } catch { return ""; }
 };
 // The last two labels. Good enough for the .com/.net/.org/.us sites in this list (not for .co.uk).
-const rootOf = (h) => h.split(".").slice(-2).join(".");
+export const rootOf = (h) => h.split(".").slice(-2).join(".");
 
 // How closely an address belongs to a site: 30 on the site's own domain, 20 on a common free-mail
 // provider (many small businesses use one), 10 on a domain that is clearly a variant of the site's, else -1.

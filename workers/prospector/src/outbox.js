@@ -15,7 +15,8 @@
 
 import { checkSite } from "../../shared/site-check.js";
 import { callAgent, validAgentUrl } from "./agent.js";
-import { PROSPECTOR_UA, findContact, emailBase, mxOk } from "./contacts.js";
+import { PROSPECTOR_UA, findContact, emailBase, mxOk, hostOf, rootOf } from "./contacts.js";
+import { partnerGroup, lawishName } from "./partners.js";
 import { findingsFor, prepareOne, parseJson, PICK_COLUMNS, NOT_PARKED, footerText, esc, typeLabel } from "./digest.js";
 import { markProspect, matchSentCopy, whenLabel } from "./marks.js";
 import {
@@ -104,6 +105,16 @@ export async function autoSummary(env, now = new Date()) {
 // ---------------------------------------------------------------------------
 // Filling the queue
 
+// Is this the business we think it is? Not when its website now lives on a different domain (a merger, a
+// resold domain: smithhopen.com now opens trenam.com), and, for a law firm we'd ask to refer clients, only
+// when its name or domain says law (Overture sometimes files other businesses as "business law").
+function plausible(p) {
+  const site = rootOf(hostOf(p.final_url || p.website));
+  if (site && site !== rootOf(p.domain)) return false;
+  if (p.track === "partner" && partnerGroup(p) === "lawyer") return lawishName(p.name) || /law|legal|attorney|lawyer|esq|counsel/i.test(p.domain);
+  return true;
+}
+
 // An address the auto-sender may write to: on the business's own domain, or a free-mail address its site
 // lists, and on a domain that accepts mail.
 async function autoEmailOk(email, siteUrl) {
@@ -179,7 +190,7 @@ export async function fillQueue(env, { now = new Date(), maxScan = 60, rand = Ma
   ).all();
   for (const r of adopt.results || []) {
     if (picked.length >= room) break;
-    if (restaurantHold(r.category, ymd)) continue;
+    if (restaurantHold(r.category, ymd) || !plausible(r)) continue;
     if (!(await autoEmailOk(r.o_email, r.final_url || r.website))) continue;
     picked.push({ adopt: r, quoted: r.track === "partner" ? [] : familiesOf(findingsFor(r).slice(0, 2)) });
   }
@@ -193,7 +204,7 @@ export async function fillQueue(env, { now = new Date(), maxScan = 60, rand = Ma
     for (let i = 0; i < list.length && scanned < maxScan * 2; i += 4) {
       const partnersSoFar = () => picked.filter((x) => x.partner).length;
       if (picked.length >= room || (kind === "partner" && partnersSoFar() >= wantPartners)) break;
-      const batch = list.slice(i, i + 4).filter((p) => !seen.has(p.id));
+      const batch = list.slice(i, i + 4).filter((p) => !seen.has(p.id) && plausible(p));
       scanned += batch.length;
       const looked = await Promise.all(batch.map((p) => resolveContact(env, p).catch(() => null)));
       for (let j = 0; j < batch.length; j++) {
@@ -281,6 +292,7 @@ async function preSend(env, row, now) {
   if (row.track === "partner") return { ok: true, issues: [] };
   const c = await checkSite(row.website, { maxBytes: 150 * 1024, userAgent: PROSPECTOR_UA, timeoutMs: 8000, httpFallback: true, expectName: row.name });
   if (!c.ok) return { hold: `Their website didn't load when I re-checked it${c.error ? ` (${String(c.error).slice(0, 80)})` : ""}.` };
+  if (c.url && rootOf(hostOf(c.url)) !== rootOf(row.domain)) return { hold: `Their website now opens ${hostOf(c.url)}, so it may be a different business.` };
   return { ok: true, issues: c.issues || [] };
 }
 
@@ -359,6 +371,12 @@ async function sendTouch(env, st, row, now) {
 async function afterSend(env, st, row, res, kind, now, body) {
   const db = env.DB;
   const id = row.prospect_id;
+  // The agent reports where each email actually went. If that isn't the person we meant, stop everything.
+  if (res && (res.misdirected || (res.ok && res.to && !String(res.to).toLowerCase().includes(String(row.to).toLowerCase())))) {
+    await pauseAuto(env, `An email meant for ${row.name} didn't go to them.`);
+    await notify(env, "Auto-send paused: an email went to the wrong address", [`An automatic email meant for ${row.name} (${row.to}) went to ${String(res.to || "an unexpected address").slice(0, 120)} instead.`, "Auto-send is paused so nothing else is affected. Tell Claude and it will look into it."]);
+    return false;
+  }
   if (res && res.ok) {
     await metaSet(db, "agent_errors", 0);
     if (kind === "initial") {
@@ -368,7 +386,7 @@ async function afterSend(env, st, row, res, kind, now, body) {
       if (!st.auto_first_send) await metaSet(db, "auto_first_send", etParts(now).ymd);
     } else {
       await db.batch([
-        db.prepare("UPDATE touches SET state = 'sent', sent_at = datetime('now'), body = ?, subject = ? WHERE id = ?").bind(body, `Re: ${row.draft_subject}`, row.tid),
+        db.prepare("UPDATE touches SET state = 'sent', sent_at = datetime('now'), body = ?, subject = ? WHERE id = ?").bind(body, `Following up: ${row.draft_subject}`, row.tid),
         db.prepare("INSERT INTO events (prospect_id, action, via, detail) VALUES (?, 'followup', 'auto', ?)").bind(id, `follow-up ${row.n} to ${row.to}`),
       ]);
       if (res.thread_id && !row.thread_ref) await db.prepare("UPDATE outreach SET thread_ref = ? WHERE id = ?").bind(res.thread_id, row.oid).run();

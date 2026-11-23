@@ -117,11 +117,24 @@ function findThread_(to, subject, threadId) {
   return found.length ? found[0] : null;
 }
 
+// True when anyone but us (bounce notices and out-of-office replies don't count) wrote in the thread.
 function hasOtherSender_(thread, me) {
   var msgs = thread.getMessages();
   for (var i = 0; i < msgs.length; i++) {
     var from = addr_(msgs[i].getFrom());
-    if (from !== me && !isBounceSender_(from)) return true;
+    if (from !== me && !isBounceSender_(from) && !isAuto_(msgs[i])) return true;
+  }
+  return false;
+}
+
+// Has this person written to us at all lately (in any thread, not counting automatic replies)?
+function hasReplied_(to) {
+  var threads = GmailApp.search('from:' + to + ' newer_than:60d', 0, 10);
+  for (var i = 0; i < threads.length; i++) {
+    var msgs = threads[i].getMessages();
+    for (var j = 0; j < msgs.length; j++) {
+      if (addr_(msgs[j].getFrom()) === to && !isAuto_(msgs[j])) return true;
+    }
   }
   return false;
 }
@@ -138,23 +151,17 @@ function send_(req) {
   if (body.indexOf(NOTICE) < 0) return { ok: false, error: 'the marketing notice is missing' };
   if (counter_().n >= DAILY_MAX) return { ok: false, error: 'daily limit reached' };
 
-  var options = { name: SENDER_NAME };
-  var thread = null;
-  var message = null;
+  // A follow-up never goes to someone who has already written back, in this thread or any other.
   if (req.followUp) {
-    thread = findThread_(to, subject, req.threadId);
-    if (thread) {
-      if (hasOtherSender_(thread, me)) return { ok: false, replied: true };
-      thread.reply(body, options);
-      var msgs = thread.getMessages();
-      message = msgs[msgs.length - 1];
-    }
+    var earlier = findThread_(to, subject, req.threadId);
+    if ((earlier && hasOtherSender_(earlier, me)) || hasReplied_(to)) return { ok: false, replied: true };
   }
-  if (!message) {
-    var subj = req.followUp ? 'Re: ' + subject.replace(/^(re:\s*)+/i, '') : subject;
-    message = GmailApp.createDraft(to, subj, body, options).send();
-    thread = message.getThread();
-  }
+  // Every email is a new message with its own subject. (Google's reply functions answer the sender of the
+  // last message, which for a follow-up is the founder himself: tested 2026-11-23, they landed in his own
+  // inbox.) A follow-up gets an honest "Following up:" subject, never a fake "Re:".
+  var subj = req.followUp ? 'Following up: ' + subject.replace(/^((re|following up):\s*)+/i, '') : subject;
+  var message = GmailApp.createDraft(to, subj, body, { name: SENDER_NAME }).send();
+  var thread = message.getThread();
   label_(thread);
   return { ok: true, thread_id: thread.getId(), message_id: message.getId(), sent_today: bump_(), to: message.getTo() };
 }
