@@ -1,0 +1,8 @@
+{
+  "name": "prospector-overture-import",
+  "private": true,
+  "description": "PC-only tool: DuckDB for the Overture Maps places import (scripts/overture-local.mjs). Not part of the Worker or the site build.",
+  "dependencies": {
+    "@duckdb/node-api": "1.5.6-r.2"
+  }
+}

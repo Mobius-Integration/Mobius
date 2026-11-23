@@ -50,8 +50,8 @@ const SKIP_DOMAINS = [
   "macdillfss.com", // MacDill Air Force Base services
 ];
 // National and regional chains we don't pitch.
-const CHAIN_NAME = /^(publix|walgreens|cvs|walmart|starbucks|mcdonald|subway|dunkin|7[- ]?eleven|wawa|adventhealth|baycare|hca\b|tampa general hospital)/i;
-const TARGET_STORE = /^target(\s*[#(\d-].*)?$/i;
+export const CHAIN_NAME = /^(publix|walgreens|cvs|walmart|starbucks|mcdonald|subway|dunkin|7[- ]?eleven|wawa|adventhealth|baycare|hca\b|tampa general hospital)/i;
+export const TARGET_STORE = /^target(\s*[#(\d-].*)?$/i;
 
 const SALON_SHOPS = new Set(["hairdresser", "beauty", "massage", "tattoo"]);
 const NOT_RETAIL = new Set(["hairdresser", "beauty", "massage", "tattoo", "vacant", "yes", "no", ""]);
@@ -85,7 +85,7 @@ export function normalizeSite(raw) {
   return { domain, website: "https://" + (hash < 0 ? rest : rest.slice(0, hash)) };
 }
 
-function skippedDomain(domain) {
+export function skippedDomain(domain) {
   for (const d of SKIP_DOMAINS) if (domain === d || domain.endsWith("." + d)) return true;
   return false;
 }

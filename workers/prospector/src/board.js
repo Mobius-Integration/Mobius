@@ -15,7 +15,7 @@
 
 import { checkBoard, checkDevice, deviceCookie, boardPath, boardUrl, homeUrl, homeText } from "./tokens.js";
 import { markProspect, statusLabel, ACTIONS } from "./marks.js";
-import { esc, button, formText, CATEGORY_LABELS, findingsFor, prepareItems, recordDigest } from "./digest.js";
+import { esc, button, formText, typeLabel, PARTNER_NOTE, findingsFor, prepareItems, recordDigest } from "./digest.js";
 import { composeLinks, platformOf, writeLink } from "./compose.js";
 import { hostOf } from "./contacts.js";
 import { sendToFounder } from "./mail.js";
@@ -90,7 +90,7 @@ export async function handleOps(request, env) {
 // ---------------------------------------------------------------------------
 // Data
 
-const COLUMNS = `p.id, p.domain, p.website, p.name, p.category, p.city, p.phone, p.score, p.status, p.updated_at,
+const COLUMNS = `p.id, p.domain, p.website, p.name, p.category, p.kind, p.track, p.city, p.phone, p.score, p.status, p.updated_at,
        o.digest_date, o.draft_subject, o.draft_body, o.contact_email, o.contact_url, o.contact_form, o.sent_at, o.sent_via, o.replied_at,
        c.issues_json, c.final_url
   FROM prospects p
@@ -107,7 +107,8 @@ async function loadBoard(env) {
          (SELECT COUNT(*) FROM outreach WHERE founder_status = 'sent' AND COALESCE(sent_at, updated_at) >= datetime('now','-7 days')) AS sent7,
          (SELECT COUNT(*) FROM outreach WHERE founder_status = 'sent') AS sent_all,
          (SELECT COUNT(*) FROM outreach WHERE replied_at IS NOT NULL) AS replies,
-         (SELECT COUNT(*) FROM prospects WHERE status = 'checked' AND sightings < 3 AND score >= ? AND domain NOT IN (SELECT value FROM suppression)) AS pool`,
+         (SELECT COUNT(*) FROM prospects WHERE status = 'checked' AND track = 'client' AND sightings < 3 AND score >= ? AND domain NOT IN (SELECT value FROM suppression)) AS pool,
+         (SELECT COUNT(*) FROM prospects WHERE status = 'checked' AND track = 'partner' AND sightings < 3 AND domain NOT IN (SELECT value FROM suppression)) AS partners`,
     ).bind(num(env.MIN_SCORE, 30, 0, 100)),
   ]);
   return { ready: ready.results || [], done: done.results || [], stats: (stats.results && stats.results[0]) || {} };
@@ -130,14 +131,16 @@ function contactLine(r) {
 
 function card(r, env, platform) {
   const site = r.final_url || r.website;
-  const issues = findingsFor(r).slice(0, 4);
+  const partner = r.track === "partner";
+  const issues = partner ? [] : findingsFor(r).slice(0, 4);
   const links = composeLinks(env, { to: r.contact_email, subject: r.draft_subject, body: r.draft_body });
   const write = writeLink(links, platform);
   const tel = r.phone ? String(r.phone).replace(/[^\d+]/g, "") : "";
   return `<article class="card" id="p${r.id}" data-id="${r.id}" data-status="${esc(r.status)}" data-replied="${r.replied_at ? 1 : 0}">
-<div class="card-head"><h3>${esc(r.name)}</h3><span class="chip">Score ${esc(r.score)}</span></div>
-<p class="meta">${esc(CATEGORY_LABELS[r.category] || r.category)}${r.city ? ` · ${esc(r.city)}` : ""}${tel ? ` · <a href="tel:${esc(tel)}">${esc(r.phone)}</a>` : ""}</p>
+<div class="card-head"><h3>${esc(r.name)}</h3><span class="chip${partner ? " partner" : ""}">${partner ? "Referral partner" : `Score ${esc(r.score)}`}</span></div>
+<p class="meta">${esc(typeLabel(r))}${r.city ? ` · ${esc(r.city)}` : ""}${tel ? ` · <a href="tel:${esc(tel)}">${esc(r.phone)}</a>` : ""}</p>
 <p class="meta"><a href="${esc(site)}" target="_blank" rel="noopener noreferrer">${esc(hostOf(site) || r.domain)}</a></p>
+${partner ? `<p class="pnote">${esc(PARTNER_NOTE)}</p>` : ""}
 ${issues.length ? `<ul class="findings">${issues.map((i) => `<li>${esc(i)}</li>`).join("")}</ul>` : ""}
 <p class="contact">${contactLine(r)}</p>
 <details class="draft"><summary>Draft: ${esc(r.draft_subject)}</summary><pre>${esc(r.draft_body)}</pre><button type="button" class="btn small" data-copy="${esc(formText(r.draft_body))}">Copy message</button></details>
@@ -157,7 +160,7 @@ async function boardPage(env, base, platform) {
 <header class="top">
 <p class="eyebrow">Mobius Integration</p>
 <h1>Prospect board</h1>
-<p class="stats"><strong>${ready.length}</strong> ready · <strong>${stats.sent7 || 0}</strong> sent this week · <strong>${stats.replies || 0}</strong> ${stats.replies === 1 ? "reply" : "replies"} from ${plural(stats.sent_all || 0, "email", "emails")} · ${plural(stats.pool || 0, "more checked prospect", "more checked prospects")} in the queue</p>
+<p class="stats"><strong>${ready.length}</strong> ready · <strong>${stats.sent7 || 0}</strong> sent this week · <strong>${stats.replies || 0}</strong> ${stats.replies === 1 ? "reply" : "replies"} from ${plural(stats.sent_all || 0, "email", "emails")} · ${plural(stats.pool || 0, "more checked prospect", "more checked prospects")} and ${plural(stats.partners || 0, "partner", "partners")} in the queue</p>
 <button type="button" class="btn primary" id="more" data-size="${size}">Get ${size} more</button>
 </header>
 <section aria-labelledby="h-ready"><h2 id="h-ready">Ready to send</h2>
@@ -168,6 +171,7 @@ ${done.length ? `<section aria-labelledby="h-done"><h2 id="h-done">Done in the l
 <li><strong>Write in Gmail</strong> opens the drafted email in the Gmail app on your phone (Gmail on the web on a computer), addressed to them when their site lists an email. Read it, change anything you like, and send it from your Mobius account. A hidden copy goes to ${ops}, and this board marks it sent by itself.</li>
 <li>Each draft already ends with your signature (name, title, phone, website) and the one-line notice the law requires in marketing emails. Gmail never adds its own signature to an email that opens already written, so nothing appears twice.</li>
 <li>Using their contact form? Tap <strong>Copy message</strong> (it leaves out the email-only notice), paste it into the form, then tap <strong>Sent ✓</strong>.</li>
+<li><strong>Referral partner</strong> cards ask accountants, insurance agents, print shops and business lawyers to send their clients your way. Lawyers are never paid for referrals (Bar rules); the client they send gets the first month free instead. Everyone else gets a flat thank-you once that client pays a second month.</li>
 <li><strong>They replied</strong> keeps the reply count honest. <strong>Never contact</strong> puts them on the do-not-contact list; use it whenever someone asks you to stop.</li>
 <li>Every tap can be undone.</li>
 <li><strong>Keep it one tap away:</strong> bookmark this page or add it to your Home Screen. On this phone or computer it keeps opening the board, and so does <a href="${esc(homeUrl(env))}">${esc(homeText(env))}</a>. On any other device, that address emails you a fresh link.</li>
@@ -312,6 +316,8 @@ a{color:var(--brand)}
 .card h3{font-size:18px;line-height:1.3;margin:0;overflow-wrap:anywhere}
 .chip{flex:none;background:var(--chip);color:var(--chip-ink);border-radius:999px;padding:2px 10px;font-size:13px;font-weight:600}
 .meta{margin:4px 0 0;color:var(--muted);font-size:14px;overflow-wrap:anywhere}
+.chip.partner{background:var(--brand);color:var(--on-brand)}
+.pnote{margin:10px 0 0;color:var(--muted)}
 .findings{margin:10px 0 0;padding-left:20px}
 .findings li{margin:2px 0}
 .contact{margin:10px 0 0;overflow-wrap:anywhere}

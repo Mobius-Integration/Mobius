@@ -58,6 +58,8 @@ CHECKS_PER_RUN = "10"
 # Each weekday: up to DIGEST_SIZE new picks, but never more than READY_CAP waiting on the board.
 DIGEST_SIZE = "5"
 READY_CAP = "15"
+# Referral partners per batch (weekday digest or Get more); the other places go to client prospects. "0" stops partners.
+PARTNER_SLOTS = "1"
 # Only prospects with at least one real finding (a score of 30 means base + one 15-point finding + phone).
 MIN_SCORE = "30"
 # The honest founding-client paragraph in every draft defaults to DEFAULT_FOUNDING_LINE in src/digest.js.

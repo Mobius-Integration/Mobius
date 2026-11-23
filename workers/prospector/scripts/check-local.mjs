@@ -54,6 +54,8 @@ console.log(`${total} prospects queued; checking ${PER_BATCH} at a time from thi
 const base = readFileSync(join(DIR, "wrangler.toml"), "utf8");
 const config = base
   .replace(/^\[triggers\][\s\S]*?^crons = .*$/m, "")
+  // routes is a multi-line array since 2026-11-21: drop all of it (a dev run serves no routes).
+  .replace(/^routes = \[[\s\S]*?^\]\s*$/m, "")
   .replace(/^routes = .*$/m, "")
   .replace('migrations_dir = "migrations"', 'migrations_dir = "migrations"\nremote = true')
   .replace(/^CHECKS_PER_RUN = .*$/m, `CHECKS_PER_RUN = "${PER_BATCH}"\nPC_CHECK = "true"`);

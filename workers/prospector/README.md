@@ -93,6 +93,21 @@ node scripts/contacts-local.mjs           # fill in contact routes the cloud cou
 
 Google Workspace handles mail for mobiusintegration.com itself (since 2026-11-20), so Cloudflare Email Routing for this Worker runs on the subdomain `in.mobiusintegration.com`: an Email Routing rule sends `ops@in.mobiusintegration.com` (`OPS_ADDRESS`) to the `mobius-prospector` Worker, digests come from `prospects@in.mobiusintegration.com`, and `FOUNDER_TO` must be a verified destination address for `send_email`. The founder may write from `FOUNDER_TO` or `FOUNDER_FROM` (his Workspace address).
 
+## Law firms and referral partners (since 2026-11-23)
+
+Every prospect has a `track` (migration 0004; logic in `src/partners.js`):
+
+- **client**: we pitch our own services (the AI drafts above). Law firms whose clients are mostly people (personal injury, family, criminal, estate, immigration and so on) are clients too. Their drafts get one code-inserted line before the founding paragraph offering a confidentiality agreement (`LAW_LINE`), and the AI is told not to comment on their cases, clients or the law. Forbidden-word checks skip the firm's own name, so "Tampa Legal Group" doesn't trip on "legal".
+- **partner**: businesses whose clients are businesses: business, real estate, tax and IP lawyers; accountants, bookkeepers, payroll and tax preparers; independent insurance agencies; print and sign shops. Their drafts are fixed templates (`partnerDraft()`, model `partner-template`): no site findings, no AI, no founding paragraph, same signature and compliance line. Each batch (weekday digest or Get more) holds up to `PARTNER_SLOTS` partners (default 1), lawyers first, then accountants, then the rest; their site only has to load.
+
+**Rewards (the founder's decision, 2026-11-23; public terms at `/partners/` on the site):** lawyers are never paid for referring a client. Florida Bar Ethics Opinion 02-8 and the opinions it cites have a lawyer who takes a referral payment tell the client in writing and pass the benefit on, and other states treat it as a conflict consent can't cure, worst when payments repeat as the client buys more. So a business a lawyer refers gets its first month free (or the Fix Plan at no charge), and referrals with lawyers run both ways with no fees. Other partners get a flat $297 once the client they sent has paid its second month. First emails say "a flat thank-you" and never the amount.
+
+`outreach.angle` records which draft went out (`client`, `law-client`, `partner-lawyer`, `partner-accounting`, `partner-insurance`, `partner-print`), for reply rates by angle.
+
+## Overture import (PC only)
+
+`scripts/overture-local.mjs` reads Overture Maps places (open data, about 25 MB for the box) with DuckDB, installed separately in `scripts/overture/` (`npm install` there once; it is not part of the Worker or the site build). It imports law firms and partner kinds only, skipping closed and low-confidence places, brands, captive agents of national insurers, franchise tax offices, social and listing sites, and any website shared by 3 or more places. It never reads Overture's email addresses. New rows land as `new`, so run `node scripts/check-local.mjs` next. A dry run is the default; `--apply` writes. First import 2026-11-23 (release 2026-11-18.0): 2,336 law-firm clients and 2,694 partners.
+
 ## Run locally
 
 ```
@@ -115,4 +130,4 @@ A test email needs `Message-ID` and `Date` headers. Local `send_email` writes th
 
 ## Data and attribution
 
-Business data (c) OpenStreetMap contributors (openstreetmap.org/copyright), used under the ODbL. Email addresses in the database are only those the businesses publish on their own websites, for prospects that were in a digest, plus addresses the founder emailed or explicitly STOPped.
+Business data (c) OpenStreetMap contributors (openstreetmap.org/copyright), used under the ODbL. Rows with `source = 'overture'` come from Overture Maps Foundation places data (overturemaps.org), released under CDLA Permissive 2.0. Email addresses in the database are only those the businesses publish on their own websites, for prospects that were in a digest, plus addresses the founder emailed or explicitly STOPped.
