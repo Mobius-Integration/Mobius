@@ -14,13 +14,14 @@
 //   POST /ops/b/<exp>/<sig>/more     draft DIGEST_SIZE more prospects onto the board (no email)
 
 import { checkBoard, checkDevice, deviceCookie, boardPath, boardUrl, homeUrl, homeText } from "./tokens.js";
-import { markProspect, statusLabel, ACTIONS } from "./marks.js";
+import { markProspect, statusLabel, ACTIONS, whenLabel } from "./marks.js";
 import { esc, button, formText, typeLabel, PARTNER_NOTE, findingsFor, prepareItems, recordDigest } from "./digest.js";
 import { composeLinks, platformOf, writeLink } from "./compose.js";
 import { hostOf } from "./contacts.js";
 import { sendToFounder } from "./mail.js";
+import { autoSummary, fillQueue, autoState, metaSet, pauseAuto } from "./outbox.js";
 
-const ROUTE = /^\/ops\/b\/(\d{9,11})\/([A-Za-z0-9_-]{43})(?:\/(mark|more))?\/?$/;
+const ROUTE = /^\/ops\/b\/(\d{9,11})\/([A-Za-z0-9_-]{43})(?:\/(mark|more|auto))?\/?$/;
 const num = (v, dflt, min, max) => Math.min(max, Math.max(min, Number.isFinite(parseInt(v, 10)) ? parseInt(v, 10) : dflt));
 const isGet = (request) => request.method === "GET" || request.method === "HEAD";
 // The page's own script sends JSON. A form on another site can't (that would need a CORS preflight,
@@ -76,11 +77,45 @@ export async function handleOps(request, env) {
     return json(r.ok ? 200 : 409, r);
   }
 
+  if (sub === "auto") {
+    let body;
+    try { body = await request.json(); } catch { return json(400, { ok: false, error: "Bad request." }); }
+    const action = String((body && body.action) || "");
+    try {
+      if (action === "pause") {
+        await pauseAuto(env, "Paused from your board.");
+        return json(200, { ok: true, message: "Auto-send is paused. Nothing more goes out until you resume it." });
+      }
+      if (action === "resume") {
+        await metaSet(env.DB, "auto_paused", null);
+        await metaSet(env.DB, "auto_pause_reason", null);
+        return json(200, { ok: true, message: "Auto-send is on." });
+      }
+      if (action === "fill") {
+        const r = await fillQueue(env, { maxScan: 24 });
+        const message = r.queued
+          ? `${r.queued} more queued.`
+          : r.reason === "full" ? "The queue is already full for the next sending day. More goes out after that."
+          : r.reason === "paused" ? "Auto-send is paused. Resume it first."
+          : r.reason === "not connected" ? "Auto-send isn't connected to your mailbox yet."
+          : "No more businesses with an email address are ready right now.";
+        return json(200, { ok: true, queued: r.queued, message });
+      }
+    } catch (e) {
+      console.error("prospector: board auto failed:", e && e.message);
+      return json(500, { ok: false, error: "That didn't work. Try again in a minute." });
+    }
+    return json(400, { ok: false, error: "Bad request." });
+  }
+
   // sub === "more"
   try {
-    const items = await prepareItems(env, num(env.DIGEST_SIZE, 5, 1, 10));
+    // With auto-send on, Get more tops up the automatic queue, and drafts cards only for businesses with no email.
+    const auto = await autoState(env);
+    const queued = auto.running ? (await fillQueue(env, { maxScan: 24 })).queued : 0;
+    const items = await prepareItems(env, num(env.DIGEST_SIZE, 5, 1, 10), { noEmailOnly: auto.running });
     if (items.length) await recordDigest(env.DB, items, "board");
-    return json(200, { ok: true, added: items.length });
+    return json(200, { ok: true, added: items.length + queued, queued });
   } catch (e) {
     console.error("prospector: board more failed:", e && e.message);
     return json(500, { ok: false, error: "Couldn't draft more right now. Try again in a minute." });
@@ -92,6 +127,9 @@ export async function handleOps(request, env) {
 
 const COLUMNS = `p.id, p.domain, p.website, p.name, p.category, p.kind, p.track, p.city, p.phone, p.score, p.status, p.updated_at,
        o.digest_date, o.draft_subject, o.draft_body, o.contact_email, o.contact_url, o.contact_form, o.sent_at, o.sent_via, o.replied_at,
+       o.auto_state, o.send_at, o.hold_reason, o.bounced_at, o.no_followups, o.sent_to,
+       (SELECT COUNT(*) FROM touches t WHERE t.outreach_id = o.id AND t.state = 'sent') AS fu_sent,
+       (SELECT MIN(due_at) FROM touches t WHERE t.outreach_id = o.id AND t.state = 'queued') AS fu_due,
        c.issues_json, c.final_url
   FROM prospects p
   JOIN outreach o ON o.id = (SELECT MAX(id) FROM outreach WHERE prospect_id = p.id)
@@ -136,7 +174,8 @@ function card(r, env, platform) {
   const links = composeLinks(env, { to: r.contact_email, subject: r.draft_subject, body: r.draft_body });
   const write = writeLink(links, platform);
   const tel = r.phone ? String(r.phone).replace(/[^\d+]/g, "") : "";
-  return `<article class="card" id="p${r.id}" data-id="${r.id}" data-status="${esc(r.status)}" data-replied="${r.replied_at ? 1 : 0}">
+  const auto = r.status === "digested" && (r.auto_state === "queued" || r.auto_state === "held") ? r.auto_state : "";
+  return `<article class="card" id="p${r.id}" data-id="${r.id}" data-status="${esc(r.status)}" data-replied="${r.replied_at ? 1 : 0}" data-nofollow="${r.no_followups ? 1 : 0}"${auto ? ` data-auto="${auto}"` : ""}>
 <div class="card-head"><h3>${esc(r.name)}</h3><span class="chip${partner ? " partner" : ""}">${partner ? "Referral partner" : `Score ${esc(r.score)}`}</span></div>
 <p class="meta">${esc(typeLabel(r))}${r.city ? ` · ${esc(r.city)}` : ""}${tel ? ` · <a href="tel:${esc(tel)}">${esc(r.phone)}</a>` : ""}</p>
 <p class="meta"><a href="${esc(site)}" target="_blank" rel="noopener noreferrer">${esc(hostOf(site) || r.domain)}</a></p>
@@ -146,28 +185,59 @@ ${issues.length ? `<ul class="findings">${issues.map((i) => `<li>${esc(i)}</li>`
 <details class="draft"><summary>Draft: ${esc(r.draft_subject)}</summary><pre>${esc(r.draft_body)}</pre><button type="button" class="btn small" data-copy="${esc(formText(r.draft_body))}">Copy message</button></details>
 <div class="row when-ready"><a class="btn primary" href="${esc(write.href)}"${write.newTab ? ' target="_blank" rel="noopener noreferrer"' : ""}>Write in Gmail</a><a class="btn" href="${esc(links.mailto)}">Other mail app</a></div>
 <div class="row when-ready"><button type="button" class="btn" data-act="sent">Sent ✓</button><button type="button" class="btn" data-act="skip">Skip</button><button type="button" class="btn danger" data-act="never">Never contact</button></div>
-<div class="row when-sent"><button type="button" class="btn" data-act="replied">They replied</button><button type="button" class="btn" data-act="unreplied">Not a reply</button><button type="button" class="btn danger" data-act="never">Never contact</button><button type="button" class="btn" data-act="undo">Undo</button></div>
+<div class="row when-auto"><button type="button" class="btn" data-act="cancel">Cancel this send</button><button type="button" class="btn danger" data-act="never">Never contact</button></div>
+<div class="row when-sent"><button type="button" class="btn" data-act="replied">They replied</button><button type="button" class="btn" data-act="unreplied">Not a reply</button><button type="button" class="btn" data-act="nofollow">Stop follow-ups</button><button type="button" class="btn" data-act="follow">Resume follow-ups</button><button type="button" class="btn danger" data-act="never">Never contact</button><button type="button" class="btn" data-act="undo">Undo</button></div>
 <div class="row when-closed"><button type="button" class="btn" data-act="undo">Undo</button></div>
 <p class="state">${esc(statusLabel(r.status, r))}</p>
 </article>`;
 }
 
+function autoPanel(s) {
+  if (!s.connected) {
+    return `<section class="panel" aria-labelledby="h-auto"><h2 id="h-auto">Auto-send <span class="pill off">Not connected yet</span></h2>
+<p class="muted">Everything is built: the queue, the follow-ups, the safety checks. One approval in your Google account connects your mailbox, and then emails go out on their own. Until then this board works the way it always has.</p></section>`;
+  }
+  const day = new Date(`${s.ymd}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric", timeZone: "UTC" });
+  const bits = [
+    `<strong>${s.sent}</strong> of ${s.cap} sent ${s.isToday ? "today" : `(${esc(day)})`}`,
+    `<strong>${s.queued}</strong> queued${s.next ? `, next ${esc(whenLabel(s.next))}` : ""}`,
+    `<strong>${s.followUps}</strong> ${s.followUps === 1 ? "follow-up" : "follow-ups"} waiting`,
+  ];
+  if (s.held) bits.push(`<strong>${s.held}</strong> held for you`);
+  return `<section class="panel" aria-labelledby="h-auto"><h2 id="h-auto">Auto-send <span class="pill ${s.paused ? "off" : "on"}">${s.paused ? "Paused" : "On"}</span></h2>
+<p class="stats">${bits.join(" · ")}</p>
+${s.paused && s.reason ? `<p class="note">${esc(s.reason)}</p>` : ""}
+<div class="row">${s.paused
+    ? `<button type="button" class="btn primary" data-auto-act="resume">Resume auto-send</button>`
+    : `<button type="button" class="btn" data-auto-act="pause">Pause auto-send</button><button type="button" class="btn" data-auto-act="fill">Top up the queue</button>`}</div>
+<p class="muted">Weekdays 9:30 AM to 3:30 PM Eastern, from your mario@ mailbox. Today's limit is ${s.cap} (it rises slowly while the mailbox builds a sending history).</p></section>`;
+}
+
 async function boardPage(env, base, platform) {
-  const { ready, done, stats } = await loadBoard(env);
+  const [{ ready: readyAll, done, stats }, sum] = await Promise.all([loadBoard(env), autoSummary(env)]);
+  const queued = readyAll.filter((r) => r.auto_state === "queued").sort((a, b) => String(a.send_at).localeCompare(String(b.send_at)));
+  const ready = readyAll.filter((r) => r.auto_state !== "queued");
   const size = num(env.DIGEST_SIZE, 5, 1, 10);
   const ops = esc(env.OPS_ADDRESS || "ops@mobiusintegration.com");
   const body = `<main class="wrap">
 <header class="top">
 <p class="eyebrow">Mobius Integration</p>
 <h1>Prospect board</h1>
-<p class="stats"><strong>${ready.length}</strong> ready · <strong>${stats.sent7 || 0}</strong> sent this week · <strong>${stats.replies || 0}</strong> ${stats.replies === 1 ? "reply" : "replies"} from ${plural(stats.sent_all || 0, "email", "emails")} · ${plural(stats.pool || 0, "more checked prospect", "more checked prospects")} and ${plural(stats.partners || 0, "partner", "partners")} in the queue</p>
+<p class="stats"><strong>${queued.length}</strong> sending automatically · <strong>${ready.length}</strong> need you · <strong>${stats.sent7 || 0}</strong> sent this week · <strong>${stats.replies || 0}</strong> ${stats.replies === 1 ? "reply" : "replies"} from ${plural(stats.sent_all || 0, "email", "emails")} · ${plural(stats.pool || 0, "more checked prospect", "more checked prospects")} and ${plural(stats.partners || 0, "partner", "partners")} in the queue</p>
 <button type="button" class="btn primary" id="more" data-size="${size}">Get ${size} more</button>
 </header>
-<section aria-labelledby="h-ready"><h2 id="h-ready">Ready to send</h2>
-${ready.length ? ready.map((r) => card(r, env, platform)).join("\n") : `<p class="empty">Nothing waiting. Tap Get ${size} more, or wait for tomorrow morning's email.</p>`}
+${autoPanel(sum)}
+${queued.length ? `<section aria-labelledby="h-queued"><h2 id="h-queued">Sending automatically</h2>
+<p class="muted">These go out by themselves at the time shown, after a fresh look at their site. Tap Cancel this send to take one back.</p>
+${queued.map((r) => card(r, env, platform)).join("\n")}
+</section>` : ""}
+<section aria-labelledby="h-ready"><h2 id="h-ready">Need you</h2>
+${ready.length ? ready.map((r) => card(r, env, platform)).join("\n") : `<p class="empty">Nothing needs you right now. Tap Get ${size} more, or wait for tomorrow morning's email.</p>`}
 </section>
 ${done.length ? `<section aria-labelledby="h-done"><h2 id="h-done">Done in the last 30 days</h2>\n${done.map((r) => card(r, env, platform)).join("\n")}\n</section>` : ""}
 <footer class="how"><h2>How this works</h2><ul>
+<li><strong>Auto-send</strong> emails every business that has an email address on its own website: first emails weekdays between 9:30 AM and 3:30 PM Eastern, from your mario@ mailbox, a few a day at first. Before each one it looks at their site again, and if a finding is gone or the site doesn't load, it holds the email for you instead. A nudge follows on day 4 and a last note a week later, in the same thread. A reply, a bounce or a STOP ends everything for that business, and every email is in your Gmail Sent folder.</li>
+<li><strong>Need you</strong> holds the businesses auto-send can't email: no address on their site (use their contact form or call them), or an email it held back.</li>
 <li><strong>Write in Gmail</strong> opens the drafted email in the Gmail app on your phone (Gmail on the web on a computer), addressed to them when their site lists an email. Read it, change anything you like, and send it from your Mobius account. A hidden copy goes to ${ops}, and this board marks it sent by itself.</li>
 <li>Each draft already ends with your signature (name, title, phone, website) and the one-line notice the law requires in marketing emails. Gmail never adds its own signature to an email that opens already written, so nothing appears twice.</li>
 <li>Using their contact form? Tap <strong>Copy message</strong> (it leaves out the email-only notice), paste it into the form, then tap <strong>Sent ✓</strong>.</li>
@@ -178,7 +248,7 @@ ${done.length ? `<section aria-labelledby="h-done"><h2 id="h-done">Done in the l
 </ul></footer>
 </main>
 <div id="toast" class="toast" role="status" aria-live="polite"><span id="toast-text"></span><button type="button" id="toast-undo" class="btn small" hidden>Undo</button></div>`;
-  return shell({ title: `Prospect board (${ready.length} ready)`, body, script: SCRIPT, base });
+  return shell({ title: `Prospect board (${ready.length} need you)`, body, script: SCRIPT, base });
 }
 
 // ---------------------------------------------------------------------------
@@ -331,6 +401,18 @@ a{color:var(--brand)}
 .btn.danger{color:var(--danger)}
 .btn.small{min-height:36px;padding:4px 12px;font-size:14px}
 .btn:disabled{opacity:.6;cursor:progress}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin:0 0 14px}
+.panel h2{margin:0 0 8px}
+.panel .stats{margin:0 0 4px;color:var(--ink)}
+.pill{display:inline-block;border-radius:999px;padding:1px 10px;font-size:13px;font-weight:700;vertical-align:middle;margin-left:6px;border:1px solid}
+.pill.on{color:var(--ok);border-color:var(--ok)}
+.pill.off{color:var(--danger);border-color:var(--danger)}
+.when-auto{display:none}
+.card[data-auto="queued"] .when-ready{display:none}
+.card[data-auto="queued"] .when-auto{display:flex}
+.card[data-auto] .state{display:block}
+.card[data-auto="queued"]{border-left-color:var(--focus)}
+.card[data-nofollow="1"] [data-act="nofollow"],.card[data-nofollow="0"] [data-act="follow"],.card[data-replied="1"] [data-act="nofollow"],.card[data-replied="1"] [data-act="follow"]{display:none}
 :focus-visible{outline:3px solid var(--focus);outline-offset:2px}
 .when-sent,.when-closed{display:none}
 .card:not([data-status="digested"]) .when-ready{display:none}
@@ -384,7 +466,7 @@ const SCRIPT = `
   var toastText = document.getElementById("toast-text");
   var toastUndo = document.getElementById("toast-undo");
   var undoFn = null, timer = 0;
-  var INVERSE = { sent: "undo", skip: "undo", never: "undo", replied: "unreplied", unreplied: "replied" };
+  var INVERSE = { sent: "undo", skip: "undo", never: "undo", replied: "unreplied", unreplied: "replied", nofollow: "follow", follow: "nofollow" };
   function say(text, undo) {
     toastText.textContent = text;
     undoFn = undo || null;
@@ -407,19 +489,40 @@ const SCRIPT = `
       if (card) {
         card.setAttribute("data-status", d.status);
         card.setAttribute("data-replied", d.replied ? "1" : "0");
+        card.setAttribute("data-nofollow", d.nofollow ? "1" : "0");
+        if (d.status === "digested" && (d.auto === "queued" || d.auto === "held")) card.setAttribute("data-auto", d.auto);
+        else card.removeAttribute("data-auto");
         card.querySelector(".state").textContent = d.label;
       }
       var inverse = INVERSE[action];
       say(d.name + ": " + d.label, inverse ? function () { act(id, inverse, "board"); } : null);
+      // A cancelled automatic send moves down to Need you, where Write in Gmail is waiting.
+      if (action === "cancel") setTimeout(function () { location.reload(); }, 1200);
     }, function () {
       say("That didn't save. Check your connection and try again.");
     }).then(function () {
       buttons.forEach(function (b) { b.disabled = false; });
     });
   }
+  function autoAct(b) {
+    var action = b.getAttribute("data-auto-act");
+    var label = b.textContent;
+    b.disabled = true;
+    if (action === "fill") b.textContent = "Working, up to a minute...";
+    post("/auto", { action: action }).then(function (d) {
+      if (d.httpOk && d.ok && !(action === "fill" && !d.queued)) { location.reload(); return; }
+      say(d.message || d.error || "That didn't work. Try again in a minute.");
+      b.disabled = false; b.textContent = label;
+    }, function () {
+      say("That didn't work. Check your connection and try again.");
+      b.disabled = false; b.textContent = label;
+    });
+  }
   document.addEventListener("click", function (e) {
     var t = e.target instanceof Element ? e.target : null;
     if (!t) return;
+    var ab = t.closest("[data-auto-act]");
+    if (ab) { autoAct(ab); return; }
     var b = t.closest("[data-act]");
     if (b) {
       var c = b.closest("[data-id]");
@@ -443,7 +546,7 @@ const SCRIPT = `
     more.textContent = "Finding and drafting, about 30 seconds...";
     post("/more", {}).then(function (d) {
       if (d.httpOk && d.ok && d.added) { location.reload(); return; }
-      say(d.error || (d.ok ? "No more checked prospects are waiting. The next map harvest adds more." : "That didn't work. Try again in a minute."));
+      say(d.error || (d.ok ? "Nothing new to add right now: today's automatic queue is full, or every business with an email already has its turn." : "That didn't work. Try again in a minute."));
       more.disabled = false; more.textContent = label;
     }, function () {
       say("That didn't work. Try again in a minute.");

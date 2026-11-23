@@ -1,11 +1,15 @@
 // mobius-prospector: finds local Tampa Bay businesses with websites, checks their home pages
-// (read-only), and emails the FOUNDER a digest of drafted outreach with tap buttons. Nothing is ever
-// sent to a prospect: the only mail this Worker sends goes through sendToFounder() in src/mail.js.
+// (read-only), drafts outreach, and runs the founder's prospect board. This Worker's own mail only ever
+// goes to the founder (sendToFounder() in src/mail.js). Emails to prospects (first emails and follow-ups,
+// since 2026-11-23) are sent by the agent, a script inside the founder's own mailbox, never by this
+// Worker: see src/agent.js and src/outbox.js.
 //
 // Handlers:
 //   scheduled "0 11 * * MON"      plan a harvest (local runs on the founder's PC only, see src/overpass.js)
-//   scheduled "*/15 * * * *"      harvest ONE queued tile (PC only), or check a batch of new prospects
-//   scheduled "0 13 * * MON-FRI"  weekday digest: top up the board and email the new picks (src/digest.js)
+//   scheduled "*/15 * * * *"      harvest ONE queued tile (PC only), or check a batch of new prospects;
+//                                 in the cloud also the auto-sender tick (replies, follow-ups, one send)
+//   scheduled "0 13 * * MON-FRI"  weekday morning: queue the day's automatic emails and send the plan,
+//                                 plus manual picks for businesses with no email (src/digest.js)
 //   fetch  /ops, /ops/b/...       the founder's prospect board (src/board.js), served on mobiusintegration.com
 //   email  ops@                   the hidden copy of an email the founder sent (marks it sent), or reply
 //                                 commands: SENT / SKIP / STOP / MORE / STATUS / BOARD (src/commands.js)
@@ -14,6 +18,7 @@ import { checkSite, readCapped } from "../../shared/site-check.js";
 import { planHarvest, runHarvestTile, logRun } from "./overpass.js";
 import { scoreProspect } from "./score.js";
 import { buildDigest, recordDigest, countReady, esc } from "./digest.js";
+import { outboxTick, fillQueue, autoState, dailyPlanEmail } from "./outbox.js";
 import { readRawMessage, extractPlainText, parseCommands, decodeMimeHeader, addressesIn } from "./commands.js";
 import { handleOps } from "./board.js";
 import { markProspect, matchSentCopy } from "./marks.js";
@@ -44,7 +49,20 @@ export default {
       if (kind === "harvest") { if (harvestHere) await planHarvest(env); } // no Overpass query: queues the tiles
       else if (kind === "check") {
         // While tiles are queued (local harvest), this run harvests one tile and does no checks.
-        if (!(harvestHere && (await runHarvestTile(env)))) await checkBatch(env, onPc);
+        try {
+          if (!(harvestHere && (await runHarvestTile(env)))) await checkBatch(env, onPc);
+        } catch (e) {
+          console.error("prospector: check failed:", e && e.message);
+          try { await logRun(env.DB, "check", false, { error: e && e.message }); } catch {}
+        }
+        // The auto-sender runs in the cloud only (never during a local harvest or check run), and a
+        // failed check batch never stops it.
+        if (!onPc) {
+          try { await outboxTick(env); } catch (e) {
+            console.error("prospector: outbox failed:", e && e.message);
+            try { await logRun(env.DB, "outbox", false, { error: e && e.message }); } catch {}
+          }
+        }
       }
       else await dailyDigest(env);
     } catch (e) {
@@ -207,9 +225,9 @@ export async function checkBatch(env, onPc = false) {
 // ---------------------------------------------------------------------------
 // Digest
 
-export async function sendDigest(env, limit) {
+export async function sendDigest(env, limit, opts = {}) {
   if (!env.FOUNDER_TO) throw new Error("FOUNDER_TO secret is not set");
-  const digest = await buildDigest(env, limit);
+  const digest = await buildDigest(env, limit, opts);
   if (!digest) return { sent: 0 };
   await sendToFounder(env, digest.subject, digest.text, digest.html);
   await recordDigest(env.DB, digest.items, "digest");
@@ -219,7 +237,20 @@ export async function sendDigest(env, limit) {
 // Weekday mornings: top the board up to READY_CAP prospects waiting to be sent, and email the new ones.
 // A full board gets no new picks (they'd only pile up); on Mondays it gets a reminder instead.
 async function dailyDigest(env) {
-  const size = num(env.DIGEST_SIZE, 5, 1, 10);
+  // With auto-send on: queue the day's first emails and send the founder the plan. The board's manual
+  // picks are then only the businesses with no email address on their site.
+  const auto = await autoState(env);
+  if (auto.running) {
+    try {
+      const fill = await fillQueue(env);
+      await logRun(env.DB, "auto_fill", true, { queued: fill.queued, ymd: fill.ymd, cap: fill.cap, reason: fill.reason, scanned: fill.scanned });
+      await dailyPlanEmail(env, fill);
+    } catch (e) {
+      console.error("prospector: auto fill failed:", e && e.message);
+      try { await logRun(env.DB, "auto_fill", false, { error: e && e.message }); } catch {}
+    }
+  }
+  const size = auto.running ? Math.min(3, num(env.DIGEST_SIZE, 5, 1, 10)) : num(env.DIGEST_SIZE, 5, 1, 10);
   const waiting = await countReady(env.DB);
   const room = num(env.READY_CAP, 15, 1, 100) - waiting;
   if (room <= 0) {
@@ -227,8 +258,8 @@ async function dailyDigest(env) {
     await logRun(env.DB, "digest", true, { skipped: "board full", waiting });
     return;
   }
-  const r = await sendDigest(env, Math.min(size, room));
-  if (!r.sent) await logRun(env.DB, "digest", true, { skipped: "no checked prospects above MIN_SCORE", waiting });
+  const r = await sendDigest(env, Math.min(size, room), { noEmailOnly: auto.running });
+  if (!r.sent) await logRun(env.DB, "digest", true, { skipped: auto.running ? "no businesses without an email are waiting" : "no checked prospects above MIN_SCORE", waiting });
 }
 
 async function sendBoardReminder(env, waiting) {

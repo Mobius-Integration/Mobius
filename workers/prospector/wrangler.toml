@@ -60,6 +60,11 @@ DIGEST_SIZE = "5"
 READY_CAP = "15"
 # Referral partners per batch (weekday digest or Get more); the other places go to client prospects. "0" stops partners.
 PARTNER_SLOTS = "1"
+# Auto-send (src/outbox.js): emails of every kind per day, starting at AUTO_START_PER_DAY and adding 2
+# every 3 days after the first automatic send, up to AUTO_MAX_PER_DAY. It sends nothing until the agent
+# (scripts/agent/Code.gs, in the founder's mailbox) is connected, and the board's Pause button stops it.
+AUTO_START_PER_DAY = "8"
+AUTO_MAX_PER_DAY = "20"
 # Only prospects with at least one real finding (a score of 30 means base + one 15-point finding + phone).
 MIN_SCORE = "30"
 # The honest founding-client paragraph in every draft defaults to DEFAULT_FOUNDING_LINE in src/digest.js.

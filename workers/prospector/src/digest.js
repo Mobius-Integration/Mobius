@@ -27,28 +27,32 @@ export const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&a
 const num = (v, dflt, min, max) => Math.min(max, Math.max(min, Number.isFinite(parseInt(v, 10)) ? parseInt(v, 10) : dflt));
 
 // Words the outreach rules forbid. If the AI uses one, we discard its draft and use the template.
-const FORBIDDEN = /\b(ada|lawsuits?|sue[sd]?|suing|violations?|violat\w+|notice|complian\w+|demand letters?|deadlines?|penalt\w+|fines?|legal(ly)?|liab\w+)\b|\$\s?\d|\d\s?%|\bpercent\b|\bstatistics?\b/i;
+export const FORBIDDEN = /\b(ada|lawsuits?|sue[sd]?|suing|violations?|violat\w+|notice|complian\w+|demand letters?|deadlines?|penalt\w+|fines?|legal(ly)?|liab\w+)\b|\$\s?\d|\d\s?%|\bpercent\b|\bstatistics?\b/i;
 // Phrases from the SEO pitches that fill every small business's inbox (our own contact form got five
 // in its first week). A draft that sounds like them gets ignored, so it falls back to the template.
-const SPAM_TELLS = /\b(seo|rank(s|ing|ings)?|visibility|opportunit(y|ies)|proposals?|quotes?|price ?list|affordable|grow your|boost your|potential customers|i (recently )?(visited|came across|was going through|stumbled))\b/i;
+export const SPAM_TELLS = /\b(seo|rank(s|ing|ings)?|visibility|opportunit(y|ies)|proposals?|quotes?|price ?list|affordable|grow your|boost your|potential customers|i (recently )?(visited|came across|was going through|stumbled))\b/i;
 
 // ---------------------------------------------------------------------------
 // Selecting prospects
 
-const PICK_COLUMNS = `p.id, p.domain, p.website, p.name, p.category, p.kind, p.track, p.city, p.phone, p.score,
+export const PICK_COLUMNS = `p.id, p.domain, p.website, p.name, p.category, p.kind, p.track, p.city, p.phone, p.score,
+            p.c_email, p.c_url, p.c_form, p.c_hidden, p.c_auto, p.c_checked_at,
             c.issues_json, c.good_json, c.ms, c.final_url, c.https, c.viewport, c.imgs_no_alt, c.fields_unlabeled`;
 // Belt and braces for checks stored before the parked-page guard: a page with no images, no viewport tag
 // and no title is a redirect stub or parking page, not a business website.
-const NOT_PARKED = "NOT (COALESCE(c.imgs_total, 0) = 0 AND c.viewport = 0 AND c.issues_json LIKE '%No page title%')";
+export const NOT_PARKED = "NOT (COALESCE(c.imgs_total, 0) = 0 AND c.viewport = 0 AND c.issues_json LIKE '%No page title%')";
+// With auto-send on, the board's manual picks are the businesses it can't email: none found, or only an
+// address on an unrelated domain (the founder decides about those).
+const NO_EMAIL_FOUND = "AND p.c_checked_at IS NOT NULL AND COALESCE(p.c_auto, 0) = 0";
 
-export async function pickProspects(db, limit, minScore = 0) {
+export async function pickProspects(db, limit, minScore = 0, { noEmailOnly = false } = {}) {
   if (limit < 1) return [];
   const { results } = await db.prepare(
     `SELECT ${PICK_COLUMNS}
        FROM prospects p
        JOIN checks c ON c.id = (SELECT MAX(id) FROM checks WHERE prospect_id = p.id)
       WHERE p.status = 'checked' AND p.track = 'client' AND p.sightings < 3 AND p.score >= ? AND p.domain NOT IN (SELECT value FROM suppression)
-        AND ${NOT_PARKED}
+        AND ${NOT_PARKED} ${noEmailOnly ? NO_EMAIL_FOUND : ""}
       ORDER BY p.score DESC, p.id
       LIMIT ?`
   ).bind(minScore, limit).all();
@@ -57,22 +61,27 @@ export async function pickProspects(db, limit, minScore = 0) {
 
 // Referral partners: any checked partner whose site loaded (their site's problems aren't the pitch),
 // lawyers first, then accountants, then the rest (see PARTNER_KINDS).
-export async function pickPartners(db, limit) {
+export async function pickPartners(db, limit, { noEmailOnly = false } = {}) {
   if (limit < 1) return [];
   const { results } = await db.prepare(
     `SELECT ${PICK_COLUMNS}
        FROM prospects p
        JOIN checks c ON c.id = (SELECT MAX(id) FROM checks WHERE prospect_id = p.id)
       WHERE p.status = 'checked' AND p.track = 'partner' AND p.sightings < 3 AND p.domain NOT IN (SELECT value FROM suppression)
-        AND ${NOT_PARKED}
+        AND ${NOT_PARKED} ${noEmailOnly ? NO_EMAIL_FOUND : ""}
       ORDER BY ${PARTNER_PRIORITY_SQL}, p.id
       LIMIT ?`
   ).bind(limit).all();
   return results || [];
 }
 
+// Drafts waiting for the founder. Emails the auto-sender has queued don't count: it handles those.
 export async function countReady(db) {
-  const row = await db.prepare("SELECT COUNT(*) AS n FROM prospects WHERE status = 'digested'").first();
+  const row = await db.prepare(
+    `SELECT COUNT(*) AS n FROM prospects p
+       LEFT JOIN outreach o ON o.id = (SELECT MAX(id) FROM outreach WHERE prospect_id = p.id)
+      WHERE p.status = 'digested' AND COALESCE(o.auto_state, '') != 'queued'`,
+  ).first();
   return (row && row.n) || 0;
 }
 
@@ -234,25 +243,31 @@ export function parseJson(s, fallback) {
 
 const NO_CONTACT = { email: null, url: null, form: false, error: "The contact lookup failed." };
 
+// One prospect's draft, contact route and Write-email links. `contact` is a route already found (the
+// auto-sender looks it up first); without one, it is looked up here.
+export async function prepareOne(env, p, contact = null) {
+  const partner = p.track === "partner";
+  const issues = partner ? [] : findingsFor(p);
+  const good = partner ? [] : parseJson(p.good_json, []);
+  const cached = contact || (p.c_checked_at ? { email: p.c_email, url: p.c_url, form: !!p.c_form, error: null } : null);
+  const [raw, found] = await Promise.all([
+    partner ? partnerDraft(p) : draftOutreach(env, p, issues),
+    cached || findContact(p, { userAgent: PROSPECTOR_UA }).catch(() => NO_CONTACT),
+  ]);
+  const law = !partner && isLawFirm(p);
+  const body = partner ? raw.body : withFoundingLine(law ? withFoundingLine(raw.body, LAW_LINE) : raw.body, foundingLine(env));
+  const draft = { ...raw, body, angle: raw.angle || (law ? "law-client" : "client") };
+  const full = `${draft.body}\n\n${footerText(env)}`;
+  return { p, issues, good, draft, full, contact: found, links: composeLinks(env, { to: found.email, subject: draft.subject, body: full }) };
+}
+
 // Each batch (weekday digest or Get more) holds up to PARTNER_SLOTS referral partners (default 1); the
-// other places go to client prospects by score.
-export async function prepareItems(env, limit) {
-  const partners = await pickPartners(env.DB, Math.min(limit, num(env.PARTNER_SLOTS, 1, 0, 5)));
-  const clients = await pickProspects(env.DB, limit - partners.length, num(env.MIN_SCORE, 30, 0, 100));
-  return Promise.all([...partners, ...clients].map(async (p) => {
-    const partner = p.track === "partner";
-    const issues = partner ? [] : findingsFor(p);
-    const good = partner ? [] : parseJson(p.good_json, []);
-    const [raw, contact] = await Promise.all([
-      partner ? partnerDraft(p) : draftOutreach(env, p, issues),
-      findContact(p, { userAgent: PROSPECTOR_UA }).catch(() => NO_CONTACT),
-    ]);
-    const law = !partner && isLawFirm(p);
-    const body = partner ? raw.body : withFoundingLine(law ? withFoundingLine(raw.body, LAW_LINE) : raw.body, foundingLine(env));
-    const draft = { ...raw, body, angle: raw.angle || (law ? "law-client" : "client") };
-    const full = `${draft.body}\n\n${footerText(env)}`;
-    return { p, issues, good, draft, full, contact, links: composeLinks(env, { to: contact.email, subject: draft.subject, body: full }) };
-  }));
+// other places go to client prospects by score. With `noEmailOnly` (auto-send is on) only businesses
+// where no email address was found are picked: those need the founder (a contact form or a call).
+export async function prepareItems(env, limit, { noEmailOnly = false } = {}) {
+  const partners = await pickPartners(env.DB, Math.min(limit, num(env.PARTNER_SLOTS, 1, 0, 5)), { noEmailOnly });
+  const clients = await pickProspects(env.DB, limit - partners.length, num(env.MIN_SCORE, 30, 0, 100), { noEmailOnly });
+  return Promise.all([...partners, ...clients].map((p) => prepareOne(env, p)));
 }
 
 // ---------------------------------------------------------------------------
@@ -280,16 +295,20 @@ function contactText(c) {
   return "No email or contact page found automatically. Check their site, or call.";
 }
 
-export async function buildDigest(env, limit) {
-  const items = await prepareItems(env, limit);
+export async function buildDigest(env, limit, { noEmailOnly = false } = {}) {
+  const items = await prepareItems(env, limit, { noEmailOnly });
   if (items.length < 1) return null;
   const board = await boardUrl(env);
   const waiting = await countReady(env.DB); // already on the board, from earlier digests
   const act = (p, what) => `${board}?do=${what}&id=${p.id}`;
 
   const top = Math.max(...items.map((i) => i.p.score || 0));
-  const subject = `${items.length} new prospect${items.length === 1 ? "" : "s"} ready to send (top score ${top})`;
-  const intro = "Drafts only: nothing has been sent to anyone. Tap Write email, read it, and send it yourself. Emails sent from that button are marked sent on your board automatically. Using their contact form instead? Paste the message there, then tap Sent.";
+  const subject = noEmailOnly
+    ? `${items.length} business${items.length === 1 ? "" : "es"} that need you (no email found)`
+    : `${items.length} new prospect${items.length === 1 ? "" : "s"} ready to send (top score ${top})`;
+  const intro = noEmailOnly
+    ? "Auto-send handles every business with an email on its website. These have none, so they're yours: use their contact form (tap Copy message on the board, paste it, then tap Sent) or call them. Nothing has been sent to anyone."
+    : "Drafts only: nothing has been sent to anyone. Tap Write email, read it, and send it yourself. Emails sent from that button are marked sent on your board automatically. Using their contact form instead? Paste the message there, then tap Sent.";
   const later = waiting ? `${waiting} earlier ${waiting === 1 ? "prospect is" : "prospects are"} still waiting on your board.` : "";
 
   const t = [subject, "", intro, "", `Your prospect board: ${board}`, `Anytime: ${homeUrl(env)} (bookmark it or add it to your Home Screen)`];
