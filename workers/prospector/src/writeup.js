@@ -247,8 +247,9 @@ async function openSite(page, p, fetchImpl = fetch) {
     const html = (await res.text()).slice(0, 2_000_000);
     const base = `<base href="${esc(res.url || http)}">`;
     const withBase = /<head[^>]*>/i.test(html) ? html.replace(/<head[^>]*>/i, (m) => `${m}${base}`) : `${base}${html}`;
-    await page.setContent(withBase, { waitUntil: "load", timeout: NAV_TIMEOUT_MS });
-    await page.waitForNetworkIdle({ idleTime: 700, timeout: 6000 }).catch(() => {});
+    // "load" can wait forever on one slow image or script; the page is usable once its HTML is parsed.
+    await page.setContent(withBase, { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT_MS });
+    await page.waitForNetworkIdle({ idleTime: 700, timeout: 8000 }).catch(() => {});
     return { ok: true, url: res.url || http, status: res.status, https: false, httpsProblem: httpsProblem || "broken", loadMs: 0, copy: true, html: withBase, fetchMs: Date.now() - t0 };
   } catch (e) {
     last = `${last}; copy: ${msg(e)}`;
@@ -377,7 +378,7 @@ export async function makeWriteup(env, p, opts = {}) {
     for (const f of chosen.findings) f.examples = FAMILY[f.family].example && f.targets && f.targets.length ? await exampleShots(page, f.targets) : [];
 
     await page.setViewport(PHONE);
-    if (visit.copy) await page.setContent(visit.html, { waitUntil: "load", timeout: NAV_TIMEOUT_MS }).catch(() => {});
+    if (visit.copy) await page.setContent(visit.html, { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT_MS }).catch(() => {});
     else await page.reload({ waitUntil: "load", timeout: NAV_TIMEOUT_MS }).catch(() => {});
     await page.waitForNetworkIdle({ idleTime: 700, timeout: 5000 }).catch(() => {});
     const phone = await viewportShot(page);

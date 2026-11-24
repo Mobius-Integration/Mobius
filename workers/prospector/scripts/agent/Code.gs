@@ -3,7 +3,8 @@
  *
  * Runs inside the founder's own Google Workspace mailbox (mario@mobiusintegration.com) as a web app
  * that executes as him. The prospector Worker (workers/prospector/src/outbox.js) calls it to:
- *   send   one email (a first email, or a follow-up as its own email)
+ *   send   one email (a first email, or a follow-up: a reply in the first email's thread when the Gmail
+ *          advanced service is on, else its own "Following up:" email)
  *   poll   report new replies and bounces
  *   draft  leave a reply DRAFT (never sent) in the thread where a prospect wrote back, optionally with
  *          a PDF attached (since 2026-11-24, src/replykit.js); the founder reads it and sends it himself
@@ -166,15 +167,79 @@ function send_(req) {
   if (req.followUp) {
     var earlier = findThread_(to, subject, req.threadId);
     if ((earlier && hasOtherSender_(earlier, me)) || hasReplied_(to)) return { ok: false, replied: true };
+    // In the same thread when possible: a real reply to our first email (see threadedSend_).
+    var original = earlier ? ourFirstTo_(earlier, me, to) : null;
+    var sent = null;
+    if (original && typeof Gmail !== 'undefined') {
+      try { sent = threadedSend_(original, to, subject, body); } catch (err) { sent = null; }
+    }
+    if (sent) {
+      // It went out: count it and report where it went, whatever happens next (never send it twice).
+      var count = bump_();
+      var out = { ok: true, threaded: true, message_id: sent.id, thread_id: sent.threadId || earlier.getId(), sent_today: count, to: to };
+      try {
+        var m = GmailApp.getMessageById(sent.id);
+        out.to = m.getTo();
+        out.thread_id = m.getThread().getId();
+        label_(m.getThread());
+      } catch (err) { /* the send already happened; the Worker checks `to` */ }
+      return out;
+    }
   }
-  // Every email is a new message with its own subject. (Google's reply functions answer the sender of the
-  // last message, which for a follow-up is the founder himself: tested 2026-11-23, they landed in his own
-  // inbox.) A follow-up gets an honest "Following up:" subject, never a fake "Re:".
+  // Otherwise every email is a new message with its own subject. (GmailApp's reply functions answer the
+  // sender of the last message, which for a follow-up is the founder himself: tested 2026-11-23, they
+  // landed in his own inbox.) A follow-up sent this way gets an honest "Following up:" subject.
   var subj = req.followUp ? 'Following up: ' + subject.replace(/^((re|following up):\s*)+/i, '') : subject;
   var message = GmailApp.createDraft(to, subj, body, { name: SENDER_NAME }).send();
   var thread = message.getThread();
   label_(thread);
   return { ok: true, thread_id: thread.getId(), message_id: message.getId(), sent_today: bump_(), to: message.getTo() };
+}
+
+// ---------------------------------------------------------------------------
+// Threaded follow-ups (2026-11-24)
+//
+// A follow-up reads best as a reply in the thread of our first email ("Re: <subject>", addressed to
+// them). GmailApp can't send that: its reply functions answer the sender of the last message (us). So
+// the reply is written by hand, with In-Reply-To and References pointing at our first email's
+// Message-ID, and sent with the Gmail API (the Gmail advanced service, Services > Gmail API). Without
+// that service (`Gmail` undefined), or if building the reply fails, send_ falls back to its own
+// "Following up:" email.
+
+// Our first message to `to` in this thread, or null.
+function ourFirstTo_(thread, me, to) {
+  var msgs = thread.getMessages();
+  for (var i = 0; i < msgs.length; i++) {
+    if (addr_(msgs[i].getFrom()) === me && String(msgs[i].getTo() || '').toLowerCase().indexOf(to) >= 0) return msgs[i];
+  }
+  return null;
+}
+
+// A header value, RFC 2047-encoded when it isn't plain ASCII.
+function mimeWord_(s) {
+  s = String(s || '');
+  return /^[\x20-\x7e]*$/.test(s) ? s : '=?UTF-8?B?' + Utilities.base64Encode(s, Utilities.Charset.UTF_8) + '?=';
+}
+
+function threadedSend_(original, to, subject, body) {
+  var id = String(original.getHeader('Message-ID') || '').trim();
+  if (!/^<[^<>\s]+>$/.test(id)) return null;
+  var subj = 'Re: ' + subject.replace(/^((re|following up):\s*)+/i, '');
+  var mime = [
+    'From: ' + mimeWord_(SENDER_NAME) + ' <' + me_() + '>',
+    'To: ' + to,
+    'Subject: ' + mimeWord_(subj),
+    'In-Reply-To: ' + id,
+    'References: ' + id,
+    'MIME-Version: 1.0',
+    'Content-Type: text/plain; charset=UTF-8',
+    'Content-Transfer-Encoding: base64',
+    '',
+    Utilities.base64Encode(body, Utilities.Charset.UTF_8).replace(/(.{76})/g, '$1\r\n'),
+  ].join('\r\n');
+  var raw = Utilities.base64EncodeWebSafe(mime, Utilities.Charset.UTF_8);
+  var sent = Gmail.Users.Messages.send({ raw: raw, threadId: original.getThread().getId() }, 'me');
+  return sent && sent.id ? sent : null;
 }
 
 // ---------------------------------------------------------------------------

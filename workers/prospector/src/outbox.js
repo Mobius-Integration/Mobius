@@ -5,7 +5,8 @@
 //               the email, and give it a send time inside the day's window (see outbox-rules.js)
 //   outboxTick  every 15 minutes: ask the agent (the founder's mailbox, src/agent.js) for replies and
 //               bounces, schedule follow-ups, and send at most one due email, after re-checking it
-//   Follow-ups  a nudge on day 4 and a last note a week later, each as its own email, stopping the
+//   Follow-ups  a nudge on day 4 and a last note a week later, as replies in the first email's thread
+//               (since 2026-11-24; its own "Following up:" email if threading fails), stopping the
 //               moment anyone replies, bounces or asks to stop
 //   Replies     a person's first reply gets a draft answer in that Gmail thread, with the write-up the
 //               first email offered attached when it helps (src/replykit.js, src/writeup.js)
@@ -389,7 +390,8 @@ async function afterSend(env, st, row, res, kind, now, body) {
       if (!st.auto_first_send) await metaSet(db, "auto_first_send", etParts(now).ymd);
     } else {
       await db.batch([
-        db.prepare("UPDATE touches SET state = 'sent', sent_at = datetime('now'), body = ?, subject = ? WHERE id = ?").bind(body, `Following up: ${row.draft_subject}`, row.tid),
+        // A threaded follow-up is a "Re:" in the first email's thread; otherwise its own "Following up:" email.
+        db.prepare("UPDATE touches SET state = 'sent', sent_at = datetime('now'), body = ?, subject = ? WHERE id = ?").bind(body, `${res.threaded ? "Re" : "Following up"}: ${row.draft_subject}`, row.tid),
         db.prepare("INSERT INTO events (prospect_id, action, via, detail) VALUES (?, 'followup', 'auto', ?)").bind(id, `follow-up ${row.n} to ${row.to}`),
       ]);
       if (res.thread_id && !row.thread_ref) await db.prepare("UPDATE outreach SET thread_ref = ? WHERE id = ?").bind(res.thread_id, row.oid).run();
