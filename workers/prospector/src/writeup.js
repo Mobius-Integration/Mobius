@@ -448,11 +448,9 @@ function etLabel(d) {
   }
 }
 
-// "Amy G. Cohen, P.a." -> "Amy G. Cohen, P.A.": Overture title-cases the legal suffix at the end of a name.
-export function displayName(name) {
-  return String(name || "").replace(/\s+/g, " ").trim()
-    .replace(/\b(p\.?\s?a|p\.?\s?l|p\.?\s?l\.?\s?l\.?\s?c|l\.?\s?l\.?\s?c|l\.?\s?l\.?\s?p|p\.?\s?c)\.?$/i, (m) => m.toUpperCase());
-}
+// "Amy G. Cohen, P.a." -> "Amy G. Cohen, P.A." (src/names.js).
+import { displayName } from "./names.js";
+export { displayName };
 
 const shortUrl = (u) => {
   try {

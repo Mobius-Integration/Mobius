@@ -45,6 +45,13 @@ out tags;`;
 const SKIP_DOMAINS = [
   "facebook.com", "instagram.com", "yelp.com", "linktr.ee", "tiktok.com", "x.com", "twitter.com",
   "google.com", "sites.google.com", "business.site", "square.site",
+  // Booking platforms, directories and franchise hosts: the business can't change these pages itself.
+  "vagaro.com", "booksy.com", "styleseat.com", "glossgenius.com", "schedulicity.com", "mindbodyonline.com", "mindbody.io",
+  "fresha.com", "setmore.com", "acuityscheduling.com", "calendly.com", "squareup.com", "joinblvd.com", "boulevard.io",
+  "hub.biz", "competitioncorner.net", "nextdoor.com", "angi.com", "homeadvisor.com", "thumbtack.com", "houzz.com",
+  "bbb.org", "yellowpages.com", "mapquest.com", "manta.com", "zocdoc.com", "healthgrades.com", "vitals.com",
+  "opendental.com", "dentalplans.com", "carwise.com", "repairpal.com", "mechanicadvisor.com", "localsearch.com",
+  "wheree.com", "chamberofcommerce.com", "birdeye.com", "podium.com", "groupon.com",
   // Government, military and school sites aren't small-business prospects (matched as suffixes).
   "gov", "mil", "edu", "fl.us",
   "macdillfss.com", // MacDill Air Force Base services

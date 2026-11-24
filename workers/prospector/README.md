@@ -126,6 +126,15 @@ The founder asked for automatic messages and follow-ups, reversing his 2026-11-2
 - **Forms.** The prospector never submits contact forms for the founder. Most forms sit behind CAPTCHAs and bot checks, defeating those isn't something to build, and an automated sales message through someone's contact form is the lowest-trust channel there is. No-email businesses go to Need you for a contact form (Copy message) or a call.
 - **Tests** live outside the repo, in the session scratchpad: unit checks for the rules and contact finder, the script run in a sandbox with stand-ins for Gmail, and an end-to-end run against Node's SQLite with fake sites, DNS and mailbox.
 
+## Targeting and testing (since 2026-11-24, evening)
+
+- **Before each send,** a real browser (Browser Run) confirms every quoted finding; a day-4 follow-up drops its extra finding if the browser doesn't see it. If the browser can't run, the light check's answer stands.
+- **Mornings:** up to `SENDS_PER_TICK` (2) emails per 15-minute run, first emails planned by 12:30 Eastern (11:45 on the day before a holiday), stretched only as far as needed (`lastSlotMinutes`, `isHolidayEve` in `outbox-rules.js`).
+- **Who gets picked:** `fillQueue` looks up contacts for about three times as many businesses as there are slots, then prefers a person's address over one named after the business over a shared inbox (`emailRank`). Clients take turns by kind of business (`CLIENT_SEGMENTS`), best score first within each.
+- **Subject test:** client emails alternate by prospect id between "A quick look at X’s website" (A) and "Question about X’s website" (B), stored in `outreach.variant` (migration 0007). The board's **What's working** panel shows reply rates by kind of business and by subject.
+- **Plain words:** drafts describe findings the way an owner would (`plainFinding` in `digest.js`), and names read cleanly (`src/names.js`: "Jones, P.A.", "Associates Attorneys’ clients").
+- **Local businesses:** `node scripts/overture-local.mjs --set local --apply` imports owner-run businesses that book appointments or jobs (`LOCAL_KINDS` in `partners.js`: dental, chiropractic, therapy, eye care, vets, med spas, salons, barbers, gyms and studios, home trades, auto shops) as clients. Booking platforms and directories are skipped (`SKIP_DOMAINS`). First import 2026-11-24: 12,322 businesses; check them with `node scripts/check-local.mjs`.
+
 ## Reply kit and write-ups (since 2026-11-24)
 
 Every first email ends by offering "a short write-up of what I saw, with screenshots". The reply kit makes that offer instant. Code: `src/replykit.js`, `src/writeup.js`; tables `replies` and `writeups` (migration 0006); PDFs in the `WRITEUPS` KV namespace for 120 days.

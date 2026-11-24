@@ -28,7 +28,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { normalizeSite, skippedDomain, CHAIN_NAME, TARGET_STORE } from "../src/overpass.js";
-import { LAW_CLIENT_KINDS, PARTNER_KINDS, lawishName } from "../src/partners.js";
+import { LAW_CLIENT_KINDS, PARTNER_KINDS, LOCAL_KINDS, lawishName } from "../src/partners.js";
 
 const DIR = join(dirname(fileURLToPath(import.meta.url)), "..");
 const require = createRequire(join(DIR, "scripts", "overture", "package.json"));
@@ -42,6 +42,8 @@ const MIN_CONFIDENCE = 0.5;
 const ROWS_PER_STATEMENT = 50;
 // Captive agents of national insurers and franchise tax offices: the brand decides vendors, not the local office.
 const CAPTIVE = /\b(state ?farm|allstate|farmers insurance|nationwide|geico|progressive|liberty mutual|american family|farm bureau|aflac|primerica|new york life|northwestern mutual|mass ?mutual|edward jones|h ?& ?r block|jackson hewitt|liberty tax)\b/i;
+// Franchises in the local trades (`--set local`): head office runs the website, not the local owner.
+const LOCAL_CHAIN = /\b(aspen dental|coast dental|bright now|smile ?direct|western dental|the joint|massage envy|hand ?& ?stone|elements massage|european wax|great clips|sport ?clips|supercuts|fantastic sams|cost ?cutters|regis|ulta|drybar|planet fitness|anytime fitness|la fitness|orangetheory|crunch fitness|gold'?s gym|f45|club pilates|pure barre|9round|title boxing|burn boot camp|firestone|midas|meineke|jiffy lube|pep boys|goodyear|valvoline|take ?5|maaco|caliber collision|gerber collision|crash champions|service king|safelite|ntb|discount tire|tire kingdom|roto-?rooter|mr\.? rooter|one hour heating|ars rescue|terminix|orkin|truly nolen|trugreen|molly maid|merry maids|the maids|servpro|servicemaster|stanley steemer|chem-?dry|banfield|vca|petco|petsmart|pearle vision|lenscrafters|visionworks|miracle-?ear|hearusa|beltone|sola salon|phenix salon|my salon suite)\b/i;
 
 const arg = (name) => { const i = process.argv.indexOf(name); return i > 0 ? process.argv[i + 1] : null; };
 const sqlStr = (s) => (s == null ? "NULL" : `'${String(s).replace(/'/g, "''")}'`);
@@ -72,8 +74,12 @@ function d1(args) {
 const release = arg("--release") || (await latestRelease());
 if (!/^\d{4}-\d{2}-\d{2}\.\d+$/.test(release)) throw new Error("--release looks like 2026-11-18.0");
 const box = bboxFromConfig();
-const kinds = [...LAW_CLIENT_KINDS, "legal_service", ...Object.keys(PARTNER_KINDS)];
-console.log(`Overture release ${release}, box ${box.s},${box.w},${box.n},${box.e}${APPLY ? "" : " (dry run)"}`);
+// --set law (default): law firms and referral partners. --set local: owner-run local businesses that
+// book appointments or jobs (LOCAL_KINDS in src/partners.js), all clients.
+const SET = arg("--set") || "law";
+if (!["law", "local"].includes(SET)) throw new Error("--set is law or local");
+const kinds = SET === "local" ? Object.keys(LOCAL_KINDS) : [...LAW_CLIENT_KINDS, "legal_service", ...Object.keys(PARTNER_KINDS)];
+console.log(`Overture release ${release}, set ${SET}, box ${box.s},${box.w},${box.n},${box.e}${APPLY ? "" : " (dry run)"}`);
 
 const db = await duck.DuckDBInstance.create(":memory:");
 const c = await db.connect();
@@ -109,12 +115,13 @@ for (const r of rows.filter((x) => wanted.has(x.kind)).sort((a, b) => Number(b.c
   const norm = normalizeSite(r.website);
   if (!norm) { stats.badSite++; continue; }
   if (skippedDomain(norm.domain)) { stats.social++; continue; }
-  if (CHAIN_NAME.test(name) || TARGET_STORE.test(name) || CAPTIVE.test(name)) { stats.chainName++; continue; }
+  if (CHAIN_NAME.test(name) || TARGET_STORE.test(name) || CAPTIVE.test(name) || LOCAL_CHAIN.test(name)) { stats.chainName++; continue; }
   if ((domainCount.get(norm.domain) || 0) >= 3) { stats.chainDomain++; continue; }
   if (keep.has(norm.domain)) { stats.duplicate++; continue; }
   const track = PARTNER_KINDS[r.kind] ? "partner" : "client";
   keep.set(norm.domain, {
     key: `ov/${r.id}`, domain: norm.domain, website: norm.website, name, kind: r.kind, track,
+    category: (LOCAL_KINDS[r.kind] && LOCAL_KINDS[r.kind].category) || "professional",
     city: clip(r.city, 60), phone: clip(r.phone, 40),
   });
 }
@@ -142,7 +149,7 @@ for (let i = 0; i < all.length; i += ROWS_PER_STATEMENT) {
   const chunk = all.slice(i, i + ROWS_PER_STATEMENT);
   stmts.push(
     "INSERT INTO prospects (osm_key, domain, website, name, category, city, phone, sightings, source, kind, track) VALUES " +
-    chunk.map((r) => `(${[r.key, r.domain, r.website, r.name, "professional", r.city, r.phone].map(sqlStr).join(",")},1,'overture',${sqlStr(r.kind)},${sqlStr(r.track)})`).join(",") +
+    chunk.map((r) => `(${[r.key, r.domain, r.website, r.name, r.category, r.city, r.phone].map(sqlStr).join(",")},1,'overture',${sqlStr(r.kind)},${sqlStr(r.track)})`).join(",") +
     // An OpenStreetMap row for the same site gains the kind, and the track too while it hasn't been emailed.
     " ON CONFLICT(domain) DO UPDATE SET kind = COALESCE(prospects.kind, excluded.kind)," +
     " track = CASE WHEN prospects.kind IS NULL AND prospects.status IN ('new','checked','unreachable','robots_skip') THEN excluded.track ELSE prospects.track END;"

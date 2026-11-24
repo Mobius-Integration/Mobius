@@ -26,8 +26,20 @@ import { recordReply, processReplies } from "./replykit.js";
 import { verifyInBrowser } from "./writeup.js";
 import {
   etParts, etToUtc, addDays, sqlTime, parseSql, isSendDay, nextSendDay, WINDOW, dailyCap, planSlots, restaurantHold,
-  familiesOf, followupBody, classifyReply,
+  familiesOf, followupBody, classifyReply, lastSlotMinutes, SENDS_PER_TICK, emailRank,
 } from "./outbox-rules.js";
+import { possessive } from "./names.js";
+
+// The subject test (since 2026-11-24): client emails alternate by prospect id between two plain subjects,
+// "A quick look at <business>’s website" (A) and "Question about <business>’s website" (B). The board's
+// results panel compares their reply rates.
+export function subjectVariant(p) {
+  return p && p.track !== "partner" ? (Number(p.id) % 2 ? "B" : "A") : null;
+}
+export const VARIANT_SUBJECT = {
+  A: (name) => `A quick look at ${possessive(name)} website`,
+  B: (name) => `Question about ${possessive(name)} website`,
+};
 
 const int = (v, dflt, min, max) => Math.min(max, Math.max(min, Number.isFinite(parseInt(v, 10)) ? parseInt(v, 10) : dflt));
 
@@ -150,16 +162,30 @@ async function candidates(env, ymd, limit, kind) {
     const { results } = await env.DB.prepare(`${cols} WHERE p.track = 'partner' AND ${common} ORDER BY ${PARTNER_PRIORITY_SQL}, p.id LIMIT ?`).bind(limit).all();
     return results || [];
   }
-  const { results } = await env.DB.prepare(`${cols} WHERE p.track = 'client' AND p.score >= ? AND ${common} ORDER BY p.score DESC, p.id LIMIT ?`)
-    .bind(int(env.MIN_SCORE, 30, 0, 100), limit).all();
-  return results || [];
+  // Clients take turns by kind of business (best score first within each), so every day's emails reach
+  // several kinds and the board's results panel can tell which kind answers. By score alone, law firms
+  // (which score high) would take every slot.
+  const per = Math.max(4, Math.ceil(limit / 2));
+  const lists = await Promise.all(CLIENT_SEGMENTS.map((cat) =>
+    env.DB.prepare(`${cols} WHERE p.track = 'client' AND p.category = ? AND p.score >= ? AND ${common} ORDER BY p.score DESC, p.id LIMIT ?`)
+      .bind(cat, int(env.MIN_SCORE, 30, 0, 100), per).all().then((r) => r.results || [])));
+  const out = [];
+  for (let i = 0; out.length < limit && lists.some((l) => i < l.length); i++) {
+    for (const l of lists) if (i < l.length && out.length < limit) out.push(l[i]);
+  }
+  return out;
 }
+
+// The kinds of client business that take turns in each day's emails (prospects.category).
+export const CLIENT_SEGMENTS = ["professional", "dental-medical", "medspa-salon", "home-services", "fitness", "retail", "restaurants", "real-estate"];
 
 function queueStatements(db, item, sendAt, quoted) {
   const { p, draft, full, contact } = item;
+  const variant = subjectVariant(p);
+  const subject = variant ? VARIANT_SUBJECT[variant](p.name) : draft.subject;
   return [
-    db.prepare("INSERT INTO outreach (prospect_id, digest_date, draft_subject, draft_body, model, contact_email, contact_url, contact_form, angle, auto_state, send_at, quoted) VALUES (?,?,?,?,?,?,?,?,?,'queued',?,?)")
-      .bind(p.id, new Date().toISOString().slice(0, 10), draft.subject, full, draft.model, contact.email, contact.url ? String(contact.url).slice(0, 500) : null, contact.form ? 1 : 0, draft.angle || null, sqlTime(sendAt), JSON.stringify(quoted)),
+    db.prepare("INSERT INTO outreach (prospect_id, digest_date, draft_subject, draft_body, model, contact_email, contact_url, contact_form, angle, auto_state, send_at, quoted, variant) VALUES (?,?,?,?,?,?,?,?,?,'queued',?,?,?)")
+      .bind(p.id, new Date().toISOString().slice(0, 10), subject, full, draft.model, contact.email, contact.url ? String(contact.url).slice(0, 500) : null, contact.form ? 1 : 0, draft.angle || null, sqlTime(sendAt), JSON.stringify(quoted), variant),
     db.prepare("UPDATE prospects SET status='digested', updated_at=datetime('now') WHERE id=? AND status='checked'").bind(p.id),
     db.prepare("INSERT INTO events (prospect_id, action, via, detail) VALUES (?, 'queued', 'auto', ?)").bind(p.id, `send ${sqlTime(sendAt)} UTC`),
   ];
@@ -200,31 +226,45 @@ export async function fillQueue(env, { now = new Date(), maxScan = 60, rand = Ma
     picked.push({ adopt: r, quoted: r.track === "partner" ? [] : familiesOf(findingsFor(r).slice(0, 2)) });
   }
 
-  // 2. New businesses: a partner for about every fourth place, the rest clients by score.
+  // 2. New businesses: a partner for about every fourth place, the rest clients by score. Contacts are
+  // looked up for about three times as many as there are slots, then people's own addresses (jane@) go
+  // ahead of shared inboxes (info@), best first within each: owners answer email a front desk screens.
   const wantPartners = Math.min(Math.max(0, room - picked.length), Math.max(1, Math.round(room / 4)));
   const seen = new Set();
   let scanned = 0;
   for (const kind of ["partner", "client"]) {
+    const need = () => (kind === "partner"
+      ? Math.min(room - picked.length, wantPartners - picked.filter((x) => x.partner).length)
+      : room - picked.length);
+    if (need() <= 0) continue;
+    const target = need() * 3;
     const list = await candidates(env, ymd, maxScan, kind);
-    for (let i = 0; i < list.length && scanned < maxScan * 2; i += 4) {
-      const partnersSoFar = () => picked.filter((x) => x.partner).length;
-      if (picked.length >= room || (kind === "partner" && partnersSoFar() >= wantPartners)) break;
+    const eligible = [];
+    for (let i = 0; i < list.length && scanned < maxScan * 2 && eligible.length < target; i += 4) {
       const batch = list.slice(i, i + 4).filter((p) => !seen.has(p.id) && plausible(p));
       scanned += batch.length;
       const looked = await Promise.all(batch.map((p) => resolveContact(env, p).catch(() => null)));
-      for (let j = 0; j < batch.length; j++) {
-        const p = batch[j];
-        const contact = looked[j];
+      batch.forEach((p, j) => {
         seen.add(p.id);
-        if (!contact || !contact.auto) continue;
-        if (picked.length >= room || (kind === "partner" && partnersSoFar() >= wantPartners)) break;
-        const item = await prepareOne(env, p, contact);
-        picked.push({ item, quoted: p.track === "partner" ? [] : familiesOf(item.issues.slice(0, 2)), partner: kind === "partner" });
-      }
+        const contact = looked[j];
+        if (contact && contact.auto) eligible.push({ p, contact, order: eligible.length, person: emailRank(contact.email, p.domain) });
+      });
+    }
+    eligible.sort((a, b) => (Number(b.person) - Number(a.person)) || a.order - b.order);
+    for (const { p, contact } of eligible) {
+      if (need() <= 0) break;
+      const item = await prepareOne(env, p, contact);
+      picked.push({ item, quoted: p.track === "partner" ? [] : familiesOf(item.issues.slice(0, 2)), partner: kind === "partner" });
     }
   }
 
-  const slots = planSlots(start, etToUtc(ymd, 15, 15), picked.length, rand);
+  // Mornings: by 12:30 (11:45 on a holiday eve), stretched only as far as the 15-minute runs need.
+  const endMin = lastSlotMinutes(ymd, picked.length + counts.followDue);
+  let end = etToUtc(ymd, Math.floor(endMin / 60), endMin % 60);
+  const minEnd = new Date(start.getTime() + (Math.ceil(picked.length / SENDS_PER_TICK) * 15 + 15) * 60000);
+  if (end < minEnd) end = new Date(Math.min(minEnd.getTime(), etToUtc(ymd, 15, 15).getTime()));
+  if (end <= start) end = new Date(start.getTime() + 15 * 60000);
+  const slots = planSlots(start, end, picked.length, rand);
   const names = [];
   for (let i = 0; i < picked.length; i++) {
     const pk = picked[i];
@@ -440,7 +480,10 @@ export async function outboxTick(env, { now = new Date() } = {}) {
   if (!isSendDay(p.ymd) || mins < WINDOW.start || mins > WINDOW.end) return { skipped: "outside the sending window" };
   if (st.auto_day_block === p.ymd) return { skipped: "the agent's daily limit was reached" };
   const counts = await dayCounts(db, p.ymd);
-  if (counts.sentInitial + counts.sentFollow >= dailyCap(env, st.auto_first_send, p.ymd)) return { skipped: "daily cap reached" };
+  const capLeft = dailyCap(env, st.auto_first_send, p.ymd) - (counts.sentInitial + counts.sentFollow);
+  if (capLeft <= 0) return { skipped: "daily cap reached" };
+  const max = Math.min(SENDS_PER_TICK, capLeft);
+  const sent = [];
 
   const nowS = sqlTime(now);
   // Follow-ups first: they're already late for people we told we would.
@@ -452,8 +495,10 @@ export async function outboxTick(env, { now = new Date() } = {}) {
       ORDER BY t.due_at, t.id LIMIT 3`,
   ).bind(nowS).all();
   for (const row of touches.results || []) {
-    if (await sendTouch(env, st, row, now)) return { sent: "followup", name: row.name };
+    if (sent.length >= max) break;
+    if (await sendTouch(env, st, row, now)) sent.push({ sent: "followup", name: row.name });
   }
+  if (sent.length >= max) return { ...sent[0], all: sent };
   const initials = await db.prepare(
     `SELECT o.id AS oid, o.prospect_id, o.draft_subject, o.draft_body, o.quoted, o.attempts, o.contact_email AS "to",
             p.domain, p.website, p.name, p.category, p.track, p.kind
@@ -462,9 +507,10 @@ export async function outboxTick(env, { now = new Date() } = {}) {
       ORDER BY o.send_at, o.id LIMIT 3`,
   ).bind(nowS).all();
   for (const row of initials.results || []) {
-    if (await sendInitial(env, st, row, now)) return { sent: "initial", name: row.name };
+    if (sent.length >= max) break;
+    if (await sendInitial(env, st, row, now)) sent.push({ sent: "initial", name: row.name });
   }
-  return { sent: null };
+  return sent.length ? { ...sent[0], all: sent } : { sent: null };
 }
 
 // ---------------------------------------------------------------------------

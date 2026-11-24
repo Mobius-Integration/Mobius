@@ -83,6 +83,43 @@ export function nextSendDay(ymd) {
 
 export const WINDOW = { start: 9 * 60 + 30, end: 15 * 60 + 30 }; // minutes after midnight, Eastern
 
+// The day before a holiday (the Wednesday before Thanksgiving, Christmas Eve's eve): people leave early,
+// and email that arrives in the afternoon waits under a long weekend's pile.
+export function isHolidayEve(ymd) {
+  return isSendDay(ymd) && holidaysFor(Number(addDays(ymd, 1).slice(0, 4))).has(addDays(ymd, 1));
+}
+
+// Since 2026-11-24 the auto-sender sends up to SENDS_PER_TICK emails a run (every 15 minutes), so a day's
+// emails fit into the morning, when owners read and answer email.
+export const SENDS_PER_TICK = 2;
+
+// The latest first-send time for a day with n first emails (minutes after midnight, Eastern): mornings
+// (by 12:30, or 11:45 on a holiday eve), stretched only as far as the 15-minute runs need to fit them,
+// and never past 3:15 PM.
+export function lastSlotMinutes(ymd, n) {
+  const morning = isHolidayEve(ymd) ? 11 * 60 + 45 : 12 * 60 + 30;
+  const needed = WINDOW.start + Math.ceil(Math.max(0, n) / SENDS_PER_TICK) * 15 + 15;
+  return Math.min(15 * 60 + 15, Math.max(morning, needed));
+}
+
+// Is this address a person's (jane@, j.smith@) rather than a shared inbox (info@, office@)? People answer
+// cold email far more often than front desks do.
+const SHARED_INBOX = /^(info|office|contact|contactus|admin|hello|hi|mail|email|support|help|reception|frontdesk|front\.?desk|team|sales|inquir(y|ies)|intake|service|services|general|law|legal|firm|staff|marketing|billing|accounts?|appointments?|booking|bookings|schedul(e|ing)|hr|jobs|careers|webmaster|web|noreply|no-reply|questions|request|requests|newpatients?|patients?|care|clinic|dental|smile|smiles|spa|salon|shop|store|orders?|hey|connect)([._-]\w{0,12}|\d{1,3})?$/i;
+export function personalEmail(email) {
+  const local = String(email || "").split("@")[0].toLowerCase();
+  return !!local && !SHARED_INBOX.test(local) && !/^(info|office|contact|admin|sales|support)[a-z0-9]{3,}$/.test(local);
+}
+
+// 2 = a person's address (jane@, rtodd@), 1 = an address named after the business (smithdental@, often
+// the owner's own inbox at a small shop), 0 = a shared inbox (info@, office@, infosmithdental@).
+export function emailRank(email, domain) {
+  if (!personalEmail(email)) return 0;
+  const local = String(email).split("@")[0].toLowerCase().replace(/[^a-z]/g, "");
+  const label = String(domain || "").toLowerCase().split(".")[0].replace(/[^a-z]/g, "");
+  if (local.length >= 5 && label && (label.includes(local) || local.includes(label.slice(0, Math.max(5, Math.ceil(label.length * 0.6)))))) return 1;
+  return 2;
+}
+
 export function inWindow(date) {
   const p = etParts(date);
   const mins = p.h * 60 + p.min;

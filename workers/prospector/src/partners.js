@@ -15,6 +15,8 @@
 // Partner drafts are fixed templates, not AI: there are no site findings to word, and a template can't
 // drift into promises we haven't made.
 
+import { displayName, possessive } from "./names.js";
+
 // Overture taxonomy ids (taxonomy.primary) for law firms pitched as clients: practices whose own clients
 // are mostly people, so the firm itself is the customer.
 export const LAW_CLIENT_KINDS = new Set([
@@ -55,11 +57,71 @@ const LAW_KIND_LABELS = {
   tenant_and_eviction_law: "Landlord-tenant law firm", civil_rights_lawyer: "Civil rights law firm", legal_service: "Law firm",
 };
 
+// Owner-run local businesses that book appointments or jobs (imported 2026-11-24 with
+// `scripts/overture-local.mjs --set local`): the best fit for a $297/month tech partner. `category` is the
+// audience id the score, the booking finding and the drafts use; `label` is what the board and drafts call
+// them. All are clients.
+export const LOCAL_KINDS = {
+  dental_clinic: { category: "dental-medical", label: "Dental office" },
+  general_dentistry: { category: "dental-medical", label: "Dental office" },
+  cosmetic_dentistry: { category: "dental-medical", label: "Cosmetic dentist" },
+  pediatric_dentistry: { category: "dental-medical", label: "Pediatric dentist" },
+  orthodontics: { category: "dental-medical", label: "Orthodontist" },
+  chiropractic: { category: "dental-medical", label: "Chiropractor" },
+  physical_therapy: { category: "dental-medical", label: "Physical therapy practice" },
+  optometry: { category: "dental-medical", label: "Optometrist" },
+  vision_or_eye_care_clinic: { category: "dental-medical", label: "Eye care clinic" },
+  dermatology: { category: "dental-medical", label: "Dermatology practice" },
+  veterinarian: { category: "dental-medical", label: "Veterinary clinic" },
+  hearing_aid_store: { category: "dental-medical", label: "Hearing care clinic" },
+  medical_spa: { category: "medspa-salon", label: "Med spa" },
+  spa: { category: "medspa-salon", label: "Spa" },
+  day_spa: { category: "medspa-salon", label: "Day spa" },
+  massage_therapy: { category: "medspa-salon", label: "Massage studio" },
+  hair_salon: { category: "medspa-salon", label: "Hair salon" },
+  beauty_salon: { category: "medspa-salon", label: "Beauty salon" },
+  nail_salon: { category: "medspa-salon", label: "Nail salon" },
+  barber: { category: "medspa-salon", label: "Barbershop" },
+  tattoo_and_piercing: { category: "medspa-salon", label: "Tattoo studio" },
+  pet_groomer: { category: "medspa-salon", label: "Pet groomer" },
+  gym: { category: "fitness", label: "Gym" },
+  yoga_studio: { category: "fitness", label: "Yoga studio" },
+  pilates_studio: { category: "fitness", label: "Pilates studio" },
+  martial_arts_club: { category: "fitness", label: "Martial arts school" },
+  dance_studio: { category: "fitness", label: "Dance studio" },
+  fitness_trainer: { category: "fitness", label: "Personal training studio" },
+  hvac_service: { category: "home-services", label: "HVAC company" },
+  plumbing: { category: "home-services", label: "Plumbing company" },
+  electrician: { category: "home-services", label: "Electrician" },
+  roofing: { category: "home-services", label: "Roofing company" },
+  pest_control_service: { category: "home-services", label: "Pest control company" },
+  landscaping: { category: "home-services", label: "Landscaping company" },
+  lawn_service: { category: "home-services", label: "Lawn care company" },
+  home_cleaning: { category: "home-services", label: "Home cleaning company" },
+  cleaning_service: { category: "home-services", label: "Cleaning company" },
+  carpet_cleaning: { category: "home-services", label: "Carpet cleaning company" },
+  pool_and_hot_tub_service: { category: "home-services", label: "Pool service" },
+  pool_cleaning: { category: "home-services", label: "Pool service" },
+  painting: { category: "home-services", label: "Painting company" },
+  garage_door_service: { category: "home-services", label: "Garage door company" },
+  handyman: { category: "home-services", label: "Handyman service" },
+  flooring_contractor: { category: "home-services", label: "Flooring company" },
+  windows_installation: { category: "home-services", label: "Window company" },
+  automotive_repair: { category: "home-services", label: "Auto repair shop" },
+  auto_body_shop: { category: "home-services", label: "Auto body shop" },
+  automotive_service: { category: "home-services", label: "Auto service shop" },
+  auto_detailing: { category: "home-services", label: "Auto detailing shop" },
+  tire_shop: { category: "home-services", label: "Tire shop" },
+  tire_dealer_and_repair: { category: "home-services", label: "Tire shop" },
+  auto_glass_service: { category: "home-services", label: "Auto glass shop" },
+  car_window_tinting: { category: "home-services", label: "Window tinting shop" },
+};
+
 // "Partner priority" as SQL, for ORDER BY in the partner picks (kept in step with PARTNER_KINDS).
 export const PARTNER_PRIORITY_SQL = `CASE p.kind ${Object.entries(PARTNER_KINDS).map(([k, v]) => `WHEN '${k}' THEN ${v.priority}`).join(" ")} ELSE 9 END`;
 
 export function kindLabel(kind) {
-  return (PARTNER_KINDS[kind] && PARTNER_KINDS[kind].label) || LAW_KIND_LABELS[kind] || null;
+  return (PARTNER_KINDS[kind] && PARTNER_KINDS[kind].label) || LAW_KIND_LABELS[kind] || (LOCAL_KINDS[kind] && LOCAL_KINDS[kind].label) || null;
 }
 
 const LAWISH_NAME = /\b(law|lawyers?|attorneys?|legal|esq\.?|counsel|p\.?\s?a\.?|pllc|llp)\b/i;
@@ -106,11 +168,11 @@ const GROUP_COPY = {
 // The partner email, as { subject, body, model, angle }. The body stops before the signature and the
 // compliance line, which digest.js adds to every draft.
 export function partnerDraft(p) {
-  const name = String(p.name || "your firm").trim();
+  const name = displayName(p.name || "your firm");
   const group = partnerGroup(p);
   if (group === "lawyer") {
     return {
-      subject: `A tech contact for ${name}'s clients`,
+      subject: `A tech contact for ${possessive(name)} clients`,
       body: [
         "Hi there,",
         INTRO,
@@ -124,7 +186,7 @@ export function partnerDraft(p) {
   }
   const copy = GROUP_COPY[group] || GROUP_COPY.accounting;
   return {
-    subject: `A tech contact for ${name}'s clients`,
+    subject: `A tech contact for ${possessive(name)} clients`,
     body: [
       "Hi there,",
       INTRO,

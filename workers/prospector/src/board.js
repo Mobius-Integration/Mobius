@@ -24,6 +24,7 @@ import { hostOf } from "./contacts.js";
 import { sendToFounder } from "./mail.js";
 import { autoSummary, fillQueue, autoState, metaSet, pauseAuto } from "./outbox.js";
 import { createWriteup, writeupPdf } from "./writeup.js";
+import { PARTNER_KINDS, isLawFirm } from "./partners.js";
 
 const ROUTE = /^\/ops\/b\/(\d{9,11})\/([A-Za-z0-9_-]{43})(?:\/(mark|more|auto|writeup)(?:\/(\d{1,9}))?)?\/?$/;
 const num = (v, dflt, min, max) => Math.min(max, Math.max(min, Number.isFinite(parseInt(v, 10)) ? parseInt(v, 10) : dflt));
@@ -165,7 +166,7 @@ const COLUMNS = `p.id, p.domain, p.website, p.name, p.category, p.kind, p.track,
 
 async function loadBoard(env) {
   const db = env.DB;
-  const [ready, done, stats, writeups, replies] = await db.batch([
+  const [ready, done, stats, writeups, replies, results] = await db.batch([
     db.prepare(`SELECT ${COLUMNS} WHERE p.status = 'digested' ORDER BY p.score DESC, p.id LIMIT 60`),
     db.prepare(`SELECT ${COLUMNS} WHERE p.status IN ('sent','skipped','suppressed') AND p.updated_at >= datetime('now','-30 days') ORDER BY p.updated_at DESC LIMIT 60`),
     db.prepare(
@@ -179,8 +180,16 @@ async function loadBoard(env) {
     // The newest write-up and the newest reply for each prospect (the reply kit, src/replykit.js).
     db.prepare("SELECT prospect_id, MAX(id) AS wid FROM writeups WHERE kv_key IS NOT NULL AND created_at >= datetime('now', '-120 days') GROUP BY prospect_id"),
     db.prepare("SELECT r.prospect_id, r.state, r.intent, r.thread_id, r.text, r.note FROM replies r WHERE r.id IN (SELECT MAX(id) FROM replies GROUP BY prospect_id)"),
+    // Every business emailed so far, for the results panel.
+    db.prepare(
+      `SELECT p.track, p.kind, p.category, p.name, o.variant, o.replied_at IS NOT NULL AS replied, o.bounced_at IS NOT NULL AS bounced,
+              EXISTS (SELECT 1 FROM replies r WHERE r.prospect_id = p.id AND r.intent IN ('yes', 'question', 'call')) AS interested
+         FROM outreach o JOIN prospects p ON p.id = o.prospect_id
+        WHERE o.founder_status = 'sent' AND o.id = (SELECT MAX(id) FROM outreach WHERE prospect_id = p.id)`,
+    ),
   ]);
   return {
+    results: results.results || [],
     ready: ready.results || [], done: done.results || [], stats: (stats.results && stats.results[0]) || {},
     writeups: new Map((writeups.results || []).map((w) => [w.prospect_id, w.wid])),
     replies: new Map((replies.results || []).map((r) => [r.prospect_id, r])),
@@ -253,6 +262,48 @@ ${ctx.base ? writeupRow(r, wid, ctx.base) : ""}
 </article>`;
 }
 
+// The results panel: reply rates by kind of business and by subject line, so outreach goes where it works.
+const AUTO_KINDS = new Set(["automotive_repair", "auto_body_shop", "automotive_service", "auto_detailing", "tire_shop", "tire_dealer_and_repair", "auto_glass_service", "car_window_tinting"]);
+const PARTNER_GROUP_LABEL = { lawyer: "Partners: lawyers", accounting: "Partners: accountants", insurance: "Partners: insurance", print: "Partners: print and signs" };
+const CATEGORY_GROUP = { "dental-medical": "Health and dental", "medspa-salon": "Salons and spas", fitness: "Gyms and studios", "home-services": "Home services", restaurants: "Restaurants", retail: "Shops", "real-estate": "Real estate" };
+export function resultGroup(r) {
+  if (r.track === "partner") return PARTNER_GROUP_LABEL[(PARTNER_KINDS[r.kind] || {}).group] || "Partners: other";
+  if (isLawFirm(r)) return "Law firms";
+  if (AUTO_KINDS.has(r.kind)) return "Auto shops";
+  return CATEGORY_GROUP[r.category] || "Other";
+}
+
+function tally(rows, keyOf) {
+  const m = new Map();
+  for (const r of rows) {
+    const k = keyOf(r);
+    if (!k) continue;
+    const t = m.get(k) || { key: k, sent: 0, replied: 0, interested: 0, bounced: 0 };
+    t.sent++;
+    if (r.replied) t.replied++;
+    if (r.interested) t.interested++;
+    if (r.bounced) t.bounced++;
+    m.set(k, t);
+  }
+  return [...m.values()].sort((a, b) => b.sent - a.sent);
+}
+
+function resultsPanel(rows) {
+  if (!rows.length) return "";
+  const pct = (a, b) => (b ? `${Math.round((100 * a) / b)}%` : "–");
+  const table = (caption, list, first) => `<div class="tablewrap" tabindex="0" role="region" aria-label="${esc(caption)}"><table><caption>${esc(caption)}</caption>
+<thead><tr><th scope="col">${esc(first)}</th><th scope="col">Sent</th><th scope="col">Replies</th><th scope="col">Reply rate</th><th scope="col">Interested</th></tr></thead>
+<tbody>${list.map((t) => `<tr><th scope="row">${esc(t.key)}</th><td>${t.sent}</td><td>${t.replied}</td><td>${pct(t.replied, t.sent)}</td><td>${t.interested}</td></tr>`).join("")}</tbody></table></div>`;
+  const groups = tally(rows, resultGroup);
+  const variants = tally(rows.filter((r) => r.variant), (r) => (r.variant === "B" ? "B: “Question about [business]’s website”" : "A: the drafted subject"));
+  const total = rows.length, replied = rows.filter((r) => r.replied).length;
+  return `<section class="panel" aria-labelledby="h-results"><h2 id="h-results">What's working</h2>
+<p class="stats"><strong>${replied}</strong> ${replied === 1 ? "reply" : "replies"} from <strong>${total}</strong> ${total === 1 ? "email" : "emails"} (${pct(replied, total)}). "Interested" means their first reply said yes, asked a question or asked to talk.</p>
+${table("By kind of business", groups, "Kind of business")}
+${variants.length ? table("Subject line test (client emails)", variants, "Subject") : `<p class="muted">The subject line test starts with the next emails queued.</p>`}
+<p class="muted">Small numbers swing a lot: wait for about 40 emails in a row before trusting a difference.</p></section>`;
+}
+
 function autoPanel(s) {
   if (!s.connected) {
     return `<section class="panel" aria-labelledby="h-auto"><h2 id="h-auto">Auto-send <span class="pill off">Not connected yet</span></h2>
@@ -275,7 +326,7 @@ ${s.paused && s.reason ? `<p class="note">${esc(s.reason)}</p>` : ""}
 }
 
 async function boardPage(env, base, platform) {
-  const [{ ready: readyAll, done, stats, writeups, replies }, sum] = await Promise.all([loadBoard(env), autoSummary(env)]);
+  const [{ ready: readyAll, done, stats, writeups, replies, results }, sum] = await Promise.all([loadBoard(env), autoSummary(env)]);
   const ctx = { base, writeups, replies };
   const queued = readyAll.filter((r) => r.auto_state === "queued").sort((a, b) => String(a.send_at).localeCompare(String(b.send_at)));
   const ready = readyAll.filter((r) => r.auto_state !== "queued");
@@ -297,8 +348,9 @@ ${queued.map((r) => card(r, env, platform, ctx)).join("\n")}
 ${ready.length ? ready.map((r) => card(r, env, platform, ctx)).join("\n") : `<p class="empty">Nothing needs you right now. Tap Get ${size} more, or wait for tomorrow morning's email.</p>`}
 </section>
 ${done.length ? `<section aria-labelledby="h-done"><h2 id="h-done">Done in the last 30 days</h2>\n${done.map((r) => card(r, env, platform, ctx)).join("\n")}\n</section>` : ""}
+${resultsPanel(results)}
 <footer class="how"><h2>How this works</h2><ul>
-<li><strong>Auto-send</strong> emails every business that has an email address on its own website: first emails weekdays between 9:30 AM and 3:30 PM Eastern, from your mario@ mailbox, a few a day at first. Before each one it looks at their site again, and if a finding is gone or the site doesn't load, it holds the email for you instead. A nudge follows on day 4 and a last note a week later, as replies in the same email thread. A reply, a bounce or a STOP ends everything for that business, and every email is in your Gmail Sent folder.</li>
+<li><strong>Auto-send</strong> emails every business that has an email address on its own website, a person's own address (jane@) ahead of a shared one (info@): first emails on weekday mornings from 9:30 AM Eastern (all before noon on the day before a holiday), up to two every 15 minutes, from your mario@ mailbox, a few a day at first. Before each one it looks at their site again, and if a finding is gone or the site doesn't load, it holds the email for you instead. A nudge follows on day 4 and a last note a week later, as replies in the same email thread. A reply, a bounce or a STOP ends everything for that business, and every email is in your Gmail Sent folder.</li>
 <li><strong>When someone replies</strong>, a draft answer appears in that Gmail thread within about 15 minutes, and you get an email about it. If they want the write-up the first email offered, it's made in a real browser (screenshots, an example of each finding outlined in red) and attached as a PDF. Nothing is sent until you read the draft and tap Send. <strong>Make write-up (PDF)</strong> on any card makes one by hand, for a call or a walk-in.</li>
 <li><strong>Need you</strong> holds the businesses auto-send can't email: no address on their site (use their contact form or call them), or an email it held back.</li>
 <li><strong>Write in Gmail</strong> opens the drafted email in the Gmail app on your phone (Gmail on the web on a computer), addressed to them when their site lists an email. Read it, change anything you like, and send it from your Mobius account. A hidden copy goes to ${ops}, and this board marks it sent by itself.</li>
@@ -492,6 +544,12 @@ a{color:var(--brand)}
 .reply p{margin:0 0 6px;overflow-wrap:anywhere}
 .reply .row{margin-top:6px}
 .card[data-status="skipped"] .wrow,.card[data-status="suppressed"] .wrow{display:none}
+.tablewrap{overflow-x:auto;margin:10px 0}
+.tablewrap table{border-collapse:collapse;width:100%;min-width:30rem;font-size:14px;font-variant-numeric:tabular-nums}
+.tablewrap caption{text-align:left;font-weight:700;margin-bottom:4px}
+.tablewrap th,.tablewrap td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:right}
+.tablewrap th[scope=row],.tablewrap thead th:first-child{text-align:left}
+.tablewrap thead th{color:var(--muted);font-weight:600}
 .how{margin-top:40px;color:var(--muted)}
 .how h2{color:var(--ink)}
 .how li{margin:6px 0}
