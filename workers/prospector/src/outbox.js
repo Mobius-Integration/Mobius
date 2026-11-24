@@ -23,6 +23,7 @@ import { partnerGroup, lawishName } from "./partners.js";
 import { findingsFor, prepareOne, parseJson, PICK_COLUMNS, NOT_PARKED, footerText, esc, typeLabel } from "./digest.js";
 import { markProspect, matchSentCopy, whenLabel } from "./marks.js";
 import { recordReply, processReplies } from "./replykit.js";
+import { verifyInBrowser } from "./writeup.js";
 import {
   etParts, etToUtc, addDays, sqlTime, parseSql, isSendDay, nextSendDay, WINDOW, dailyCap, planSlots, restaurantHold,
   familiesOf, followupBody, classifyReply,
@@ -331,6 +332,15 @@ async function sendInitial(env, st, row, now) {
         .bind(`The finding about ${gone.map((f) => FAMILY_NAMES[f] || f).join(" and ")} no longer shows up on their site, so I held the email for you.`, row.oid).run();
       return false;
     }
+    // Then a real browser: every quoted finding must show up there too (the light check can be wrong on
+    // sites that fix things with JavaScript). If the browser can't run, the light check's answer stands.
+    const v = await verifyInBrowser(env, row, quoted);
+    if (v.ran && v.missing.length) {
+      await db.prepare("UPDATE outreach SET auto_state = 'held', hold_reason = ? WHERE id = ?")
+        .bind(`A real browser doesn't see the finding about ${v.missing.map((f) => FAMILY_NAMES[f] || f).join(" and ")} that the email mentions, so I held it for you.`, row.oid).run();
+      return false;
+    }
+    if (!v.ran && v.error) console.error(`prospector: browser re-check skipped for ${row.domain}: ${v.error}`);
   }
   let res;
   try {
@@ -360,6 +370,11 @@ async function sendTouch(env, st, row, now) {
     }
     // A second finding only when we know which ones the first email quoted; otherwise a plain nudge.
     extra = quoted.length ? current.find((i) => !quoted.some((f) => familiesOf([i]).includes(f))) || null : null;
+    // The extra finding is a new claim: a real browser must see it too, or the nudge goes without it.
+    if (extra) {
+      const v = await verifyInBrowser(env, row, familiesOf([extra]));
+      if (v.ran && v.missing.length) extra = null;
+    }
   }
   const body = `${followupBody({ n: row.n, kind: row.track === "partner" ? "partner" : "client", name: row.name, extra })}\n\n${footerText(env)}`;
   let res;

@@ -181,7 +181,7 @@ export function chooseFindings({ p, quoted = [], visit, facts, audit = [] }) {
   if (facts.widgets && facts.widgets.length) good.push(`Visitors can book online (${facts.widgets.slice(0, 2).join(", ")}).`);
   if (Number(visit.loadMs) > 0 && Number(visit.loadMs) < 2500) good.push("It loaded quickly in our visit.");
   if (!present.has("alt") && facts.images > 0) good.push("Every image we checked has a text description.");
-  return { findings, missingQuoted, good: good.slice(0, 3) };
+  return { findings, missingQuoted, good: good.slice(0, 3), present: [...present.keys()] };
 }
 
 // ---------------------------------------------------------------------------
@@ -395,6 +395,40 @@ export async function makeWriteup(env, p, opts = {}) {
     return { pdf: new Uint8Array(pdf), findings, good: chosen.good, missingQuoted: chosen.missingQuoted, url: visit.url, ms: Date.now() - started };
   } finally {
     try { await browser.close(); } catch {}
+  }
+}
+
+// The pre-send check (since 2026-11-24): before an email that quotes findings goes out, does a real
+// browser still see each one? The light check (shared/site-check.js) reads the HTML as delivered and can
+// be wrong on sites that fix things with JavaScript (one restaurant had alt text on every image in the
+// browser, none in the raw HTML). Returns { ran, missing } where missing lists quoted families the
+// browser doesn't see. When the browser can't run or can't open the page, ran is false and the caller
+// keeps the light check's answer: an outage never stops sending. "slow" isn't re-measured here (the
+// light check times the first response; a browser times the whole page).
+const NOT_REMEASURED = new Set(["slow"]);
+export async function verifyInBrowser(env, p, families, opts = {}) {
+  const want = [...new Set(families || [])].filter((f) => FAMILY[f] && !NOT_REMEASURED.has(f));
+  if (!want.length) return { ran: false, skipped: "nothing to re-check", missing: [] };
+  const launch = opts.launch || (env && env.BROWSER_LAUNCH);
+  if (!launch && !(env && env.BROWSER)) return { ran: false, skipped: "no browser", missing: [] };
+  let browser = null;
+  try {
+    browser = await (launch ? launch() : puppeteer.launch(env.BROWSER, { keep_alive: 60000 }));
+    const page = await browser.newPage();
+    page.setDefaultTimeout(NAV_TIMEOUT_MS);
+    const ua = String(await browser.userAgent()).replace(/HeadlessChrome/g, "Chrome");
+    await page.setUserAgent(`${ua} ${UA_SUFFIX}`);
+    await page.setViewport(DESKTOP);
+    const visit = await openSite(page, p);
+    if (!visit.ok) return { ran: false, error: visit.error, missing: [] };
+    const facts = await pageFacts(page);
+    const audit = want.some((f) => FAMILY[f].rules) ? await runAxe(page) : [];
+    const { present } = chooseFindings({ p, visit, facts, audit });
+    return { ran: true, missing: want.filter((f) => !present.includes(f)), present };
+  } catch (e) {
+    return { ran: false, error: String((e && e.message) || e).slice(0, 200), missing: [] };
+  } finally {
+    try { if (browser) await browser.close(); } catch {}
   }
 }
 
