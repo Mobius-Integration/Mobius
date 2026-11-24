@@ -3,8 +3,10 @@
  *
  * Runs inside the founder's own Google Workspace mailbox (mario@mobiusintegration.com) as a web app
  * that executes as him. The prospector Worker (workers/prospector/src/outbox.js) calls it to:
- *   send   one email (a first email, or a follow-up in the same thread)
+ *   send   one email (a first email, or a follow-up as its own email)
  *   poll   report new replies and bounces
+ *   draft  leave a reply DRAFT (never sent) in the thread where a prospect wrote back, optionally with
+ *          a PDF attached (since 2026-11-24, src/replykit.js); the founder reads it and sends it himself
  *   ping   say who it runs as and how many it has sent today
  *
  * Why a script in the mailbox, not an email service: Cloudflare's email service is transactional-only,
@@ -16,6 +18,8 @@
  *   - Every body must contain the marketing-email notice (CAN-SPAM), so the script can't be used to send
  *     arbitrary mail.
  *   - A follow-up is refused if anyone but the founder has written in that thread.
+ *   - A draft is only ever a reply to a message that person sent us, it is never sent, and a thread that
+ *     already has a draft waiting gets no second one.
  * To stop everything: Deploy > Manage deployments > Archive, or delete this project.
  */
 
@@ -46,6 +50,7 @@ function doPost(e) {
     if (req.action === 'ping') return json_({ ok: true, me: me_(), sentToday: counter_().n, dailyMax: DAILY_MAX });
     if (req.action === 'send') return json_(send_(req));
     if (req.action === 'poll') return json_(poll_(req));
+    if (req.action === 'draft') return json_(draft_(req));
     return json_({ ok: false, error: 'unknown action' });
   } catch (err) {
     return json_({ ok: false, error: String((err && err.message) || err) });
@@ -76,6 +81,12 @@ function me_() {
 function addr_(s) {
   var m = /<([^>]+)>/.exec(String(s || ''));
   return (m ? m[1] : String(s || '')).trim().toLowerCase();
+}
+
+// The display name in a From header ('"Jennifer Garner" <jen@example.com>' -> 'Jennifer Garner'), or ''.
+function name_(s) {
+  var m = /^\s*"?([^"<]*?)"?\s*</.exec(String(s || ''));
+  return m ? m[1].trim().slice(0, 80) : '';
 }
 
 function isBounceSender_(a) {
@@ -167,6 +178,49 @@ function send_(req) {
 }
 
 // ---------------------------------------------------------------------------
+// draft: a reply draft for the founder to read and send himself
+
+function draft_(req) {
+  var threadId = String(req.threadId || '');
+  var to = String(req.to || '').trim().toLowerCase();
+  var body = String(req.body || '');
+  if (!/^[0-9a-f]{10,24}$/i.test(threadId)) return { ok: false, error: 'bad thread' };
+  if (!/^[^\s@<>",;:()]+@[^\s@<>",;:()]+\.[a-z]{2,}$/.test(to)) return { ok: false, error: 'bad address' };
+  var me = me_();
+  if (to === me || to.split('@')[1] === me.split('@')[1]) return { ok: false, error: 'refusing to draft to the own domain' };
+  if (body.length < 20 || body.length > 8000) return { ok: false, error: 'bad body length' };
+  var thread;
+  try { thread = GmailApp.getThreadById(threadId); } catch (err) { thread = null; }
+  if (!thread) return { ok: false, error: 'thread not found' };
+  // Reply to their newest message in the thread: a draft only ever answers someone who wrote to us.
+  var msgs = thread.getMessages();
+  var theirs = null;
+  for (var i = msgs.length - 1; i >= 0; i--) {
+    if (addr_(msgs[i].getFrom()) === to) { theirs = msgs[i]; break; }
+  }
+  if (!theirs) return { ok: false, error: 'no message from them in that thread' };
+  // One draft per thread: if one is already waiting (ours or one the founder started), leave it alone.
+  var drafts = GmailApp.getDrafts();
+  for (var j = 0; j < drafts.length; j++) {
+    try {
+      if (drafts[j].getMessage().getThread().getId() === threadId) return { ok: true, existing: true, draft_id: drafts[j].getId() };
+    } catch (err) { /* a draft that vanished meanwhile */ }
+  }
+  var opts = { name: SENDER_NAME };
+  var a = req.attachment;
+  if (a && a.b64) {
+    var bytes = Utilities.base64Decode(String(a.b64));
+    if (bytes.length > 8 * 1024 * 1024) return { ok: false, error: 'attachment too large' };
+    var file = String(a.name || '').replace(/[^\w &'().,-]+/g, ' ').replace(/^[.\s]+/, '').replace(/\s+/g, ' ').trim().slice(0, 90) || 'write-up.pdf';
+    if (!/\.pdf$/i.test(file)) file += '.pdf';
+    opts.attachments = [Utilities.newBlob(bytes, 'application/pdf', file)];
+  }
+  var d = theirs.createDraftReply(body, opts);
+  var m = d.getMessage();
+  return { ok: true, draft_id: d.getId(), message_id: m.getId(), thread_id: m.getThread().getId(), to: m.getTo() };
+}
+
+// ---------------------------------------------------------------------------
 // poll: replies and bounces
 
 // The reply without the quoted email under it.
@@ -228,7 +282,7 @@ function poll_(req) {
       var from = addr_(m.getFrom());
       if (from === me || isBounceSender_(from)) return;
       seen[id] = true;
-      events.push({ type: 'reply', id: id, thread_id: th.getId(), from: from, subject: m.getSubject(), date: m.getDate().toISOString(), text: stripQuoted_(m.getPlainBody()).slice(0, 600), auto: isAuto_(m) });
+      events.push({ type: 'reply', id: id, thread_id: th.getId(), from: from, from_name: name_(m.getFrom()), subject: m.getSubject(), date: m.getDate().toISOString(), text: stripQuoted_(m.getPlainBody()).slice(0, 600), auto: isAuto_(m) });
     });
   });
   GmailApp.search('from:(mailer-daemon OR postmaster) newer_than:7d', 0, 30).forEach(function (th) {

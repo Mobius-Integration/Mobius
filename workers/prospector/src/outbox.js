@@ -5,8 +5,10 @@
 //               the email, and give it a send time inside the day's window (see outbox-rules.js)
 //   outboxTick  every 15 minutes: ask the agent (the founder's mailbox, src/agent.js) for replies and
 //               bounces, schedule follow-ups, and send at most one due email, after re-checking it
-//   Follow-ups  a nudge on day 4 and a last note a week later, in the same thread, stopping the moment
-//               anyone replies, bounces or asks to stop
+//   Follow-ups  a nudge on day 4 and a last note a week later, each as its own email, stopping the
+//               moment anyone replies, bounces or asks to stop
+//   Replies     a person's first reply gets a draft answer in that Gmail thread, with the write-up the
+//               first email offered attached when it helps (src/replykit.js, src/writeup.js)
 //
 // Nothing here sends unless the agent is connected (meta.agent_url and meta.agent_token) and auto-send
 // isn't paused. Every send passes these checks first: the do-not-contact list, a mail domain that
@@ -19,6 +21,7 @@ import { PROSPECTOR_UA, findContact, emailBase, mxOk, hostOf, rootOf } from "./c
 import { partnerGroup, lawishName } from "./partners.js";
 import { findingsFor, prepareOne, parseJson, PICK_COLUMNS, NOT_PARKED, footerText, esc, typeLabel } from "./digest.js";
 import { markProspect, matchSentCopy, whenLabel } from "./marks.js";
+import { recordReply, processReplies } from "./replykit.js";
 import {
   etParts, etToUtc, addDays, sqlTime, parseSql, isSendDay, nextSendDay, WINDOW, dailyCap, planSlots, restaurantHold,
   familiesOf, followupBody, classifyReply,
@@ -410,6 +413,8 @@ export async function outboxTick(env, { now = new Date() } = {}) {
   const st = await autoState(env);
   if (!st.connected) return { skipped: "not connected" };
   try { await pollEvents(env, st, now); } catch (e) { console.error("prospector: poll failed:", e && e.message); await metaSet(db, "agent_status", JSON.stringify({ ok: false, at: now.toISOString(), error: String(e && e.message).slice(0, 160) })); }
+  // Replies get their draft answers (and write-ups) even while sending is paused.
+  try { await processReplies(env, st, now); } catch (e) { console.error("prospector: reply kit failed:", e && e.message); }
   await scheduleFollowups(env, now);
   if (st.paused) return { skipped: "paused" };
 
@@ -511,7 +516,10 @@ async function handleEvent(env, e) {
     return;
   }
   await markProspect(env, p.id, "replied", "agent", { detail: snippet.slice(0, 200) });
-  await notify(env, `Reply from ${p.name}`, [`${p.name} replied: "${snippet}"`, "Follow-ups to them are cancelled. Answer from your Gmail."], link);
+  // A first reply gets a draft answer from the reply kit (src/replykit.js), which then tells the founder;
+  // a later one just tells him.
+  const kit = await recordReply(env, p, e).catch((err) => { console.error("prospector: recordReply failed:", err && err.message); return { queued: false }; });
+  if (!kit.queued) await notify(env, `Reply from ${p.name}`, [`${p.name} replied: "${snippet}"`, "Follow-ups to them are cancelled. Answer from your Gmail."], link);
 }
 
 // If the first emails are bouncing, stop and tell the founder: bounces are what hurt a sender's reputation.

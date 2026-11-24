@@ -12,7 +12,7 @@ export const DEFAULT_MAX_BYTES = 150 * 1024;
 export const DEFAULT_USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36 MobiusCheckup/1.0 (+https://mobiusintegration.com)";
 
-const BOOKING_HINTS = [
+export const BOOKING_HINTS = [
   ["Resy", /resy\.com/i], ["OpenTable", /opentable\./i], ["Tock", /exploretock\.com/i],
   ["Calendly", /calendly\.com/i], ["Acuity", /acuityscheduling\.com/i], ["Square Appointments", /squareup\.com\/appointments|square\.site\/book/i],
   ["Vagaro", /vagaro\.com/i], ["Booksy", /booksy\.com/i], ["Mindbody", /mindbodyonline\.com|mindbody\.io/i],

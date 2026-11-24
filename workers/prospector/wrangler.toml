@@ -9,6 +9,9 @@ main = "src/index.js"
 compatibility_date = "2026-11-01"
 workers_dev = false
 preview_urls = false
+# Cloudflare's real Chrome (Browser Run, Workers Paid) makes the write-up PDFs: src/writeup.js. Node.js
+# compatibility, which its library needs, is on by default for this compatibility_date.
+browser = { binding = "BROWSER" }
 # The founder's prospect board lives under the site's own domain (signed links only, see src/board.js).
 # "/ops" itself is the board's permanent address; "/ops/*" doesn't match it, so it has its own route.
 routes = [
@@ -34,6 +37,17 @@ migrations_dir = "migrations"
 
 [ai]
 binding = "AI"
+
+# The write-up PDFs, kept 120 days (keys "w/<prospect id>/<write-up id>.pdf"; rows in the writeups table).
+[[kv_namespaces]]
+binding = "WRITEUPS"
+id = "79231b7f47314e529f9f5f8192278ac3"
+
+# axe-core (the accessibility engine the browser runs) and the logo go into the bundle as text.
+[[rules]]
+type = "Text"
+globs = ["**/axe.min.js", "**/*.svg"]
+fallthrough = false
 
 # Sends only to the founder's address (enforced in code by sendToFounder).
 [[send_email]]

@@ -1,0 +1,10 @@
+{
+  "name": "mobius-prospector",
+  "private": true,
+  "description": "Prospect finder, outbox and board (Cloudflare Worker). Deploy: npx wrangler deploy",
+  "type": "module",
+  "dependencies": {
+    "@cloudflare/puppeteer": "2.0.1",
+    "axe-core": "4.14.0"
+  }
+}

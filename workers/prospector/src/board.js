@@ -12,6 +12,9 @@
 //                                    remembers this device (src/tokens.js)
 //   POST /ops/b/<exp>/<sig>/mark     {"id": n, "action": "sent|skip|never|replied|unreplied|undo"}
 //   POST /ops/b/<exp>/<sig>/more     draft DIGEST_SIZE more prospects onto the board (no email)
+//   POST /ops/b/<exp>/<sig>/auto     {"action": "pause|resume|fill"}: the auto-send panel
+//   POST /ops/b/<exp>/<sig>/writeup  {"id": n}: make the write-up PDF for prospect n (src/writeup.js)
+//   GET  /ops/b/<exp>/<sig>/writeup/<w>  write-up w's PDF
 
 import { checkBoard, checkDevice, deviceCookie, boardPath, boardUrl, homeUrl, homeText } from "./tokens.js";
 import { markProspect, statusLabel, ACTIONS, whenLabel } from "./marks.js";
@@ -20,8 +23,9 @@ import { composeLinks, platformOf, writeLink } from "./compose.js";
 import { hostOf } from "./contacts.js";
 import { sendToFounder } from "./mail.js";
 import { autoSummary, fillQueue, autoState, metaSet, pauseAuto } from "./outbox.js";
+import { createWriteup, writeupPdf } from "./writeup.js";
 
-const ROUTE = /^\/ops\/b\/(\d{9,11})\/([A-Za-z0-9_-]{43})(?:\/(mark|more|auto))?\/?$/;
+const ROUTE = /^\/ops\/b\/(\d{9,11})\/([A-Za-z0-9_-]{43})(?:\/(mark|more|auto|writeup)(?:\/(\d{1,9}))?)?\/?$/;
 const num = (v, dflt, min, max) => Math.min(max, Math.max(min, Number.isFinite(parseInt(v, 10)) ? parseInt(v, 10) : dflt));
 const isGet = (request) => request.method === "GET" || request.method === "HEAD";
 // The page's own script sends JSON. A form on another site can't (that would need a CORS preflight,
@@ -63,8 +67,32 @@ export async function handleOps(request, env) {
     page.headers.append("Set-Cookie", await deviceCookie(env));
     return page;
   }
+  if (m[4]) {
+    // Only a write-up has an id in its address: GET /writeup/<id> is the PDF.
+    if (sub !== "writeup") return notFound();
+    if (!isGet(request)) return json(405, { ok: false, error: "Use GET." });
+    const pdf = await writeupPdf(env, Number(m[4]));
+    if (!pdf) return notFound();
+    return new Response(pdf.bytes, {
+      headers: {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `inline; filename="${pdf.filename.replace(/["\\]/g, "")}"`,
+        "Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow", "X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer",
+      },
+    });
+  }
   if (request.method !== "POST") return json(405, { ok: false, error: "Use POST." });
   if (!isJson(request)) return json(415, { ok: false, error: "Send JSON." });
+
+  if (sub === "writeup") {
+    let body;
+    try { body = await request.json(); } catch { return json(400, { ok: false, error: "Bad request." }); }
+    const id = Number(body && body.id);
+    if (!Number.isInteger(id) || id <= 0) return json(400, { ok: false, error: "Bad request." });
+    const r = await createWriteup(env, id, { via: "board" });
+    if (!r.ok) return json(200, { ok: false, error: `The write-up didn't work: ${r.error}` });
+    return json(200, { ok: true, id: r.id, url: `${base}/writeup/${r.id}`, findings: (r.findings || []).length });
+  }
 
   if (sub === "mark") {
     let body;
@@ -137,7 +165,7 @@ const COLUMNS = `p.id, p.domain, p.website, p.name, p.category, p.kind, p.track,
 
 async function loadBoard(env) {
   const db = env.DB;
-  const [ready, done, stats] = await db.batch([
+  const [ready, done, stats, writeups, replies] = await db.batch([
     db.prepare(`SELECT ${COLUMNS} WHERE p.status = 'digested' ORDER BY p.score DESC, p.id LIMIT 60`),
     db.prepare(`SELECT ${COLUMNS} WHERE p.status IN ('sent','skipped','suppressed') AND p.updated_at >= datetime('now','-30 days') ORDER BY p.updated_at DESC LIMIT 60`),
     db.prepare(
@@ -148,8 +176,15 @@ async function loadBoard(env) {
          (SELECT COUNT(*) FROM prospects WHERE status = 'checked' AND track = 'client' AND sightings < 3 AND score >= ? AND domain NOT IN (SELECT value FROM suppression)) AS pool,
          (SELECT COUNT(*) FROM prospects WHERE status = 'checked' AND track = 'partner' AND sightings < 3 AND domain NOT IN (SELECT value FROM suppression)) AS partners`,
     ).bind(num(env.MIN_SCORE, 30, 0, 100)),
+    // The newest write-up and the newest reply for each prospect (the reply kit, src/replykit.js).
+    db.prepare("SELECT prospect_id, MAX(id) AS wid FROM writeups WHERE kv_key IS NOT NULL AND created_at >= datetime('now', '-120 days') GROUP BY prospect_id"),
+    db.prepare("SELECT r.prospect_id, r.state, r.intent, r.thread_id, r.text, r.note FROM replies r WHERE r.id IN (SELECT MAX(id) FROM replies GROUP BY prospect_id)"),
   ]);
-  return { ready: ready.results || [], done: done.results || [], stats: (stats.results && stats.results[0]) || {} };
+  return {
+    ready: ready.results || [], done: done.results || [], stats: (stats.results && stats.results[0]) || {},
+    writeups: new Map((writeups.results || []).map((w) => [w.prospect_id, w.wid])),
+    replies: new Map((replies.results || []).map((r) => [r.prospect_id, r])),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -167,9 +202,33 @@ function contactLine(r) {
   return `No email or contact page found automatically. Check <a href="${esc(site)}" target="_blank" rel="noopener noreferrer">their site</a>, or call.`;
 }
 
-function card(r, env, platform) {
+const REPLY_STATE = {
+  new: "Preparing a draft answer (a few minutes).",
+  drafting: "Preparing a draft answer (a few minutes).",
+  drafted: "A draft answer is waiting in that Gmail thread. Read it, change anything you like, and tap Send.",
+  skipped: "Answer from your Gmail.",
+};
+
+function replyBlock(r, rep, env) {
+  if (!rep) return "";
+  const text = String(rep.text || "").replace(/\s+/g, " ").trim().slice(0, 240);
+  const state = rep.state === "failed" ? `I couldn't prepare a draft answer (${rep.note || "an error"}). Answer from your Gmail.` : REPLY_STATE[rep.state] || "";
+  const gmail = rep.thread_id ? `https://mail.google.com/mail/?authuser=${encodeURIComponent(env.FOUNDER_FROM || "")}#all/${encodeURIComponent(rep.thread_id)}` : "";
+  return `<div class="reply"><p><strong>They wrote:</strong> “${esc(text)}”</p>${state ? `<p class="muted">${esc(state)}</p>` : ""}${gmail ? `<div class="row"><a class="btn primary" href="${esc(gmail)}" target="_blank" rel="noopener noreferrer">Open in Gmail</a></div>` : ""}</div>`;
+}
+
+function writeupRow(r, wid, base) {
+  if (r.track === "partner") return "";
+  return `<div class="row wrow">${wid
+    ? `<a class="btn" href="${esc(`${base}/writeup/${wid}`)}" target="_blank" rel="noopener noreferrer">Open write-up (PDF)</a><button type="button" class="btn small" data-writeup="1">Make a fresh one</button>`
+    : `<button type="button" class="btn" data-writeup="1">Make write-up (PDF)</button>`}</div>`;
+}
+
+function card(r, env, platform, ctx = {}) {
   const site = r.final_url || r.website;
   const partner = r.track === "partner";
+  const rep = ctx.replies ? ctx.replies.get(r.id) : null;
+  const wid = ctx.writeups ? ctx.writeups.get(r.id) : null;
   const issues = partner ? [] : findingsFor(r).slice(0, 4);
   const links = composeLinks(env, { to: r.contact_email, subject: r.draft_subject, body: r.draft_body });
   const write = writeLink(links, platform);
@@ -189,6 +248,8 @@ ${issues.length ? `<ul class="findings">${issues.map((i) => `<li>${esc(i)}</li>`
 <div class="row when-sent"><button type="button" class="btn" data-act="replied">They replied</button><button type="button" class="btn" data-act="unreplied">Not a reply</button><button type="button" class="btn" data-act="nofollow">Stop follow-ups</button><button type="button" class="btn" data-act="follow">Resume follow-ups</button><button type="button" class="btn danger" data-act="never">Never contact</button><button type="button" class="btn" data-act="undo">Undo</button></div>
 <div class="row when-closed"><button type="button" class="btn" data-act="undo">Undo</button></div>
 <p class="state">${esc(statusLabel(r.status, r))}</p>
+${replyBlock(r, rep, env)}
+${ctx.base ? writeupRow(r, wid, ctx.base) : ""}
 </article>`;
 }
 
@@ -214,7 +275,8 @@ ${s.paused && s.reason ? `<p class="note">${esc(s.reason)}</p>` : ""}
 }
 
 async function boardPage(env, base, platform) {
-  const [{ ready: readyAll, done, stats }, sum] = await Promise.all([loadBoard(env), autoSummary(env)]);
+  const [{ ready: readyAll, done, stats, writeups, replies }, sum] = await Promise.all([loadBoard(env), autoSummary(env)]);
+  const ctx = { base, writeups, replies };
   const queued = readyAll.filter((r) => r.auto_state === "queued").sort((a, b) => String(a.send_at).localeCompare(String(b.send_at)));
   const ready = readyAll.filter((r) => r.auto_state !== "queued");
   const size = num(env.DIGEST_SIZE, 5, 1, 10);
@@ -229,14 +291,15 @@ async function boardPage(env, base, platform) {
 ${autoPanel(sum)}
 ${queued.length ? `<section aria-labelledby="h-queued"><h2 id="h-queued">Sending automatically</h2>
 <p class="muted">These go out by themselves at the time shown, after a fresh look at their site. Tap Cancel this send to take one back.</p>
-${queued.map((r) => card(r, env, platform)).join("\n")}
+${queued.map((r) => card(r, env, platform, ctx)).join("\n")}
 </section>` : ""}
 <section aria-labelledby="h-ready"><h2 id="h-ready">Need you</h2>
-${ready.length ? ready.map((r) => card(r, env, platform)).join("\n") : `<p class="empty">Nothing needs you right now. Tap Get ${size} more, or wait for tomorrow morning's email.</p>`}
+${ready.length ? ready.map((r) => card(r, env, platform, ctx)).join("\n") : `<p class="empty">Nothing needs you right now. Tap Get ${size} more, or wait for tomorrow morning's email.</p>`}
 </section>
-${done.length ? `<section aria-labelledby="h-done"><h2 id="h-done">Done in the last 30 days</h2>\n${done.map((r) => card(r, env, platform)).join("\n")}\n</section>` : ""}
+${done.length ? `<section aria-labelledby="h-done"><h2 id="h-done">Done in the last 30 days</h2>\n${done.map((r) => card(r, env, platform, ctx)).join("\n")}\n</section>` : ""}
 <footer class="how"><h2>How this works</h2><ul>
-<li><strong>Auto-send</strong> emails every business that has an email address on its own website: first emails weekdays between 9:30 AM and 3:30 PM Eastern, from your mario@ mailbox, a few a day at first. Before each one it looks at their site again, and if a finding is gone or the site doesn't load, it holds the email for you instead. A nudge follows on day 4 and a last note a week later, in the same thread. A reply, a bounce or a STOP ends everything for that business, and every email is in your Gmail Sent folder.</li>
+<li><strong>Auto-send</strong> emails every business that has an email address on its own website: first emails weekdays between 9:30 AM and 3:30 PM Eastern, from your mario@ mailbox, a few a day at first. Before each one it looks at their site again, and if a finding is gone or the site doesn't load, it holds the email for you instead. A nudge follows on day 4 and a last note a week later, each as its own email. A reply, a bounce or a STOP ends everything for that business, and every email is in your Gmail Sent folder.</li>
+<li><strong>When someone replies</strong>, a draft answer appears in that Gmail thread within about 15 minutes, and you get an email about it. If they want the write-up the first email offered, it's made in a real browser (screenshots, an example of each finding outlined in red) and attached as a PDF. Nothing is sent until you read the draft and tap Send. <strong>Make write-up (PDF)</strong> on any card makes one by hand, for a call or a walk-in.</li>
 <li><strong>Need you</strong> holds the businesses auto-send can't email: no address on their site (use their contact form or call them), or an email it held back.</li>
 <li><strong>Write in Gmail</strong> opens the drafted email in the Gmail app on your phone (Gmail on the web on a computer), addressed to them when their site lists an email. Read it, change anything you like, and send it from your Mobius account. A hidden copy goes to ${ops}, and this board marks it sent by itself.</li>
 <li>Each draft already ends with your signature (name, title, phone, website) and the one-line notice the law requires in marketing emails. Gmail never adds its own signature to an email that opens already written, so nothing appears twice.</li>
@@ -425,6 +488,10 @@ a{color:var(--brand)}
 .card[data-status="sent"] .state{color:var(--ok)}
 .card[data-status="suppressed"] .state{color:var(--danger)}
 .empty{color:var(--muted)}
+.reply{margin:12px 0 0;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--bg)}
+.reply p{margin:0 0 6px;overflow-wrap:anywhere}
+.reply .row{margin-top:6px}
+.card[data-status="skipped"] .wrow,.card[data-status="suppressed"] .wrow{display:none}
 .how{margin-top:40px;color:var(--muted)}
 .how h2{color:var(--ink)}
 .how li{margin:6px 0}
@@ -518,11 +585,44 @@ const SCRIPT = `
       b.disabled = false; b.textContent = label;
     });
   }
+  function makeWriteup(b) {
+    var c = b.closest("[data-id]");
+    if (!c) return;
+    var label = b.textContent;
+    b.disabled = true;
+    b.textContent = "Making it, about a minute...";
+    post("/writeup", { id: Number(c.getAttribute("data-id")) }).then(function (d) {
+      if (d.httpOk && d.ok && d.url) {
+        var row = b.closest(".wrow");
+        var a = row ? row.querySelector("a.btn") : null;
+        if (row && !a) {
+          a = document.createElement("a");
+          a.className = "btn";
+          a.target = "_blank";
+          a.rel = "noopener noreferrer";
+          row.insertBefore(a, b);
+        }
+        if (a) { a.href = d.url; a.textContent = "Open write-up (PDF)"; }
+        b.textContent = "Make a fresh one";
+        b.classList.add("small");
+        b.disabled = false;
+        say("Write-up ready. Tap Open write-up (PDF).");
+        return;
+      }
+      say(d.error || "That didn't work. Try again in a minute.");
+      b.disabled = false; b.textContent = label;
+    }, function () {
+      say("That didn't work. Check your connection and try again.");
+      b.disabled = false; b.textContent = label;
+    });
+  }
   document.addEventListener("click", function (e) {
     var t = e.target instanceof Element ? e.target : null;
     if (!t) return;
     var ab = t.closest("[data-auto-act]");
     if (ab) { autoAct(ab); return; }
+    var wb = t.closest("[data-writeup]");
+    if (wb) { makeWriteup(wb); return; }
     var b = t.closest("[data-act]");
     if (b) {
       var c = b.closest("[data-id]");

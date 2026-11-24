@@ -1,8 +1,8 @@
 # mobius-prospector
 
-A Cloudflare Worker that finds local Tampa Bay businesses with websites, does one polite read-only check of each home page, and every weekday morning emails the founder the best new prospects with drafted outreach emails and tap buttons. A prospect board on the site's own domain holds everything waiting to be sent.
+A Cloudflare Worker that finds local Tampa Bay businesses with websites, does one polite read-only check of each home page, drafts outreach, and runs the founder's prospect board on the site's own domain.
 
-**Nothing is ever sent to a prospect automatically.** The founder reads each draft and sends it himself, one at a time.
+**Since 2026-11-23 first emails and follow-ups go out automatically** from the founder's own mailbox, through a script in that mailbox (see [Auto-send and follow-ups](#auto-send-and-follow-ups-since-2026-11-23)). **Replies never do:** since 2026-11-24 a reply gets a draft answer in Gmail, often with the write-up the first email offered attached, and the founder reads it and sends it himself (see [Reply kit and write-ups](#reply-kit-and-write-ups-since-2026-11-24)).
 
 ## Rules this Worker follows
 
@@ -76,13 +76,15 @@ The rich Gmail signature on mario@ (one table, inline styles, no images, one lin
 - 30 s of CPU per invocation (`[limits] cpu_ms`) and far more subrequests than the free plan's 50.
 - Check batch: `CHECKS_PER_RUN` (10) prospects in parallel, each at most 3 fetches (robots, home page, an `http://` retry), about 3-4 ms of CPU per full-size page, one `db.batch()` write.
 - Digest and "Get more": up to `DIGEST_SIZE` AI drafts (within the free daily Workers AI allowance) and up to 2 contact-lookup GETs per pick.
+- Write-ups: about 10 seconds of Browser Run time each, one browser at a time. Browser Run is billed by browser time beyond the plan's included allowance (see the Cloudflare dashboard); at a few write-ups a day it stays small.
 - 2 cron triggers.
 
 ## Setup (owner only; this repo never contains secrets)
 
 ```
 cd workers/prospector
-npx wrangler d1 migrations apply mobius-prospector --remote   # 0001_init, 0002_harvest_tiles, 0003_board
+npm install                               # @cloudflare/puppeteer and axe-core, for the write-ups
+npx wrangler d1 migrations apply mobius-prospector --remote   # 0001_init through 0006_reply_kit
 npx wrangler secret put FOUNDER_TO        # the founder's verified address
 npx wrangler secret put MAILING_ADDRESS   # optional, for the email footer
 npx wrangler deploy                       # also creates the route mobiusintegration.com/ops/*
@@ -115,10 +117,25 @@ The founder asked for automatic messages and follow-ups, reversing his 2026-11-2
   - **Every 15 minutes (cloud only):** `outboxTick` reads replies and bounces from the agent, schedules follow-ups, and sends at most one due email.
 - **Safety, in order.** Daily cap ramps from 8 to 20 (`AUTO_START_PER_DAY`, `AUTO_MAX_PER_DAY`; +2 every 3 days after the first send, all kinds of email counted). Weekdays only, no major holidays, restaurants wait out Thanksgiving week. Before each send: do-not-contact list, a mail server for the address's domain, the site still opens on the same domain, and (clients) a fresh check where every finding the draft quotes must still be there, else the email is held for the founder with the reason. Only addresses the business publishes itself, on its own domain or a free-mail address its site lists; never guessed, and addresses hidden from bots stay hidden.
 - **Follow-ups.** A nudge on day 4 (with one more current finding, if known) and a last note a week later, at most two, as their own email with a "Following up:" subject. (Google's reply functions answer the sender of the last message, which is the founder himself: tested live 2026-11-23, both `reply` and `replyAll` landed in his own inbox, so threading is not used.) They stop on a reply, a bounce, a STOP, "Stop follow-ups", or when the site no longer shows the findings.
-- **Replies.** `classifyReply` reads each one: out-of-office is ignored; a person is marked replied and the founder is emailed; "stop", "remove me" or a polite no suppresses the address and domain; an angry reply (spam, report, illegal) pauses everything. More than 5% bounces over 10 or more sends also pauses, and so does any email the agent reports sent to the wrong address.
+- **Replies.** `classifyReply` reads each one: out-of-office is ignored; a person is marked replied, and their first reply goes to the reply kit (below), which emails the founder once a draft answer is waiting; "stop", "remove me" or a polite no suppresses the address and domain; an angry reply (spam, report, illegal) pauses everything. More than 5% bounces over 10 or more sends also pauses, and so does any email the agent reports sent to the wrong address.
 - **Board.** Auto-send panel (On, Paused, Not connected; today's count; Pause, Resume, Top up), Sending automatically (with Cancel this send), Need you (businesses with no usable email, held emails with their reason), per-card follow-up status and Stop follow-ups.
 - **Forms.** The prospector never submits contact forms for the founder. Most forms sit behind CAPTCHAs and bot checks, defeating those isn't something to build, and an automated sales message through someone's contact form is the lowest-trust channel there is. No-email businesses go to Need you for a contact form (Copy message) or a call.
 - **Tests** live outside the repo, in the session scratchpad: unit checks for the rules and contact finder, the script run in a sandbox with stand-ins for Gmail, and an end-to-end run against Node's SQLite with fake sites, DNS and mailbox.
+
+## Reply kit and write-ups (since 2026-11-24)
+
+Every first email ends by offering "a short write-up of what I saw, with screenshots". The reply kit makes that offer instant. Code: `src/replykit.js`, `src/writeup.js`; tables `replies` and `writeups` (migration 0006); PDFs in the `WRITEUPS` KV namespace for 120 days.
+
+- **When a person replies** (their first reply; later ones just get the usual notice), the next 15-minute run:
+  1. reads what they want with fixed rules (`replyIntent`: yes, question, call, later, no, other);
+  2. for a client who didn't say no, makes the write-up (or reuses one from the last 3 days);
+  3. writes the reply from fixed templates (`composeDraft`). The only AI-written words are a one-to-three sentence answer to a question, built from the site's own `src/_data/packages.js` and checked by `answerOk` (prices must be real ones, links only to mobiusintegration.com's pricing or partners pages, no legal talk); anything that fails becomes an offer to talk;
+  4. asks the agent's `draft` action to leave it as a **draft** reply in that Gmail thread, PDF attached. Nothing is sent: the founder gets an email ("your draft answer is waiting in Gmail") and sends it himself.
+- **Partners** get the referral terms (lawyers: the client's first month free, no fees either way; others: the flat $297 thank-you) and a coffee-or-call ask, never a write-up.
+- **The write-up** (`makeWriteup`) opens the page once in Cloudflare's real Chrome (Browser Run, the `BROWSER` binding), at computer and phone sizes, runs axe-core with the WCAG 2.1 A and AA rules, screenshots up to two examples of each finding with a red outline drawn over them, and prints a two-to-four page Letter PDF: the first email's findings first, at most five, each with what it means, why it matters and the fix, then how it was checked, the founding paragraph and the signature. A finding the first email quoted that the browser no longer sees is left out, and the founder is told. Certificate errors are ignored for that one visit (the warning is itself the finding). Chrome refuses plain-http navigations under automation, so an http-only page is rendered from a copy fetched over http with a `<base>` tag. About 8-11 seconds and 450-650 KB each.
+- **Board.** Every client card has **Make write-up (PDF)** (for a call, a walk-in, or a reply by hand) and, once one exists, **Open write-up (PDF)**; a card with a reply shows what they wrote, the draft's state and **Open in Gmail**.
+- **The agent** (`draft` action, since script version 4) only ever drafts a reply to a message that person sent in that thread, never to the mailbox's own domain, one draft per thread, PDF only, at most 8 MB; drafts don't count toward the daily send limit.
+- **Live test 2026-11-24:** a reply from the founder's own Gmail got a draft with a real write-up attached, in that thread, addressed back to the sender; a second request left the waiting draft alone.
 
 ## Overture import (PC only)
 
