@@ -243,7 +243,7 @@ export function templateDraft(p, findings) {
     "I'm Mario, with Mobius Integration here in Tampa Bay. I fix this kind of thing for local businesses, and it's usually a quick job.",
     "",
     // No links in a first email (they hurt deliverability); a tiny ask gets more replies than a call request.
-    "Want me to send you a one-page write-up with screenshots of what I'm seeing? No charge.",
+    "Want me to send you a short write-up with screenshots of what I'm seeing? No charge.",
   ];
   return {
     subject: angle ? angle.subject : `Quick note about ${possessive(p.name)} website`,
