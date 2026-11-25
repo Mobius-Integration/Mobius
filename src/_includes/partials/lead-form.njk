@@ -39,9 +39,10 @@
 
     {% if showSiteUrl !== false %}
     <div>
-      <label class="field-label" for="{{ fp }}-site-url">Your website (optional)</label>
-      <input class="field-input" type="url" id="{{ fp }}-site-url" name="site_url" autocomplete="url" maxlength="300" aria-describedby="{{ fp }}-site-url-help">
-      <p class="field-help" id="{{ fp }}-site-url-help">{% if fp == "free-checkup" %}This is the site we'll look at for your write-up. Leave it blank if you don't have one.{% else %}If you have one, the address helps us see what you're working with.{% endif %}</p>
+      <label class="field-label" for="{{ fp }}-site-url">Your website{% if fp == "free-checkup" %} (required){% else %} (optional){% endif %}</label>
+      <input class="field-input" type="url" id="{{ fp }}-site-url" name="site_url" autocomplete="url" maxlength="300"{% if fp == "free-checkup" %} required aria-required="true"{% endif %} aria-describedby="{{ fp }}-site-url-help">
+      <p class="field-error" id="{{ fp }}-site-url-error" hidden></p>
+      <p class="field-help" id="{{ fp }}-site-url-help">{% if fp == "free-checkup" %}This is the site we'll look at for your write-up, for example yourbusiness.com.{% else %}If you have one, the address helps us see what you're working with.{% endif %}</p>
     </div>
     {% endif %}
 
@@ -150,6 +151,15 @@
           first = first || email;
         } else {
           showError(email, "");
+        }
+        var site = form.elements["site_url"];
+        if (site && site.hasAttribute("required")) {
+          if (!site.value.trim()) {
+            showError(site, "Please enter your website address, like yourbusiness.com.");
+            first = first || site;
+          } else {
+            showError(site, "");
+          }
         }
         return first;
       }
