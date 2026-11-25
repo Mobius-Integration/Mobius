@@ -16,7 +16,7 @@
         {%- set isCurrent = (page.url == item.href) %}
         <a href="{{ item.href }}"{% if isCurrent %} aria-current="page"{% endif %} class="inline-flex min-h-[44px] items-center rounded px-2 text-sm {% if isCurrent %}font-bold text-indigo-800 underline decoration-2 underline-offset-8{% else %}font-medium text-gray-700 hover:text-indigo-800 hover:underline hover:underline-offset-8{% endif %}">{{ item.label }}</a>
         {%- endfor %}
-        <a href="{{ site.cta.href }}"{% if page.url == site.cta.href %} aria-current="page"{% endif %} class="btn-primary mt-2 text-sm lg:ml-2 lg:mt-0">{{ site.cta.label }}</a>
+        <a href="{{ site.writeupCta.href }}"{% if page.url == site.writeupCta.href %} aria-current="page"{% endif %} class="btn-primary mt-2 text-sm lg:ml-2 lg:mt-0">{{ site.writeupCta.label }}</a>
       </nav>
     </div>
   </div>

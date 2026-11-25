@@ -41,7 +41,7 @@
     <div>
       <label class="field-label" for="{{ fp }}-site-url">Your website (optional)</label>
       <input class="field-input" type="url" id="{{ fp }}-site-url" name="site_url" autocomplete="url" maxlength="300" aria-describedby="{{ fp }}-site-url-help">
-      <p class="field-help" id="{{ fp }}-site-url-help">{% if fp == "free-checkup" %}If you have one, the address helps us prepare the checkup.{% else %}If you have one, the address helps us see what you're working with.{% endif %}</p>
+      <p class="field-help" id="{{ fp }}-site-url-help">{% if fp == "free-checkup" %}This is the site we'll look at for your write-up. Leave it blank if you don't have one.{% else %}If you have one, the address helps us see what you're working with.{% endif %}</p>
     </div>
     {% endif %}
 
@@ -61,13 +61,13 @@
     </div>
 
     <div>
-      <label class="field-label" for="{{ fp }}-preferred-time">Best time for a call (optional)</label>
+      <label class="field-label" for="{{ fp }}-preferred-time">Best time for a call (optional){% if fp == "free-checkup" %}, only if you'd like one{% endif %}</label>
       <input class="field-input" type="text" id="{{ fp }}-preferred-time" name="preferred_time" maxlength="200" aria-describedby="{{ fp }}-preferred-time-help">
       <p class="field-help" id="{{ fp }}-preferred-time-help">{{ site.callHours }}. Tell us what works for you.</p>
     </div>
 
     <div>
-      <label class="field-label" for="{{ fp }}-message">Message (optional)</label>
+      <label class="field-label" for="{{ fp }}-message">{% if fp == "free-checkup" %}Anything you'd like us to look at? (optional){% else %}Message (optional){% endif %}</label>
       <textarea class="field-input" id="{{ fp }}-message" name="message" rows="5" maxlength="5000"></textarea>
     </div>
 
@@ -94,8 +94,8 @@
   </form>
 
   <div id="{{ fp }}-success" class="rounded-2xl border-2 border-green-700 bg-green-50 p-6 text-green-900" tabindex="-1" data-success hidden>
-    <p class="text-xl font-bold">Thanks. We got your message.</p>
-    <p class="mt-2">We'll reply within {{ site.responseTime }} to say hello and, if you asked for a call, to find a time.</p>
+    <p class="text-xl font-bold">{% if fp == "free-checkup" %}Thanks. We got your request.{% else %}Thanks. We got your message.{% endif %}</p>
+    <p class="mt-2">{% if fp == "free-checkup" %}We'll reply within {{ site.responseTime }} to confirm, and your free write-up will come by email.{% else %}We'll reply within {{ site.responseTime }} to say hello and, if you asked for a call, to find a time.{% endif %}</p>
     <p class="mt-4"><a class="link" href="/">Back to the home page</a></p>
   </div>
 

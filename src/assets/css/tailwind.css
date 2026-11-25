@@ -2000,10 +2000,6 @@ main:focus {
   height: 2.25rem;
 }
 
-.h-full {
-  height: 100%;
-}
-
 .min-h-\[44px\] {
   min-height: 44px;
 }
@@ -2302,6 +2298,10 @@ main:focus {
   padding: 1rem;
 }
 
+.p-5 {
+  padding: 1.25rem;
+}
+
 .p-6 {
   padding: 1.5rem;
 }
@@ -2319,6 +2319,11 @@ main:focus {
 .px-4 {
   padding-left: 1rem;
   padding-right: 1rem;
+}
+
+.px-8 {
+  padding-left: 2rem;
+  padding-right: 2rem;
 }
 
 .py-1\.5 {
@@ -2339,6 +2344,11 @@ main:focus {
 .py-3 {
   padding-top: 0.75rem;
   padding-bottom: 0.75rem;
+}
+
+.py-4 {
+  padding-top: 1rem;
+  padding-bottom: 1rem;
 }
 
 .pb-16 {
@@ -2430,6 +2440,10 @@ main:focus {
 
 .font-medium {
   font-weight: 500;
+}
+
+.font-normal {
+  font-weight: 400;
 }
 
 .font-semibold {
@@ -2594,11 +2608,6 @@ main:focus {
   color: rgb(67 56 202 );
 }
 
-.hover\:border-indigo-400:hover {
-  --tw-border-opacity: 1;
-  border-color: rgb(129 140 248 / var(--tw-border-opacity, 1));
-}
-
 .hover\:text-indigo-700:hover {
   --tw-text-opacity: 1;
   color: rgb(67 56 202 / var(--tw-text-opacity, 1));
@@ -2706,8 +2715,8 @@ main:focus {
     gap: 3rem;
   }
 
-  .md\:p-4 {
-    padding: 1rem;
+  .md\:p-6 {
+    padding: 1.5rem;
   }
 
   .md\:pb-10 {
