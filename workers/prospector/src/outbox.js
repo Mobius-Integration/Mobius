@@ -182,7 +182,8 @@ export const CLIENT_SEGMENTS = ["professional", "dental-medical", "medspa-salon"
 function queueStatements(db, item, sendAt, quoted) {
   const { p, draft, full, contact } = item;
   const variant = subjectVariant(p);
-  const subject = variant ? VARIANT_SUBJECT[variant](p.name) : draft.subject;
+  // Subject test since 2026-11-25: A = the finding-specific subject from the draft, B = a plain question.
+  const subject = variant === "A" && draft.model === "template" ? draft.subject : variant ? VARIANT_SUBJECT[variant](p.name) : draft.subject;
   return [
     db.prepare("INSERT INTO outreach (prospect_id, digest_date, draft_subject, draft_body, model, contact_email, contact_url, contact_form, angle, auto_state, send_at, quoted, variant) VALUES (?,?,?,?,?,?,?,?,?,'queued',?,?,?)")
       .bind(p.id, new Date().toISOString().slice(0, 10), subject, full, draft.model, contact.email, contact.url ? String(contact.url).slice(0, 500) : null, contact.form ? 1 : 0, draft.angle || null, sqlTime(sendAt), JSON.stringify(quoted), variant),
@@ -254,7 +255,7 @@ export async function fillQueue(env, { now = new Date(), maxScan = 60, rand = Ma
     for (const { p, contact } of eligible) {
       if (need() <= 0) break;
       const item = await prepareOne(env, p, contact);
-      picked.push({ item, quoted: p.track === "partner" ? [] : familiesOf(item.issues.slice(0, 2)), partner: kind === "partner" });
+      picked.push({ item, quoted: p.track === "partner" ? [] : item.draft.quotedIssue ? familiesOf([item.draft.quotedIssue]) : familiesOf(item.issues.slice(0, 2)), partner: kind === "partner" });
     }
   }
 

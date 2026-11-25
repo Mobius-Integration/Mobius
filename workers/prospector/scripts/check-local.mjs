@@ -90,19 +90,35 @@ try {
   });
 
   const trigger = () => new Promise((resolve, reject) => {
-    const req = http.get({ host: "127.0.0.1", port, path: `/__scheduled?cron=${encodeURIComponent("*/15 * * * *")}`, timeout: 3 * 60 * 1000 }, (res) => {
+    // agent: false opens a fresh connection per batch, so a socket the dev server already closed is never reused.
+    const req = http.get({ host: "127.0.0.1", port, agent: false, path: `/__scheduled?cron=${encodeURIComponent("*/15 * * * *")}`, timeout: 3 * 60 * 1000 }, (res) => {
       res.resume();
       res.on("end", resolve);
+      // A reset after the headers arrive surfaces on the response, not the request (the 2026-11-24 crash).
+      res.on("error", reject);
+      res.on("close", () => { if (!res.complete) reject(new Error("check batch connection closed early")); });
     });
     req.on("timeout", () => req.destroy(new Error("check batch timed out after 3 minutes")));
     req.on("error", reject);
   });
 
+  // One dropped connection shouldn't end the whole run: retry a batch twice, then stop
+  // (a rerun resumes from the prospects still marked new).
+  const triggerWithRetry = async () => {
+    for (let attempt = 1; ; attempt++) {
+      try { return await trigger(); } catch (e) {
+        if (attempt >= 3) throw e;
+        console.log(`  batch failed (${e.code || e.message}); retrying in 15 s`);
+        await new Promise((r) => setTimeout(r, 15000));
+      }
+    }
+  };
+
   // Count the queue only every 10 batches: each count is a separate wrangler call (a few seconds).
   const maxBatches = Math.ceil(total / PER_BATCH) + 10;
   let left = total;
   for (let i = 1; i <= maxBatches && left > 0; i++) {
-    await trigger();
+    await triggerWithRetry();
     if (i % 10 === 0) {
       left = queued();
       console.log(`  ${i} batches done, ${left} left`);
