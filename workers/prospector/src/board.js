@@ -330,6 +330,12 @@ async function boardPage(env, base, platform) {
   const ctx = { base, writeups, replies };
   const queued = readyAll.filter((r) => r.auto_state === "queued").sort((a, b) => String(a.send_at).localeCompare(String(b.send_at)));
   const ready = readyAll.filter((r) => r.auto_state !== "queued");
+  const needYou = ready.filter((r) => r.auto_state === "held" || !r.contact_email);
+  const prospects = ready.filter((r) => !needYou.includes(r));
+  const partners = prospects.filter((r) => r.track === "partner");
+  const repliedDone = done.filter((r) => r.replied_at || replies.has(r.id) || writeups.has(r.id));
+  const outreachDone = done.filter((r) => !repliedDone.includes(r));
+  const replyCount = [...replies.values()].filter((r) => ["new", "drafting", "drafted", "failed"].includes(r.state)).length;
   const size = num(env.DIGEST_SIZE, 5, 1, 10);
   const ops = esc(env.OPS_ADDRESS || "ops@mobiusintegration.com");
   const body = `<main class="wrap">
@@ -339,17 +345,17 @@ async function boardPage(env, base, platform) {
 <p class="stats"><strong>${queued.length}</strong> sending automatically · <strong>${ready.length}</strong> need you · <strong>${stats.sent7 || 0}</strong> sent this week · <strong>${stats.replies || 0}</strong> ${stats.replies === 1 ? "reply" : "replies"} from ${plural(stats.sent_all || 0, "email", "emails")} · ${plural(stats.pool || 0, "more checked prospect", "more checked prospects")} and ${plural(stats.partners || 0, "partner", "partners")} in the queue</p>
 <button type="button" class="btn primary" id="more" data-size="${size}">Get ${size} more</button>
 </header>
-${autoPanel(sum)}
-${queued.length ? `<section aria-labelledby="h-queued"><h2 id="h-queued">Sending automatically</h2>
-<p class="muted">These go out by themselves at the time shown, after a fresh look at their site. Tap Cancel this send to take one back.</p>
-${queued.map((r) => card(r, env, platform, ctx)).join("\n")}
-</section>` : ""}
-<section aria-labelledby="h-ready"><h2 id="h-ready">Need you</h2>
-${ready.length ? ready.map((r) => card(r, env, platform, ctx)).join("\n") : `<p class="empty">Nothing needs you right now. Tap Get ${size} more, or wait for tomorrow morning's email.</p>`}
-</section>
-${done.length ? `<section aria-labelledby="h-done"><h2 id="h-done">Done in the last 30 days</h2>\n${done.map((r) => card(r, env, platform, ctx)).join("\n")}\n</section>` : ""}
-${resultsPanel(results)}
-<footer class="how"><h2>How this works</h2><ul>
+<nav class="tabs" role="tablist" aria-label="Board sections">
+${[["today","Today",0], ["need-you","Need you",needYou.length], ["replies","Replies",replyCount], ["outreach","Outreach",0], ["prospects","Prospects",0], ["results","Results",0], ["how","How it works",0]].map(([id,label,count]) => `<button class="tab" id="tab-${id}" role="tab" aria-selected="false" aria-controls="panel-${id}" tabindex="-1" data-tab="${id}">${label}${count ? ` <span class="tab-count">${count}</span>` : ""}</button>`).join("")}
+</nav>
+<div class="tab-panel" id="panel-today" role="tabpanel" aria-labelledby="tab-today">${autoPanel(sum)}
+${queued.length ? `<section aria-labelledby="h-queued"><h2 id="h-queued">Sending automatically</h2><p class="muted">These go out by themselves at the time shown, after a fresh look at their site. Tap Cancel this send to take one back.</p>${queued.map((r) => card(r, env, platform, ctx)).join("\n")}</section>` : `<p class="empty">Nothing is scheduled to send right now.</p>`}</div>
+<div class="tab-panel" id="panel-need-you" role="tabpanel" aria-labelledby="tab-need-you"><section aria-labelledby="h-ready"><h2 id="h-ready">Need you</h2>${needYou.length ? needYou.map((r) => card(r, env, platform, ctx)).join("\n") : `<p class="empty">Nothing needs you right now. Tap Get ${size} more, or wait for tomorrow morning's email.</p>`}</section></div>
+<div class="tab-panel" id="panel-replies" role="tabpanel" aria-labelledby="tab-replies">${repliedDone.length ? `<section aria-labelledby="h-replies"><h2 id="h-replies">Replies and write-ups</h2>${repliedDone.map((r) => card(r, env, platform, ctx)).join("\n")}</section>` : `<p class="empty">No recent replies or write-ups.</p>`}</div>
+<div class="tab-panel" id="panel-outreach" role="tabpanel" aria-labelledby="tab-outreach">${autoPanel(sum)}<section aria-labelledby="h-outreach"><h2 id="h-outreach">Outreach and follow-ups</h2>${outreachDone.length ? outreachDone.map((r) => card(r, env, platform, ctx)).join("\n") : `<p class="empty">No completed outreach in the last 30 days.</p>`}</section></div>
+<div class="tab-panel" id="panel-prospects" role="tabpanel" aria-labelledby="tab-prospects"><section aria-labelledby="h-prospects"><h2 id="h-prospects">Prospects and partners</h2>${prospects.length ? prospects.map((r) => card(r, env, platform, ctx)).join("\n") : `<p class="empty">No prospects are ready. Use Get ${size} more to look for checked businesses.</p>`}</section></div>
+<div class="tab-panel" id="panel-results" role="tabpanel" aria-labelledby="tab-results">${resultsPanel(results) || `<p class="empty">Results will appear after emails are sent.</p>`}</div>
+<div class="tab-panel" id="panel-how" role="tabpanel" aria-labelledby="tab-how"><footer class="how"><h2>How this works</h2><ul>
 <li><strong>Auto-send</strong> emails every business that has an email address on its own website, a person's own address (jane@) ahead of a shared one (info@): first emails on weekday mornings from 9:30 AM Eastern (all before noon on the day before a holiday), up to two every 15 minutes, from your mario@ mailbox, a few a day at first. Before each one it looks at their site again, and if a finding is gone or the site doesn't load, it holds the email for you instead. A nudge follows on day 4 and a last note a week later, as replies in the same email thread. A reply, a bounce or a STOP ends everything for that business, and every email is in your Gmail Sent folder.</li>
 <li><strong>When someone replies</strong>, a draft answer appears in that Gmail thread within about 15 minutes, and you get an email about it. If they want the write-up the first email offered, it's made in a real browser (screenshots, an example of each finding outlined in red) and attached as a PDF. Nothing is sent until you read the draft and tap Send. <strong>Make write-up (PDF)</strong> on any card makes one by hand, for a call or a walk-in.</li>
 <li><strong>Need you</strong> holds the businesses auto-send can't email: no address on their site (use their contact form or call them), or an email it held back.</li>
@@ -360,10 +366,10 @@ ${resultsPanel(results)}
 <li><strong>They replied</strong> keeps the reply count honest. <strong>Never contact</strong> puts them on the do-not-contact list; use it whenever someone asks you to stop.</li>
 <li>Every tap can be undone.</li>
 <li><strong>Keep it one tap away:</strong> bookmark this page or add it to your Home Screen. On this phone or computer it keeps opening the board, and so does <a href="${esc(homeUrl(env))}">${esc(homeText(env))}</a>. On any other device, that address emails you a fresh link.</li>
-</ul></footer>
+</ul></footer></div>
 </main>
 <div id="toast" class="toast" role="status" aria-live="polite"><span id="toast-text"></span><button type="button" id="toast-undo" class="btn small" hidden>Undo</button></div>`;
-  return shell({ title: `Prospect board (${ready.length} need you)`, body, script: SCRIPT, base });
+  return shell({ title: `Prospect board (${needYou.length} need you)`, body, script: SCRIPT, base });
 }
 
 // ---------------------------------------------------------------------------
@@ -484,6 +490,12 @@ const CSS = `
 html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
 .wrap{max-width:760px;margin:0 auto;padding:20px 16px 112px}
+.tabs{display:flex;gap:4px;overflow-x:auto;position:sticky;top:0;z-index:5;margin:16px -16px 20px;padding:6px 16px;background:var(--bg);border-bottom:1px solid var(--line);scrollbar-width:thin;-webkit-overflow-scrolling:touch}
+.tab{flex:none;min-height:44px;padding:8px 12px;border:1px solid transparent;border-radius:9px;background:transparent;color:var(--muted);font-family:inherit;font-size:15px;font-weight:600;line-height:1.2;cursor:pointer;white-space:nowrap}
+.tab[aria-selected="true"]{background:var(--card);border-color:var(--line);color:var(--ink)}
+.tab-count{font-variant-numeric:tabular-nums;color:var(--brand)}
+.tab-panel{padding-top:2px}
+html.has-tabs .tab-panel[hidden]{display:none}
 .wrap.narrow{max-width:560px}
 .note{min-height:1.5em;font-weight:600}
 .muted{color:var(--muted)}
@@ -586,6 +598,41 @@ const LINK_SCRIPT = `
 // The board's only script. No template literals inside, so it stays a plain string.
 const SCRIPT = `
 (function () {
+  var tabs = Array.prototype.slice.call(document.querySelectorAll('[role="tab"]'));
+  var panels = tabs.map(function (tab) { return document.getElementById(tab.getAttribute("aria-controls")); });
+  function selectTab(id, updateHash, focusTab) {
+    var i = tabs.findIndex(function (tab) { return tab.getAttribute("data-tab") === id; });
+    if (i < 0) i = 0;
+    tabs.forEach(function (tab, n) {
+      var active = n === i;
+      tab.setAttribute("aria-selected", active ? "true" : "false");
+      tab.tabIndex = active ? 0 : -1;
+      panels[n].hidden = !active;
+    });
+    if (updateHash && location.hash !== "#" + tabs[i].getAttribute("data-tab")) history.replaceState(null, "", location.pathname + location.search + "#" + tabs[i].getAttribute("data-tab"));
+    if (focusTab) tabs[i].focus();
+    tabs[i].scrollIntoView({ block: "nearest", inline: "nearest" });
+  }
+  document.documentElement.classList.add("has-tabs");
+  var initial = location.hash.slice(1);
+  if (!tabs.some(function (tab) { return tab.getAttribute("data-tab") === initial; })) {
+    initial = document.querySelector('#panel-need-you article, #panel-replies article') ? "need-you" : "today";
+    if (document.querySelector('#panel-need-you article') === null && document.querySelector('#panel-replies article')) initial = "replies";
+  }
+  selectTab(initial, !location.hash, false);
+  window.addEventListener("hashchange", function () { selectTab(location.hash.slice(1), false, false); });
+  tabs.forEach(function (tab, index) {
+    tab.addEventListener("click", function () { selectTab(tab.getAttribute("data-tab"), true, false); });
+    tab.addEventListener("keydown", function (e) {
+      var next = index;
+      if (e.key === "ArrowRight") next = (index + 1) % tabs.length;
+      else if (e.key === "ArrowLeft") next = (index + tabs.length - 1) % tabs.length;
+      else if (e.key === "Home") next = 0;
+      else if (e.key === "End") next = tabs.length - 1;
+      else return;
+      e.preventDefault(); selectTab(tabs[next].getAttribute("data-tab"), true, true);
+    });
+  });
   var base = document.body.getAttribute("data-base");
   var toast = document.getElementById("toast");
   var toastText = document.getElementById("toast-text");
@@ -715,7 +762,7 @@ const SCRIPT = `
   var q = new URLSearchParams(location.search);
   var doAct = q.get("do"), doId = Number(q.get("id"));
   if (doAct && doId > 0) {
-    history.replaceState(null, "", location.pathname);
+    history.replaceState(null, "", location.pathname + location.hash);
     var target = document.getElementById("p" + doId);
     if (target) { target.scrollIntoView({ block: "center" }); target.classList.add("flash"); }
     act(doId, doAct, "email-button");
