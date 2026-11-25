@@ -1,8 +1,8 @@
 ---
 layout: base
-title: Free Tech Checkup
+title: Free One-Page Website Write-Up
 permalink: /free-checkup/
-description: Free 20-minute Tech Checkup for Tampa Bay businesses. We review your website, booking flow and Google profile, then send a written report with the fixes ranked.
+description: Get a free one-page write-up of your website from a Tampa Bay tech partner, with screenshots of what we see. No charge, nothing to sign.
 ---
 
 {% set checkup = null %}
@@ -12,9 +12,9 @@ description: Free 20-minute Tech Checkup for Tampa Bay businesses. We review you
 
 <section class="px-4 pb-8 pt-12 md:pb-10 md:pt-16">
   <div class="wrap">
-    <p class="eyebrow">Free. 20 minutes. No obligation.</p>
-    <h1 class="h-display mt-4 max-w-3xl">Get a <span class="text-brand-gradient">free checkup</span> of your website, booking and Google listing</h1>
-    <p class="lede mt-5 max-w-2xl">Send the short form. We'll set up a 20-minute call, look at how your website, booking flow and Google profile work today, and send you a written report with the fixes ranked.</p>
+    <p class="eyebrow">Free. No charge. No pressure.</p>
+    <h1 class="h-display mt-4 max-w-3xl">Get your <span class="text-brand-gradient">free one-page write-up</span> of your website</h1>
+    <p class="lede mt-5 max-w-2xl">Send us your name, your email and your website address. We'll look at your site the way a customer would, on a phone and on a computer, and email you a short write-up with screenshots of what we see.</p>
   </div>
 </section>
 
@@ -22,26 +22,31 @@ description: Free 20-minute Tech Checkup for Tampa Bay businesses. We review you
   <div class="wrap grid items-start gap-10 md:grid-cols-5 md:gap-12">
 
     <div class="md:col-span-2">
-      <h2 class="h-section">What we check and what you get</h2>
-      {% if checkup %}
+      <h2 class="h-section">What's in your write-up</h2>
       <ul class="mt-6 space-y-3">
-        {% for item in checkup.includes %}
+        {% set writeupItems = [
+          "Screenshots of what we see on your website, on a phone and on a computer",
+          "The problems most likely to be costing you customers, in plain English",
+          "Whether people can easily book or contact you",
+          "Whether people using a screen reader or a keyboard can use your site",
+          "Which fixes matter most, and which ones you can do yourself"
+        ] %}
+        {% for item in writeupItems %}
         <li class="flex gap-3">
           <span aria-hidden="true" class="font-bold text-indigo-700">&#10003;</span>
           <span>{{ item }}</span>
         </li>
         {% endfor %}
       </ul>
-      <p class="mt-6 font-semibold text-gray-900">{{ checkup.price }}: {{ checkup.priceNote }}.</p>
-      <p class="mt-1 text-gray-700">{{ checkup.timeline }}.</p>
-      {% endif %}
+      <p class="mt-6 font-semibold text-gray-900">It's free. No charge, and nothing to sign.</p>
+      <p class="mt-1 text-gray-700">We reply within {{ site.responseTime }}. We only write up what we actually see on your site.</p>
     </div>
 
     <div class="md:col-span-3">
       <div class="card">
         {% set formSource = "free-checkup" %}
-        {% set formHeading = "Request your free checkup" %}
-        {% set formButton = "Request my free checkup" %}
+        {% set formHeading = "Request your free write-up" %}
+        {% set formButton = "Send me my free write-up" %}
         {% set showSiteUrl = true %}
         {% include "partials/lead-form.njk" %}
       </div>
@@ -55,9 +60,9 @@ description: Free 20-minute Tech Checkup for Tampa Bay businesses. We review you
     <h2 class="h-section">What happens next</h2>
     <ol class="mt-8 list-decimal space-y-4 pl-6 text-lg marker:font-bold marker:text-indigo-700">
       <li><strong>You send the form.</strong> It's short, and you can skip anything marked optional.</li>
-      <li><strong>We reply within {{ site.responseTime }}</strong> to set a time. {{ site.callHours }}.</li>
-      <li><strong>We have a 20-minute call.</strong> You tell us how your business runs and what's frustrating. We tell you what we've seen so far.</li>
-      <li><strong>You get a written report.</strong> It's in plain English, with your fixes ranked.{% if checkup %} {{ checkup.timeline }}.{% endif %}</li>
+      <li><strong>We reply within {{ site.responseTime }}</strong> to confirm we have it.</li>
+      <li><strong>You get your write-up by email.</strong> It's in plain English, with screenshots of what we saw.</li>
+      <li><strong>If you'd like to talk it through,</strong> we'll set up a quick call. {{ site.callHours }}. If you wouldn't, that's fine too.</li>
       <li><strong>You decide what, if anything, to do.</strong> You can fix things yourself, hire us, or do nothing.</li>
     </ol>
   </div>
@@ -65,33 +70,27 @@ description: Free 20-minute Tech Checkup for Tampa Bay businesses. We review you
 
 <section class="section">
   <div class="wrap-narrow">
-    <h2 class="h-section">What the report covers</h2>
-    <div class="mt-8 space-y-6">
-      <div>
-        <h3 class="text-xl font-bold text-gray-900">Mobile and speed</h3>
-        <p class="mt-1 text-gray-700">How your website loads and reads on a phone, since that's where many customers will first see it.</p>
-      </div>
-      <div>
-        <h3 class="text-xl font-bold text-gray-900">Accessibility of key pages</h3>
-        <p class="mt-1 text-gray-700">An automated scan and a hands-on check of your main pages against WCAG 2.1 AA: labels, contrast, alt text, headings and keyboard use.</p>
-        <p class="mt-2 text-gray-700">This is a technical review, not legal advice. Mobius is not a law firm.</p>
-      </div>
-      <div>
-        <h3 class="text-xl font-bold text-gray-900">Booking and contact flow</h3>
-        <p class="mt-1 text-gray-700">We try to book or get in touch the way a customer would, start to finish, and note anywhere it breaks or confuses.</p>
-      </div>
-      <div>
-        <h3 class="text-xl font-bold text-gray-900">Google profile</h3>
-        <p class="mt-1 text-gray-700">Whether your Google Business Profile is complete, accurate and consistent with your website.</p>
-      </div>
-    </div>
+    <h2 class="h-section">Want a deeper look?</h2>
+    <p class="mt-4 text-lg text-gray-700">Some owners want more than a write-up. Our free Tech Checkup is a 20-minute call plus a written report. Ask for it in the form, in the message box, and we'll set it up.</p>
+    {% if checkup %}
+    <ul class="mt-6 space-y-3">
+      {% for item in checkup.includes %}
+      <li class="flex gap-3">
+        <span aria-hidden="true" class="font-bold text-indigo-700">&#10003;</span>
+        <span>{{ item }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    <p class="mt-6 text-gray-700">{{ checkup.price }}. {{ checkup.timeline }}.</p>
+    {% endif %}
+    <p class="mt-4 text-gray-700">The accessibility part is a technical review, not legal advice. Mobius is not a law firm.</p>
   </div>
 </section>
 
 <section class="section bg-gray-50">
   <div class="wrap-narrow">
     <h2 class="h-section">No strings</h2>
-    <p class="mt-4 text-lg text-gray-700">The report is yours whether or not you ever hire us. There's no contract to sign and no card to put down. If a fix is something you can do yourself, we'll say so.</p>
+    <p class="mt-4 text-lg text-gray-700">The write-up is yours whether or not you ever hire us. There's no contract to sign and no card to put down. If a fix is something you can do yourself, we'll say so.</p>
     <p class="mt-4 text-gray-700">Would you rather talk first? <a class="link" href="/contact/">Send us a message instead</a>.</p>
   </div>
 </section>
