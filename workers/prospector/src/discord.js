@@ -66,11 +66,25 @@ export async function handleDiscord(request, env, ctx) {
     if (result) return json(200, result);
   }
   if (id.startsWith("office:")) {
-    if(id==="office:run"||id==="office:pause"||id==="office:resume"){
+    // Discord waits 3 seconds for a reply, then hangs up and the Worker is cut off mid-task. Anything that calls
+    // Discord or the database more than once (starting a standup, deciding a proposal) answers at once and
+    // finishes in the background.
+    if(id==="office:run"){
+      const {startOfficeRun}=await import("./office.js");
+      const task=startOfficeRun(env,{manual:true}).then(async(r)=>{if(r&&!r.ok){const c=await discordConfig(env);if(c.channels?.office)await discordApi(env,`/channels/${c.channels.office}/messages`,"POST",{content:`Couldn't start a standup: ${r.reason}.`,allowed_mentions:{parse:[]}});}}).catch(e=>console.error("prospector: standup start failed:",e?.message||"unknown error"));
+      if(ctx?.waitUntil)ctx.waitUntil(task);else await task;
+      return json(200,{type:4,data:{content:"Starting a standup. Watch for the new thread in #office.",flags:64}});
+    }
+    if(id==="office:pause"||id==="office:resume"){
       const {handleOfficeControl}=await import("./office.js");const result=await handleOfficeControl(id,env);
       return json(200,result);
     }
-    const {handleOfficeInteraction}=await import("./office.js");const result=await handleOfficeInteraction(body,env);if(result)return json(200,result);
+    if(/^office:proposal:(approve|reject):\d+$/.test(id)){
+      const {handleOfficeInteraction}=await import("./office.js");
+      const task=handleOfficeInteraction(body,env).catch(e=>console.error("prospector: proposal decision failed:",e?.message||"unknown error"));
+      if(ctx?.waitUntil)ctx.waitUntil(task);else await task;
+      return json(200,{type:6});
+    }
   }
   if (id === "studio:brief" || id === "studio:kit") {
     if (String(body.channel_id || "") !== String(cfg.channels?.["brand-studio"] || "")) return json(200, { type: 4, data: { content: "Studio buttons only work in #brand-studio.", flags: 64 } });
