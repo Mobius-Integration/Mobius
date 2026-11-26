@@ -63,8 +63,8 @@ OPS_ADDRESS = "ops@in.mobiusintegration.com"
 # The founder's Workspace address: accepted as a sender alongside FOUNDER_TO, and the account the
 # Write in Gmail button opens on a computer.
 FOUNDER_FROM = "mario@mobiusintegration.com"
-DISCORD_APP_ID = ""
-DISCORD_PUBLIC_KEY = ""
+DISCORD_APP_ID = "1575300686453805167"
+DISCORD_PUBLIC_KEY = "dcad9bbd2c23efa9953924915bb3e8b8168cf7a262c4d296a4f8033f3f00fe1d"
 SITE_NAME = "Mobius Integration"
 BOARD_ORIGIN = "https://mobiusintegration.com"
 # Hillsborough, Pinellas and Pasco plus Lakeland and Plant City (south,west,north,east), as a 4 x 5 grid

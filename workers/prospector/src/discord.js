@@ -90,8 +90,14 @@ export async function discordApi(env, path, method = "GET", body) {
 }
 
 async function discordFetch(env, path, method = "GET", body) {
-  const res = await fetch(`${API}${path}`, { method, headers: { Authorization: `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" }, ...(body ? { body: JSON.stringify(body) } : {}) });
-  if (!res.ok) throw new Error(`Discord API ${res.status}`);
+  // trim(): a token pasted from a phone often carries a trailing space or newline, which Discord rejects as 401.
+  const res = await fetch(`${API}${path}`, { method, headers: { Authorization: `Bot ${String(env.DISCORD_BOT_TOKEN || "").trim()}`, "Content-Type": "application/json" }, ...(body ? { body: JSON.stringify(body) } : {}) });
+  if (!res.ok) {
+    // Say which call failed (method, path with ids masked, Discord's own error code), never the token.
+    let code = "";
+    try { const j = await res.json(); code = j && (j.code || j.message) ? ` (${j.code || ""} ${String(j.message || "").slice(0, 80)})` : ""; } catch { /* no body */ }
+    throw new Error(`Discord API ${res.status} on ${method} ${path.replace(/\d{17,20}/g, ":id")}${code}`);
+  }
   return res.status === 204 ? null : res.json();
 }
 
@@ -127,7 +133,21 @@ export async function setupDiscord(env, guildId) {
     if (!ownerId) throw new Error("Could not identify server owner.");
     await metaSet(env.DB, "discord", JSON.stringify({ guild: String(guildId), admins: [String(ownerId)], bot: me.id, categories, channels: ids }));
     return { ok: true, channels: ids };
-  } catch (e) { console.error("prospector: Discord setup failed:", e.message); return { ok: false, error: "Discord setup failed. Check the bot's server access and permissions." }; }
+  } catch (e) {
+    console.error("prospector: Discord setup failed:", e.message);
+    // On a 401, say whether the saved key is even shaped like this app's bot key, never the key itself:
+    // a bot token's first part is the bot's id in base64.
+    let hint = "";
+    if (/ 401 /.test(e.message)) {
+      const t = String(env.DISCORD_BOT_TOKEN || "").trim();
+      let ours = false;
+      try { ours = atob(t.split(".")[0].replace(/-/g, "+").replace(/_/g, "/")) === String(env.DISCORD_APP_ID); } catch { /* not base64 */ }
+      hint = t.split(".").length !== 3 ? " The saved value isn't shaped like a bot key (wrong thing pasted?)."
+        : ours ? " The saved key belongs to Mobius Office but Discord no longer accepts it (it was reset after it was copied?)."
+        : " The saved value is shaped like a bot key, but not this app's.";
+    }
+    return { ok: false, error: `Discord setup failed: ${e.message}.${hint}` };
+  }
 }
 
 export function discordButtons(items) {
