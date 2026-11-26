@@ -68,7 +68,10 @@ export async function handleOps(request, env) {
     const { nextStudioTurn, doneStudioTurn, failStudioTurn } = await import("./studio-turns.js");
     if (sub === "studio/next") {
       if (request.method !== "GET") return json(405, { ok: false, error: "Use GET." });
-      return json(200, { turn: await nextStudioTurn(env) });
+      // Board links last BOARD_DAYS. The PC program keeps its copy in a file, so hand it a fresh link once
+      // the one it used is within 15 days of expiring; it saves the new one and carries on.
+      const fresh = Number(m[1]) * 1000 - Date.now() < 15 * 86400 * 1000 ? await boardUrl(env) : null;
+      return json(200, { turn: await nextStudioTurn(env), fresh });
     }
     if (request.method !== "POST" || !isJson(request)) return json(405, { ok: false, error: "Use a JSON POST." });
     let body; try { body = await request.json(); } catch { return json(400, { ok: false, error: "Bad request." }); }

@@ -29,3 +29,25 @@ test("Studio PC reports invalid output to fail", async () => {
   const result=await handleTurn({id:15,deep:false,system:"",brief:{},history:[],input:"x"},{spawn,baseUrl:"https://board.test",fetchImpl:async(url,opts)=>{posted.push(url);return new Response("{}",{status:200});}});
   assert.equal(result.ok,false);assert.equal(posted[0],"https://board.test/studio/fail");
 });
+
+test("studio-pc saves a fresh board link the Worker hands back", async () => {
+  const { main } = await import("../scripts/studio-pc.mjs");
+  const { mkdtempSync, writeFileSync, readFileSync } = await import("node:fs");
+  const { join } = await import("node:path");
+  const { tmpdir } = await import("node:os");
+  const dir = mkdtempSync(join(tmpdir(), "studio-pc-"));
+  const file = join(dir, "board.url");
+  const oldUrl = "https://mobiusintegration.com/ops/b/1700000000/" + "a".repeat(43);
+  const newUrl = "https://mobiusintegration.com/ops/b/1999999999/" + "b".repeat(43);
+  writeFileSync(file, oldUrl + "\n");
+  process.env.STUDIO_BOARD_URL_FILE = file;
+  const seen = [];
+  const fetchImpl = async (url) => { seen.push(String(url)); return new Response(JSON.stringify({ turn: null, fresh: newUrl }), { status: 200 }); };
+  await main({ once: true, fetchImpl });
+  assert.equal(seen[0], oldUrl + "/studio/next");
+  assert.equal(readFileSync(file, "utf8").trim(), newUrl);
+  // A value that isn't a board link is ignored.
+  const bad = async () => new Response(JSON.stringify({ turn: null, fresh: "https://evil.example/ops/b/1/x" }), { status: 200 });
+  await main({ once: true, fetchImpl: bad });
+  assert.equal(readFileSync(file, "utf8").trim(), newUrl);
+});

@@ -90,7 +90,7 @@ test("Studio kit and texture reads require the signed board route", async () => 
 test("Studio PC routes require a signed board path and expose a null queue when empty", async () => {
   const env=routeEnv({});
   const valid=await handleOps(new Request(await url(env,"/studio/next")),env);
-  assert.deepEqual(await valid.json(),{turn:null});
+  assert.deepEqual(await valid.json(),{turn:null,fresh:null});
   const invalid=await handleOps(new Request("https://example.test/ops/b/1234567890/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/studio/next"),env);
   assert.equal(invalid.status,404);
   const malformed=await handleOps(new Request((await url(env,"/studio/next")).replace("studio/next","studio/next/extra")),env);

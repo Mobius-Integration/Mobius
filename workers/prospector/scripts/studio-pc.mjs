@@ -43,16 +43,21 @@ export async function handleTurn(turn,{spawn=nodeSpawn,fetchImpl=fetch,baseUrl})
 async function poll(baseUrl, opts={}) {
   const r=await (opts.fetchImpl||fetch)(`${baseUrl}/studio/next`);
   if(!r.ok) throw new Error("Studio poll failed");
-  const data=await r.json(); if(!data.turn)return null;
+  const data=await r.json();
+  // The Worker sends a fresh board link when ours is close to expiring: save it (see main).
+  if(data.fresh && opts.onFresh) await opts.onFresh(String(data.fresh));
+  if(!data.turn)return null;
   return handleTurn(data.turn,{...opts,baseUrl});
 }
 export async function main({once=process.argv.includes("--once"),fetchImpl=fetch,spawn=nodeSpawn}={}) {
   const file=process.env.STUDIO_BOARD_URL_FILE;
   if(!file) throw new Error("Set STUDIO_BOARD_URL_FILE to a file containing the signed board URL.");
-  const baseUrl=(await readFile(file,"utf8")).trim().replace(/\/$/,"");
+  let baseUrl=(await readFile(file,"utf8")).trim().replace(/\/$/,"");
+  // Only ever accept a board link on our own domain (never print it).
+  const onFresh=async (u)=>{ if(/^https:\/\/mobiusintegration\.com\/ops\/b\/\d{9,11}\/[A-Za-z0-9_-]{43}$/.test(u)) { await writeFile(file,u+"\n"); baseUrl=u; } };
   const log=join(HERE,"studio-pc.log");
   do {
-    try { const result=await poll(baseUrl,{fetchImpl,spawn}); if(result) { await appendFile(log,`${new Date().toISOString()} turn ${result.id} ${result.ms}ms ${result.ok?"ok":"fail"}\n`); if(result.backoff&&!once) await new Promise(r=>setTimeout(r,30000)); } }
+    try { const result=await poll(baseUrl,{fetchImpl,spawn,onFresh}); if(result) { await appendFile(log,`${new Date().toISOString()} turn ${result.id} ${result.ms}ms ${result.ok?"ok":"fail"}\n`); if(result.backoff&&!once) await new Promise(r=>setTimeout(r,30000)); } }
     catch { if(once) throw new Error("Studio poll failed"); await new Promise(r=>setTimeout(r,30000)); }
     if(once)return;
     await new Promise(r=>setTimeout(r,10000));
