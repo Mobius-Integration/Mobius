@@ -9,7 +9,7 @@ import { buildPrompt, handleTurn, schema } from "../scripts/studio-pc.mjs";
 test("Studio PC builds a complete prompt and matching JSON schema", () => {
   const prompt=buildPrompt({system:"rules",brief:{name:"Mobius"},history:[{author:"bot:studio",content:"Hello"}],input:"Palette?"});
   assert.match(prompt,/rules/); assert.match(prompt,/Brand brief/); assert.match(prompt,/Studio: Hello/); assert.match(prompt,/Palette\?/);
-  assert.deepEqual(schema.required,["reply","options","palette","textures","brief_updates"]);
+  assert.deepEqual(schema.required,["reply","options","palette","textures","brief_updates_json"]);
 });
 
 test("Studio PC sends valid Codex output to done", async () => {
@@ -50,4 +50,15 @@ test("studio-pc saves a fresh board link the Worker hands back", async () => {
   const bad = async () => new Response(JSON.stringify({ turn: null, fresh: "https://evil.example/ops/b/1/x" }), { status: 200 });
   await main({ once: true, fetchImpl: bad });
   assert.equal(readFileSync(file, "utf8").trim(), newUrl);
+});
+
+test("Studio PC schema is strict-mode valid and maps back to the Worker's shape", async () => {
+  const { schema, toStudioResult } = await import("../scripts/studio-pc.mjs");
+  // Every object in the schema is closed and requires all of its properties (OpenAI strict mode).
+  const walk = (s) => { if (s && s.type === "object") { assert.equal(s.additionalProperties, false); assert.deepEqual([...s.required].sort(), Object.keys(s.properties).sort()); Object.values(s.properties).forEach(walk); } if (s && s.items) walk(s.items); };
+  walk(schema);
+  const r = toStudioResult({ reply: "Hi", options: [], palette: [], textures: [], brief_updates_json: "{\"personality\":[\"warm\"]}" });
+  assert.deepEqual(r.brief_updates, { personality: ["warm"] });
+  assert.equal("brief_updates_json" in r, false);
+  assert.deepEqual(toStudioResult({ reply: "x", options: [], palette: [], textures: [], brief_updates_json: "not json" }).brief_updates, {});
 });

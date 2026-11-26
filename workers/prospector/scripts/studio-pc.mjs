@@ -5,14 +5,33 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-export const schema = { type: "object", additionalProperties: false, required: ["reply", "options", "palette", "textures", "brief_updates"], properties: { reply: { type: "string" }, options: { type: "array", items: { type: "object", required: ["label"], properties: { label: { type: "string" } } } }, palette: { type: "array", items: { type: "object", required: ["name", "hex", "use"], properties: { name: { type: "string" }, hex: { type: "string", pattern: "^#[0-9a-fA-F]{6}$" }, use: { type: "string" } } } }, textures: { type: "array", items: { type: "object", required: ["name", "prompt"], properties: { name: { type: "string" }, prompt: { type: "string" } } } }, brief_updates: { type: "object" } } };
+// OpenAI's strict structured output: every object closed (additionalProperties false) and every property
+// required, so open-ended brief updates travel as a JSON string (brief_updates_json) and are parsed here.
+const closed = (properties) => ({ type: "object", additionalProperties: false, required: Object.keys(properties), properties });
+export const schema = closed({
+  reply: { type: "string" },
+  options: { type: "array", items: closed({ label: { type: "string" } }) },
+  palette: { type: "array", items: closed({ name: { type: "string" }, hex: { type: "string", pattern: "^#[0-9a-fA-F]{6}$" }, use: { type: "string" } }) },
+  textures: { type: "array", items: closed({ name: { type: "string" }, prompt: { type: "string" } }) },
+  brief_updates_json: { type: "string", description: "A JSON object, as a string, with only the brand-brief fields that changed; \"{}\" when nothing changed." },
+});
 export function buildPrompt(turn) {
-  return `${turn.system}\n\nBrand brief:\n${JSON.stringify(turn.brief)}\n\nConversation history:\n${(turn.history || []).map(m => `${m.author === "bot:studio" ? "Studio" : "Mario"}: ${m.content}`).join("\n")}\n\nNew input:\n${turn.input}\n\nReturn only the required JSON object.`;
+  return `${turn.system}\n\nBrand brief:\n${JSON.stringify(turn.brief)}\n\nConversation history:\n${(turn.history || []).map(m => `${m.author === "bot:studio" ? "Studio" : "Mario"}: ${m.content}`).join("\n")}\n\nNew input:\n${turn.input}\n\nReturn only the required JSON object. Put brief updates in brief_updates_json as a JSON-encoded string ("{}" if none).`;
+}
+// Turns Codex's schema output back into the shape the Worker validates.
+export function toStudioResult(raw) {
+  let updates = {};
+  try { const u = JSON.parse(raw && raw.brief_updates_json || "{}"); if (u && typeof u === "object" && !Array.isArray(u)) updates = u; } catch { /* keep {} */ }
+  const { brief_updates_json, ...rest } = raw || {};
+  return { ...rest, brief_updates: updates };
 }
 function runCodex(prompt, turn, dir, spawn = nodeSpawn) {
   const schemaFile=join(dir,"schema.json"), outFile=join(dir,"out.json");
   return new Promise((resolve,reject)=>{
-    const child=spawn("codex",["exec","--skip-git-repo-check","-s","read-only","-C",dir,"--output-schema",schemaFile,"-o",outFile,"-c",`model_reasoning_effort=${turn.deep?"high":"medium"}`,"-"],{stdio:["pipe","ignore","pipe"]});
+    const child=spawn("codex",["exec","--skip-git-repo-check","-s","read-only","-C",dir,"--output-schema",schemaFile,"-o",outFile,"-c",`model_reasoning_effort=${turn.deep?"high":"medium"}`,"-"],{stdio:["pipe","ignore","pipe"],
+      // On Windows, npm installs codex as a .cmd/.ps1 wrapper, which Node can only start through the shell.
+      // The arguments are fixed flags and temp-folder paths (no spaces or shell characters).
+      shell:process.platform==="win32"});
     let stderr="", settled=false;
     const finish=(err)=>{if(settled)return;settled=true;clearTimeout(timer);err?reject(err):resolve();};
     child.stderr?.on("data",x=>{stderr+=x.toString();}); child.on("error",e=>finish(e)); child.on("close",code=>finish(code===0?null:new Error(/limit|rate/i.test(stderr)?"Codex usage limit":"Codex failed")));
@@ -27,7 +46,7 @@ export async function handleTurn(turn,{spawn=nodeSpawn,fetchImpl=fetch,baseUrl})
     dir=await mkdtemp(join(tmpdir(),"studio-codex-"));
     await writeFile(join(dir,"schema.json"),JSON.stringify(schema));
     await runCodex(buildPrompt(turn),turn,dir,spawn);
-    const result=JSON.parse(await readFile(join(dir,"out.json"),"utf8"));
+    const result=toStudioResult(JSON.parse(await readFile(join(dir,"out.json"),"utf8")));
     if (!result || typeof result.reply!=="string" || !Array.isArray(result.options)||!Array.isArray(result.palette)||!Array.isArray(result.textures)||!result.brief_updates||typeof result.brief_updates!=="object"||Array.isArray(result.brief_updates)) throw new Error("Invalid Codex JSON");
     const response=await fetchImpl(`${baseUrl}/studio/done`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({id:turn.id,result})});
     if(!response.ok) throw new Error("Studio completion rejected");
