@@ -27,7 +27,7 @@ import { createWriteup, writeupPdf } from "./writeup.js";
 import { PARTNER_KINDS, isLawFirm } from "./partners.js";
 import { setupDiscord, discordApi, discordSend, saveBotKey } from "./discord.js";
 
-const ROUTE = /^\/ops\/b\/(\d{9,11})\/([A-Za-z0-9_-]{43})(?:\/(studio\/(?:next|done|fail)|mark|more|auto|discord|say|tasks|task|writeup|brandkit|texture)(?:\/([A-Za-z0-9_-]{1,80}))?)?\/?$/;
+const ROUTE = /^\/ops\/b\/(\d{9,11})\/([A-Za-z0-9_-]{43})(?:\/(studio\/(?:next|done|fail)|office\/cleanup|mark|more|auto|discord|say|tasks|task|writeup|brandkit|texture)(?:\/([A-Za-z0-9_-]{1,80}))?)?\/?$/;
 const num = (v, dflt, min, max) => Math.min(max, Math.max(min, Number.isFinite(parseInt(v, 10)) ? parseInt(v, 10) : dflt));
 const isGet = (request) => request.method === "GET" || request.method === "HEAD";
 // The page's own script sends JSON. A form on another site can't (that would need a CORS preflight,
@@ -63,6 +63,11 @@ export async function handleOps(request, env) {
   }
   const base = `/ops/b/${m[1]}/${m[2]}`;
 
+  if (sub === "office/cleanup") {
+    if (request.method !== "POST" || !isJson(request)) return json(405, { ok: false, error: "Use a JSON POST." });
+    const { cleanupTestRuns } = await import("./office.js");
+    return json(200, await cleanupTestRuns(env));
+  }
   if (sub?.startsWith("studio/")) {
     if (m[4]) return notFound();
     const { nextStudioTurn, doneStudioTurn, failStudioTurn } = await import("./studio-turns.js");
