@@ -78,9 +78,12 @@ export async function fallbackStudioTurns(env) {
   for (const row of rows.results||[]) { try { await failStudioTurn(env,row.id,"Turn exceeded four minutes"); } catch (e) { console.error("prospector: Studio fallback failed:",e?.message||"unknown error"); } }
 }
 async function cloudOfficeFallback(env,row,reason){
- const {modelText}=await import("./studio.js");let output;
- try{const r=await env.AI.run(env.STUDIO_MODEL||"@cf/openai/gpt-oss-120b",{messages:[{role:"system",content:"Return JSON matching the supplied schema exactly."},{role:"user",content:`${row.prompt}\n\nSchema: ${row.schema_json}`}],max_tokens:1200});output=modelText(r);}catch{output="";}
- const {strictOfficeResult,officeTurnResult}=await import("./office.js");let parsed=strictOfficeResult(output,row.step);
+ const {modelText,runModel}=await import("./studio.js");const {strictOfficeResult,officeTurnResult}=await import("./office.js");
+ const messages=[{role:"system",content:"Return only JSON matching the supplied schema exactly."},{role:"user",content:`${row.prompt}
+
+Schema: ${row.schema_json}`}];
+ let parsed=null;
+ for(const model of [env.STUDIO_MODEL||"@cf/openai/gpt-oss-120b","@cf/meta/llama-3.3-70b-instruct-fp8-fast"]){let output="";try{output=modelText(await runModel(env,model,messages));}catch{}parsed=strictOfficeResult(String(output).replace(/^```(?:json)?s*|s*```$/g,""),row.step);if(parsed)break;}
  if(!parsed){parsed=row.step==="chief:open"?{message:"Office backup could not produce a valid opening; proceeding with available data.",notebook:""}:row.step==="chief:wrap"?{summary:"Standup completed with backup model fallback.\nNo verified proposal produced.\nReview the run thread for evidence.",proposals:[],notebook:""}:{message:"Backup model could not produce a validated result; no claims or proposals added.",proposals_json:"[]",notebook:"",texture_prompts:[]};}
  await officeTurnResult(env,row,parsed,true);
 }

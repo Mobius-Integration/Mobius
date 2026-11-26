@@ -32,3 +32,12 @@ CREATE TABLE IF NOT EXISTS office_proposals (
 );
 CREATE INDEX IF NOT EXISTS office_runs_created ON office_runs(created_at);
 CREATE INDEX IF NOT EXISTS office_messages_run ON office_run_messages(run_id,id);
+-- The Office shares Studio's turn queue (studio_turns): these columns say which kind of turn it is and carry
+-- an Office turn's run, role, step, prompt and output schema. (Added in review: the code used them but the
+-- first draft of this migration never created them.)
+ALTER TABLE studio_turns ADD COLUMN kind TEXT NOT NULL DEFAULT 'studio';
+ALTER TABLE studio_turns ADD COLUMN run_id INTEGER;
+ALTER TABLE studio_turns ADD COLUMN role TEXT;
+ALTER TABLE studio_turns ADD COLUMN step TEXT;
+ALTER TABLE studio_turns ADD COLUMN prompt TEXT;
+ALTER TABLE studio_turns ADD COLUMN schema_json TEXT;

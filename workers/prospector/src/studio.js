@@ -41,7 +41,7 @@ export function modelText(o) {
   return o.response || (o.choices && o.choices[0] && o.choices[0].message && o.choices[0].message.content) || o.output_text || responses || (o.result && o.result.response) || "";
 }
 // Chat-style input first; if a model rejects it, the Responses API shape (instructions + input).
-async function runModel(env, model, messages) {
+export async function runModel(env, model, messages) {
   try { return await env.AI.run(model, { messages, max_tokens: 1200 }); }
   catch (e) {
     const [sys, ...rest] = messages;
