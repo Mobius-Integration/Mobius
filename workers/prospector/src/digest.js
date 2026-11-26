@@ -139,7 +139,7 @@ export function formText(body) {
 // into invented discounts or claims. Set FOUNDING_LINE to "" in wrangler.toml once the founding
 // spots are filled. Keep it free of prices and percentages (see FORBIDDEN): numbers come on the call.
 export const DEFAULT_FOUNDING_LINE =
-  "Since we're just getting started, our first three clients get a founding rate, in exchange for letting us share the before-and-after (only with your OK).";
+  "I'm taking on three founding clients at a reduced rate while we get started, and there's still room.";
 
 export function foundingLine(env) {
   const v = env && env.FOUNDING_LINE;
@@ -232,18 +232,57 @@ export function ownerAngle(issue, p) {
   return null;
 }
 
+// The pitch (2026-11-26, Mario: "more pressing and salesy"). Lead with the finding that costs the most
+// business, said as a problem happening right now, not a technical note. Honest: only real findings,
+// no invented stats, no fear selling.
+const PITCH_ORDER = [/invalid certificate/i, /Doesn't load over HTTPS/i, /No online booking/i, /Slow first response/i, /viewport/i, /without a label/i, /images have no alt text/i, /No page title/i, /No meta description/i];
+export function pitchAngle(issue, p) {
+  const s = String(issue || "");
+  const site = p.domain || "your site";
+  const name = p.name;
+  let m;
+  if (/invalid certificate/i.test(s)) return {
+    what: `Heads up: right now, anyone who opens ${site} gets a full-page browser security warning before your site even loads.`,
+    cost: "Most people hit Back at that screen, so those are customers going straight to whoever's next on Google.",
+    subject: `Security warning on ${possessive(name)} site`,
+  };
+  if (/Doesn't load over HTTPS/i.test(s)) return {
+    what: `Heads up: Chrome is labeling ${site} "Not secure" for every visitor, right next to your name.`,
+    cost: "That's the first thing a new customer sees, and plenty of them leave before they call.",
+    subject: `"Not secure" warning on ${possessive(name)} site`,
+  };
+  if (/No online booking/i.test(s)) return {
+    what: `Right now there's no way to book with ${name} online.`,
+    cost: "People book at night from their phones, and when they can't, they book with whoever lets them. That's business walking to a competitor every week.",
+    subject: `Customers can't book ${name} online`,
+  };
+  if ((m = /Slow first response \(([\d.]+)s\)/i.exec(s))) return {
+    what: `${site} took ${m[1]} seconds just to start loading when I checked it.`,
+    cost: "A lot of people on a phone won't wait that long, so they're gone before they ever see what you offer.",
+    subject: `${possessive(name)} site is losing visitors`,
+  };
+  if (/viewport/i.test(s)) return {
+    what: `${site} doesn't fit a phone screen, so customers have to pinch and zoom just to read it.`,
+    cost: "Most people find a local business on their phone, so they're seeing the worst version of yours, and the next result is one tap away.",
+    subject: `${possessive(name)} site on phones`,
+  };
+  return ownerAngle(issue, p);
+}
+
 export function templateDraft(p, findings) {
-  const usedIndex = findings.findIndex((f) => ownerAngle(f, p));
-  const angle = usedIndex >= 0 ? ownerAngle(findings[usedIndex], p) : null;
+  const rank = (f) => { const i = PITCH_ORDER.findIndex((re) => re.test(String(f))); return i < 0 ? 99 : i; };
+  const order = findings.map((f, i) => [f, i]).filter(([f]) => pitchAngle(f, p)).sort((a, b) => rank(a[0]) - rank(b[0]) || a[1] - b[1]);
+  const usedIndex = order.length ? order[0][1] : -1;
+  const angle = usedIndex >= 0 ? pitchAngle(findings[usedIndex], p) : null;
   const lines = [
     "Hi there,",
     "",
-    angle ? `${angle.what} ${angle.cost}` : `I took a quick look at the ${p.domain || p.name} home page and noticed a couple of things that are probably costing you customers.`,
+    angle ? `${angle.what} ${angle.cost}` : `I took a quick look at the ${p.domain || p.name} home page and found a couple of things that are costing you customers right now.`,
     "",
-    "I'm Mario, with Mobius Integration here in Tampa Bay. I fix this kind of thing for local businesses, and it's usually a quick job.",
+    "I'm Mario, with Mobius Integration here in Tampa Bay. This is a quick fix, and I can usually have it sorted within a few days.",
     "",
-    // No links in a first email (they hurt deliverability); a tiny ask gets more replies than a call request.
-    "Want me to send you a short write-up with screenshots of what I'm seeing? No charge.",
+    // No links in a first email (they hurt deliverability). Two easy yeses: the free screenshots, or a short call.
+    "Want me to send over the screenshots of what I'm seeing? No charge. Or reply with a good time and I'll give you a quick call.",
   ];
   return {
     subject: angle ? angle.subject : `Quick note about ${possessive(p.name)} website`,
