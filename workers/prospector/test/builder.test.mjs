@@ -31,3 +31,22 @@ test("Builder PC classifies and dispatches decision, content and code tasks; exi
  const failed=await dispatchTask({id:10,title:"Existing"},{baseUrl:"https://board",fetchImpl:async(u,i)=>{sends.push(JSON.parse(i.body));return new Response("{}")},spawn,workRoot:join(root,"existing"),briefRoot:join(root,"briefs"),workDir:root});assert.equal(failed.reason,"Worktree already exists");assert.equal(sends.at(-1).state,"failed");
  }finally{rmSync(root,{recursive:true,force:true});}
 });
+
+test("a 'classifying' update doesn't count as a finished decision or touch the brand brief", async () => {
+  const { DatabaseSync } = await import("node:sqlite");
+  const { readdirSync, readFileSync } = await import("node:fs");
+  const raw = new DatabaseSync(":memory:");
+  for (const f of readdirSync(new URL("../migrations/", import.meta.url)).sort()) raw.exec(readFileSync(new URL(`../migrations/${f}`, import.meta.url), "utf8"));
+  const DB = { prepare(sql) { let a = []; const st = raw.prepare(sql); return { bind(...v) { a = v; return this; }, async first() { return st.get(...a) ?? null; }, async all() { return { results: st.all(...a) }; }, async run() { const r = st.run(...a); return { meta: { changes: Number(r.changes) } }; } }; } };
+  raw.prepare("INSERT INTO meta (key, value) VALUES ('discord', ?)").run(JSON.stringify({ channels: { builds: "900" } }));
+  raw.prepare("INSERT INTO office_runs (slot, state) VALUES ('x', 'done')").run();
+  raw.prepare("INSERT INTO office_proposals (run_id, title, why, owner, thread_id, build_state) VALUES (1, 'T', 'W', 'Mario', '700', 'claimed')").run();
+  const posts = [];
+  globalThis.fetch = async (url) => { posts.push(String(url)); return new Response("{}", { status: 200 }); };
+  const { updateBuilderTask } = await import("../src/builder.js");
+  const before = raw.prepare("SELECT brief FROM studio_brief WHERE id=1").get().brief;
+  assert.equal(await updateBuilderTask({ DB, DISCORD_APP_ID: "app", DISCORD_BOT_TOKEN: "YXBw.x.y" }, { id: 1, state: "classifying", kind: "decision", note: "Classifying this approved task." }), true);
+  assert.equal(raw.prepare("SELECT build_state FROM office_proposals WHERE id=1").get().build_state, "classifying");
+  assert.equal(raw.prepare("SELECT brief FROM studio_brief WHERE id=1").get().brief, before);
+  assert.equal(posts.some((u) => u.includes("/channels/900/")), false, "no #builds post for classifying");
+});
