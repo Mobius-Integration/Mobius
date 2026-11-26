@@ -80,3 +80,16 @@ test("a stalled standup is closed so it can't block the next one", async () => {
   await pollOffice(env);
   assert.equal(DB.raw.prepare("SELECT state FROM office_runs WHERE slot='2026-11-28 09'").get().state, "failed");
 });
+
+test("a manual standup (Run a standup now) creates its thread and queues Chief's opening", async () => {
+  const { env, DB, calls } = setup();
+  const { startOfficeRun } = await import("../src/office.js");
+  const r = await startOfficeRun(env, { manual: true });
+  assert.equal(r.ok, true, JSON.stringify(r));
+  const thread = calls.find((c) => c.url.endsWith("/threads") && c.url.includes("/channels/100/messages/"));
+  assert.ok(thread, "thread created from the starter message");
+  assert.match(JSON.parse(thread.body).name, /^Standup · \w{3} \w{3} \d{1,2} · \d{1,2} (AM|PM) \(test run\)$/);
+  assert.equal(DB.raw.prepare("SELECT thread_id FROM office_runs WHERE id=?").get(r.id).thread_id, "700");
+  const turn = DB.raw.prepare("SELECT role, step, state FROM studio_turns WHERE kind='office' AND run_id=?").get(r.id);
+  assert.deepEqual({ ...turn }, { role: "chief", step: "open", state: "pending" });
+});
