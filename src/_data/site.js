@@ -37,6 +37,6 @@ module.exports = {
   ],
   cta: { label: "Free Tech Checkup", href: "/free-checkup/" },
   // The primary button on the home page and in the header: the same free write-up the first email offers.
-  writeupCta: { label: "Get my free write-up", href: "/free-checkup/" },
+  writeupCta: { label: "Get my free website write-up", href: "/free-checkup/" },
   year: new Date().getFullYear()
 };

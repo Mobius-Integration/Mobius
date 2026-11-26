@@ -9,7 +9,6 @@ module.exports = {
       fontFamily: {
         sans: [
           '"Inter Variable"',
-          "Inter",
           "ui-sans-serif",
           "system-ui",
           "-apple-system",
@@ -20,7 +19,6 @@ module.exports = {
           "sans-serif"
         ],
         display: [
-          '"Plus Jakarta Sans Variable"',
           '"Inter Variable"',
           "ui-sans-serif",
           "system-ui",
@@ -32,25 +30,34 @@ module.exports = {
         ]
       },
       colors: {
-        // Example custom colors (optional):
+        gray: {
+          50: "#f4f3ed",
+          100: "#e8e7df",
+          200: "#d2d2c9",
+          300: "#b8b9b0",
+          400: "#969b94",
+          500: "#727e7d",
+          600: "#56666a",
+          700: "#405257",
+          800: "#293d43",
+          900: "#182d34"
+        },
         indigo: {
-          50:  "#f5f3ff",
-          100: "#e0e7ff",
-          200: "#c7d2fe",
-          300: "#a5b4fc",
-          400: "#818cf8",
-          500: "#6366f1",
-          600: "#4f46e5",
-          700: "#4338ca",
-          800: "#3730a3",
-          900: "#312e81"
+          50:  "#e8f1ee",
+          100: "#d4e6df",
+          200: "#b3d2c9",
+          300: "#8ab9ad",
+          400: "#5f9d92",
+          500: "#327f77",
+          600: "#176a64",
+          700: "#115951",
+          800: "#124940",
+          900: "#123a35"
         }
-        // You can add other brand colors or a custom 'rainbow' gradient config if needed
       }
     }
   },
   plugins: [
-    require('@tailwindcss/typography'),   // for styling blog content (optional)
-    // require('@tailwindcss/forms')      // optional: better base styles for <form> elements
+    require('@tailwindcss/typography')
   ]
 };

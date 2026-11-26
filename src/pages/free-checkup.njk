@@ -13,7 +13,7 @@ description: Get a free short write-up of your website from a Tampa Bay tech par
 <section class="px-4 pb-8 pt-12 md:pb-10 md:pt-16">
   <div class="wrap">
     <p class="eyebrow">Free. No charge. No pressure.</p>
-    <h1 class="h-display mt-4 max-w-3xl">Get your <span class="text-brand-gradient">free website write-up</span> of your website</h1>
+    <h1 class="h-display mt-4 max-w-3xl">Get your free website write-up</h1>
     <p class="lede mt-5 max-w-2xl">Send us your name, your email and your website address. We'll look at your site the way a customer would, on a phone and on a computer, and email you a short write-up with screenshots of what we see.</p>
   </div>
 </section>
@@ -33,12 +33,12 @@ description: Get a free short write-up of your website from a Tampa Bay tech par
         ] %}
         {% for item in writeupItems %}
         <li class="flex gap-3">
-          <span aria-hidden="true" class="font-bold text-indigo-700">&#10003;</span>
+          <span aria-hidden="true" class="font-medium text-indigo-700">&#10003;</span>
           <span>{{ item }}</span>
         </li>
         {% endfor %}
       </ul>
-      <p class="mt-6 font-semibold text-gray-900">It's free. No charge, and nothing to sign.</p>
+      <p class="mt-6 font-medium text-gray-900">It's free. No charge, and nothing to sign.</p>
       <p class="mt-1 text-gray-700">We reply within {{ site.responseTime }}. We only write up what we actually see on your site.</p>
     </div>
 
@@ -46,7 +46,7 @@ description: Get a free short write-up of your website from a Tampa Bay tech par
       <div class="card">
         {% set formSource = "free-checkup" %}
         {% set formHeading = "Request your free write-up" %}
-        {% set formButton = "Send me my free write-up" %}
+        {% set formButton = "Get my free website write-up" %}
         {% set showSiteUrl = true %}
         {% include "partials/lead-form.njk" %}
       </div>
@@ -58,7 +58,7 @@ description: Get a free short write-up of your website from a Tampa Bay tech par
 <section class="section bg-gray-50">
   <div class="wrap-narrow">
     <h2 class="h-section">What happens next</h2>
-    <ol class="mt-8 list-decimal space-y-4 pl-6 text-lg marker:font-bold marker:text-indigo-700">
+    <ol class="mt-8 list-decimal space-y-4 pl-6 text-lg marker:font-medium marker:text-indigo-700">
       <li><strong>You send the form.</strong> It's short, and you can skip anything marked optional.</li>
       <li><strong>We reply within {{ site.responseTime }}</strong> to confirm we have it.</li>
       <li><strong>You get your write-up by email.</strong> It's in plain English, with screenshots of what we saw.</li>
@@ -76,7 +76,7 @@ description: Get a free short write-up of your website from a Tampa Bay tech par
     <ul class="mt-6 space-y-3">
       {% for item in checkup.includes %}
       <li class="flex gap-3">
-        <span aria-hidden="true" class="font-bold text-indigo-700">&#10003;</span>
+        <span aria-hidden="true" class="font-medium text-indigo-700">&#10003;</span>
         <span>{{ item }}</span>
       </li>
       {% endfor %}
