@@ -126,7 +126,7 @@ export async function pollOffice(env){
 }
 
 // Deletes the threads and starter messages of manual test runs (slot manual:...) from #office. The pinned controls stay.
-export async function cleanupTestRuns(env){
+export async function cleanupTestRuns(env,{tasks=false}={}){
  const c=await cfg(env);const office=c.channels?.office;if(!office)return {ok:false,error:"office channel missing"};
  const rows=(await env.DB.prepare("SELECT id,thread_id FROM office_runs WHERE slot LIKE 'manual:%' AND state<>'active'").all()).results||[];
  let removed=0;
@@ -136,5 +136,7 @@ export async function cleanupTestRuns(env){
  }
  const msgs=await discordApi(env,`/channels/${office}/messages?limit=50`);
  for(const m of Array.isArray(msgs)?msgs:[]){if(!m.pinned&&m.author?.bot&&/^(Standup starting\.|Couldn't start a standup)/.test(String(m.content||""))){try{await discordApi(env,`/channels/${office}/messages/${m.id}`,"DELETE");removed++;}catch{}}}
+ // Optionally also the proposals those test runs posted in #tasks (their forum threads and rows).
+ if(tasks){const props=(await env.DB.prepare("SELECT p.id,p.thread_id FROM office_proposals p JOIN office_runs r ON r.id=p.run_id WHERE r.slot LIKE 'manual:%'").all()).results||[];for(const p of props){if(p.thread_id){try{await discordApi(env,`/channels/${p.thread_id}`,"DELETE");removed++;}catch{}}await env.DB.prepare("DELETE FROM office_proposals WHERE id=?").bind(p.id).run();}}
  return {ok:true,removed};
 }

@@ -66,7 +66,8 @@ export async function handleOps(request, env) {
   if (sub === "office/cleanup") {
     if (request.method !== "POST" || !isJson(request)) return json(405, { ok: false, error: "Use a JSON POST." });
     const { cleanupTestRuns } = await import("./office.js");
-    return json(200, await cleanupTestRuns(env));
+    let body = {}; try { body = await request.json(); } catch { /* empty */ }
+    return json(200, await cleanupTestRuns(env, { tasks: body && body.tasks === true }));
   }
   if (sub?.startsWith("studio/")) {
     if (m[4]) return notFound();
