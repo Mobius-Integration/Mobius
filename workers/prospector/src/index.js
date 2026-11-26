@@ -32,12 +32,19 @@ export { sendToFounder };
 const CRON_HARVEST = "0 11 * * MON";
 const CRON_CHECK = "*/15 * * * *";
 const CRON_DIGEST = "0 13 * * MON-FRI";
+const CRON_STUDIO = "* * * * *";
 
 const HOME_PAGE_MAX_BYTES = 150 * 1024;
 const ROBOTS_MAX_BYTES = 32 * 1024;
 
 export default {
   async scheduled(controller, env, ctx) {
+    if (controller.cron === CRON_STUDIO) {
+      if (env.STUDIO_ENABLED === "false") return;
+      try { const { pollStudio } = await import("./studio.js"); const task = pollStudio(env); if (ctx?.waitUntil) ctx.waitUntil(task); else await task; }
+      catch (e) { console.error("prospector: Studio poll failed:", e?.message || "unknown error"); }
+      return;
+    }
     const kind = { [CRON_HARVEST]: "harvest", [CRON_CHECK]: "check", [CRON_DIGEST]: "digest" }[controller.cron];
     if (!kind) return;
     try {

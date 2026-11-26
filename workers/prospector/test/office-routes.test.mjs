@@ -73,3 +73,16 @@ test("task status posts and swaps applied state tags; rejects malformed ids", as
   assert.deepEqual(calls.at(-1)[2], { applied_tags: ["other", "review"] });
   assert.equal(calls.some((call) => call[1] === "POST" && call[2]?.content === "Codex update"), true);
 });
+
+test("Studio kit and texture reads require the signed board route", async () => {
+  const env = routeEnv({});
+  const stored = new Map([["brand/kit.json", JSON.stringify({ name: "Mobius" })], ["brand/texture/123e4567-e89b-12d3-a456-426614174000", new Uint8Array([1, 2, 3]).buffer]]);
+  env.WRITEUPS = { async get(key, options) { const value = stored.get(key); return options?.type === "arrayBuffer" ? value : value && String(value); } };
+  const kit = await handleOps(new Request(await url(env, "/brandkit")), env);
+  assert.deepEqual(await kit.json(), { name: "Mobius" });
+  const texture = await handleOps(new Request(await url(env, "/texture/123e4567-e89b-12d3-a456-426614174000")), env);
+  assert.equal(texture.headers.get("content-type"), "image/jpeg");
+  assert.equal(texture.arrayBuffer ? (await texture.arrayBuffer()).byteLength : 0, 3);
+  const denied = await handleOps(new Request("https://example.test/ops/b/1234567890/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/brandkit"), env);
+  assert.equal(denied.status, 404);
+});

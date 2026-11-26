@@ -24,7 +24,7 @@ routes = [
 # UTC. Check a batch every 15 minutes; weekday digest at 13:00 UTC (8 AM Eastern in winter, 9 AM in summer).
 # No cloud harvest: public Overpass servers refuse Cloudflare, so the prospect list is refreshed from the
 # PC with scripts/harvest-local.mjs.
-crons = ["*/15 * * * *", "0 13 * * MON-FRI"]
+crons = ["*/15 * * * *", "0 13 * * MON-FRI", "* * * * *"]
 
 # Workers Paid (since 2026-11-20): 30 s of CPU per invocation instead of 10 ms.
 [limits]
@@ -67,6 +67,11 @@ DISCORD_APP_ID = "1575300686453805167"
 DISCORD_PUBLIC_KEY = "dcad9bbd2c23efa9953924915bb3e8b8168cf7a262c4d296a4f8033f3f00fe1d"
 SITE_NAME = "Mobius Integration"
 BOARD_ORIGIN = "https://mobiusintegration.com"
+STUDIO_ENABLED = "true"
+STUDIO_MODEL = "@cf/openai/gpt-oss-120b"
+STUDIO_IMAGE_MODEL = "@cf/black-forest-labs/flux-1-schnell"
+STUDIO_MAX_CALLS_PER_DAY = "150"
+STUDIO_MAX_IMAGES_PER_DAY = "30"
 # Hillsborough, Pinellas and Pasco plus Lakeland and Plant City (south,west,north,east), as a 4 x 5 grid
 # of tiles no bigger than the 2 x 3 grid of the original, smaller box.
 BBOX = "27.60,-82.85,28.40,-81.85"

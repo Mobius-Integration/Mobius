@@ -200,8 +200,18 @@ Messages include buttons where the board offers the same action: pause or resume
 
 1. Create a Discord application and bot, then add the app ID and public key to `[vars]` as `DISCORD_APP_ID` and `DISCORD_PUBLIC_KEY` in `wrangler.toml`.
 2. Set the bot token as a Worker secret: `npx wrangler secret put DISCORD_BOT_TOKEN`. Never put the token in a file.
-3. Invite the bot to Mario's private server with this OAuth2 permissions URL (replace `APPLICATION_ID`): `https://discord.com/oauth2/authorize?client_id=APPLICATION_ID&permissions=326417599504&scope=bot`. It requests exactly: View Channels, Send Messages, Embed Links, Read Message History, Manage Channels, Create Public Threads, Send Messages in Threads, and Manage Threads.
+3. Invite the bot to Mario's private server with this OAuth2 permissions URL (replace `APPLICATION_ID`): `https://discord.com/oauth2/authorize?client_id=APPLICATION_ID&permissions=326417640464&scope=bot`. It requests: View Channels, Send Messages, Manage Messages (to pin the welcome panel), Attach Files (texture studies), Embed Links, Read Message History, Manage Channels, Create Public Threads, Send Messages in Threads, and Manage Threads.
 4. In the Discord Developer Portal, set the Interactions Endpoint URL to `https://mobiusintegration.com/discord/interactions`.
 5. Open the prospect board, copy the server ID with Discord Developer Mode enabled, enter it in the Discord server ID field, and press **Set up Discord**. Setup creates missing channels and categories, saves their IDs and the server owner's ID in D1, and can be run again safely.
 
 To switch Discord off, remove the `DISCORD_BOT_TOKEN` secret and clear both Discord vars. Existing Discord channels and messages remain in Discord; the Worker stops posting and rejects interactions without a public key.
+
+## Studio
+
+Studio is a brand design and marketing partner for Mario in `#brand-studio`. Send a message to shape the Mobius identity. It asks one discovery question at a time and can suggest colours, typography, textures, voice, and taglines. Use the pinned **Show brand brief** button to review decisions or **Send brand kit to the builder** to save the kit in KV, summarize it in `#builds`, and propose a website task in `#tasks`. Only configured Discord admins are acted on.
+
+The minute cron polls new channel messages using Discord's `after` cursor, batches each minute's eligible admin messages into one AI turn, and saves the cursor and conversation in D1. It runs only the Studio poll; the existing 15-minute and weekday cron handlers remain isolated to their own schedules. Enable the bot's Message Content intent in the Discord Developer Portal. Studio can be disabled with `STUDIO_ENABLED = "false"` in Worker vars. Defaults cap usage at 150 chat calls and 30 images per UTC day; override with `STUDIO_MAX_CALLS_PER_DAY` and `STUDIO_MAX_IMAGES_PER_DAY`.
+
+The defaults are `@cf/openai/gpt-oss-120b` for chat and `@cf/black-forest-labs/flux-1-schnell` for images. Cloudflare currently lists both. At listed rates, 150 turns are usage-metered by tokens (gpt-oss-120b: $0.35/M input and $0.75/M output tokens); 30 512×512 FLUX tiles are about $0.0016 total at $0.0000528 each. Actual chat cost depends on context and reply size. [Model details](https://developers.cloudflare.com/workers-ai/models/gpt-oss-120b/) · [Workers AI pricing](https://developers.cloudflare.com/workers-ai/platform/pricing/).
+
+Before rollout, apply migration `0008_brand_studio.sql`, deploy the Worker, then rerun **Set up Discord** from the board so it creates and pins the new channel panel. The Discord bot needs Attach Files permission for texture images.

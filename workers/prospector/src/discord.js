@@ -2,7 +2,7 @@ import { markProspect } from "./marks.js";
 import { metaSet, pauseAuto } from "./outbox.js";
 
 const API = "https://discord.com/api/v10";
-const CHANNELS = ["hq", "approvals", "replies", "outreach", "builds"];
+const CHANNELS = ["hq", "approvals", "replies", "outreach", "builds", "brand-studio"];
 const CATEGORIES = ["HQ", "Operations", "Projects"];
 const json = (status, value) => new Response(JSON.stringify(value), { status, headers: { "Content-Type": "application/json" } });
 const configured = (env) => !!(env.DISCORD_APP_ID && env.DISCORD_PUBLIC_KEY);
@@ -59,6 +59,18 @@ export async function handleDiscord(request, env, ctx) {
   const cfg = await discordConfig(env);
   if (!Array.isArray(cfg.admins) || !cfg.admins.includes(String(body.member?.user?.id || body.user?.id || ""))) return json(200, { type: 4, data: { content: "Not allowed.", flags: 64 } });
   const id = String(body.data?.custom_id || "");
+  if (id.startsWith("studio:") && env.STUDIO_ENABLED === "false") return json(200, { type: 4, data: { content: "Studio is paused right now.", flags: 64 } });
+  if (id.startsWith("studio:")) {
+    const { handleStudioInteraction } = await import("./studio.js");
+    const result = await handleStudioInteraction(body, env, ctx);
+    if (result) return json(200, result);
+  }
+  if (id === "studio:brief" || id === "studio:kit") {
+    if (String(body.channel_id || "") !== String(cfg.channels?.["brand-studio"] || "")) return json(200, { type: 4, data: { content: "Studio buttons only work in #brand-studio.", flags: 64 } });
+    if (!ctx?.waitUntil) return json(200, { type: 4, data: { content: "Studio action queued. Please try again shortly.", flags: 64 } });
+    const task = async () => { const { showBrief, sendKit } = await import("./studio.js"); if (id === "studio:brief") await showBrief(env, body.channel_id); else await sendKit(env); };
+    ctx.waitUntil(task()); return json(200, { type: 6 });
+  }
   const match = /^(auto:(pause|resume)|prospect:(cancel|nofollow):(\d{1,9}))$/.exec(id);
   if (!match) return json(200, { type: 4, data: { content: "Invalid action.", flags: 64 } });
   const [, , autoAction, markAction, prospectId] = match;
@@ -141,7 +153,7 @@ export async function setupDiscord(env, guildId) {
     }
     const ids = {};
     for (const name of CHANNELS) {
-      const category = name === "hq" ? "HQ" : name === "builds" ? "Projects" : "Operations";
+      const category = name === "hq" ? "HQ" : ["builds", "brand-studio"].includes(name) ? "Projects" : "Operations";
       let found = channels.find((c) => c.name === name && c.type === 0);
       if (!found) found = await discordFetch(env, `/guilds/${guildId}/channels`, "POST", { name, type: 0, parent_id: categories[category] });
       ids[name] = found.id;
@@ -155,6 +167,11 @@ export async function setupDiscord(env, guildId) {
       }
     }
     ids.tasks = forum.id;
+    // Keep the welcome panel pinned and avoid posting another copy on setup reruns.
+    const recent = await discordFetch(env, `/channels/${ids["brand-studio"]}/messages?limit=50`);
+    let welcome = recent.find((m) => m.author?.id === me.id && m.components?.some((row) => row.components?.some((b) => b.custom_id === "studio:brief")));
+    if (!welcome) welcome = await discordFetch(env, `/channels/${ids["brand-studio"]}/messages`, "POST", { content: "Welcome to Brand Studio. We’ll shape Mobius’s identity together, one decision at a time. Start with a message, or use the buttons below.", components: [{ type: 1, components: [{ type: 2, style: 2, label: "Show brand brief", custom_id: "studio:brief" }, { type: 2, style: 1, label: "Send brand kit to the builder", custom_id: "studio:kit" }] }], allowed_mentions: { parse: [] } });
+    if (!welcome.pinned) await discordFetch(env, `/channels/${ids["brand-studio"]}/pins/${welcome.id}`, "PUT");
     const ownerId = guild.owner_id;
     if (!ownerId) throw new Error("Could not identify server owner.");
     await metaSet(env.DB, "discord", JSON.stringify({ guild: String(guildId), admins: [String(ownerId)], bot: me.id, categories, channels: ids }));
