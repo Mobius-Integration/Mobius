@@ -25,8 +25,9 @@ import { sendToFounder } from "./mail.js";
 import { autoSummary, fillQueue, autoState, metaSet, pauseAuto } from "./outbox.js";
 import { createWriteup, writeupPdf } from "./writeup.js";
 import { PARTNER_KINDS, isLawFirm } from "./partners.js";
+import { setupDiscord } from "./discord.js";
 
-const ROUTE = /^\/ops\/b\/(\d{9,11})\/([A-Za-z0-9_-]{43})(?:\/(mark|more|auto|writeup)(?:\/(\d{1,9}))?)?\/?$/;
+const ROUTE = /^\/ops\/b\/(\d{9,11})\/([A-Za-z0-9_-]{43})(?:\/(mark|more|auto|writeup|discord)(?:\/(\d{1,9}))?)?\/?$/;
 const num = (v, dflt, min, max) => Math.min(max, Math.max(min, Number.isFinite(parseInt(v, 10)) ? parseInt(v, 10) : dflt));
 const isGet = (request) => request.method === "GET" || request.method === "HEAD";
 // The page's own script sends JSON. A form on another site can't (that would need a CORS preflight,
@@ -67,6 +68,12 @@ export async function handleOps(request, env) {
     const page = await boardPage(env, base, platformOf(request.headers.get("user-agent")));
     page.headers.append("Set-Cookie", await deviceCookie(env));
     return page;
+  }
+  if (sub === "discord") {
+    if (request.method !== "POST" || !isJson(request)) return json(405, { ok: false, error: "Use a JSON POST." });
+    let body; try { body = await request.json(); } catch { return json(400, { ok: false, error: "Bad request." }); }
+    const r = await setupDiscord(env, String(body.guild_id || ""));
+    return json(r.ok ? 200 : 400, r);
   }
   if (m[4]) {
     // Only a write-up has an id in its address: GET /writeup/<id> is the PDF.
@@ -338,6 +345,7 @@ async function boardPage(env, base, platform) {
 <h1>Prospect board</h1>
 <p class="stats"><strong>${queued.length}</strong> sending automatically · <strong>${ready.length}</strong> need you · <strong>${stats.sent7 || 0}</strong> sent this week · <strong>${stats.replies || 0}</strong> ${stats.replies === 1 ? "reply" : "replies"} from ${plural(stats.sent_all || 0, "email", "emails")} · ${plural(stats.pool || 0, "more checked prospect", "more checked prospects")} and ${plural(stats.partners || 0, "partner", "partners")} in the queue</p>
 <button type="button" class="btn primary" id="more" data-size="${size}">Get ${size} more</button>
+${env.DISCORD_APP_ID && env.DISCORD_PUBLIC_KEY && env.DISCORD_BOT_TOKEN ? `<div class="row"><label for="discord-guild">Discord server ID</label><input id="discord-guild" inputmode="numeric" autocomplete="off"><button type="button" class="btn" id="discord-setup">Set up Discord</button></div>` : ""}
 </header>
 ${autoPanel(sum)}
 ${queued.length ? `<section aria-labelledby="h-queued"><h2 id="h-queued">Sending automatically</h2>
@@ -591,6 +599,11 @@ const SCRIPT = `
   var toastText = document.getElementById("toast-text");
   var toastUndo = document.getElementById("toast-undo");
   var undoFn = null, timer = 0;
+  var discordSetup = document.getElementById("discord-setup");
+  if (discordSetup) discordSetup.addEventListener("click", function () {
+    var input = document.getElementById("discord-guild"); discordSetup.disabled = true;
+    post("/discord", { guild_id: input.value }).then(function (d) { say(d.ok ? "Discord office is ready." : (d.error || "Discord setup failed.")); discordSetup.disabled = false; });
+  });
   var INVERSE = { sent: "undo", skip: "undo", never: "undo", replied: "unreplied", unreplied: "replied", nofollow: "follow", follow: "nofollow" };
   function say(text, undo) {
     toastText.textContent = text;

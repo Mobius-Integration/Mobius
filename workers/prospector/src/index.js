@@ -25,6 +25,7 @@ import { markProspect, matchSentCopy } from "./marks.js";
 import { boardUrl } from "./tokens.js";
 import { PROSPECTOR_UA } from "./contacts.js";
 import { sendToFounder } from "./mail.js";
+import { handleDiscord } from "./discord.js";
 
 export { sendToFounder };
 
@@ -71,8 +72,12 @@ export default {
     }
   },
 
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
+    if (url.pathname === "/discord/interactions") {
+      try { return await handleDiscord(request, env, ctx); }
+      catch (e) { console.error("prospector: Discord interaction failed:", e && e.message); return new Response("Internal error", { status: 500 }); }
+    }
     if (url.pathname === "/ops" || url.pathname.startsWith("/ops/")) {      try {
         return await handleOps(request, env);
       } catch (e) {
@@ -111,6 +116,8 @@ export default {
       const board = await boardUrl(env);
       await sendToFounder(env, subject, `${report}\n\nYour prospect board: ${board}`,
         `<pre style="font-family:inherit;font-size:14px;white-space:pre-wrap">${esc(report)}</pre><p><a href="${esc(board)}">Open your prospect board</a></p>`);
+      const { discordSend } = await import("./discord.js");
+      await discordSend(env, "hq", { content: `**${subject}**\n${report}`.slice(0, 1900) });
     } catch (e) {
       console.error("prospector: email handler failed:", e && e.message);
       try { await logRun(env.DB, "email", false, { error: e && e.message }); } catch {}
@@ -230,6 +237,8 @@ export async function sendDigest(env, limit, opts = {}) {
   const digest = await buildDigest(env, limit, opts);
   if (!digest) return { sent: 0 };
   await sendToFounder(env, digest.subject, digest.text, digest.html);
+  const { discordSend } = await import("./discord.js");
+  await discordSend(env, "hq", { content: `**${digest.subject}**\n${digest.text}`.slice(0, 1900) });
   await recordDigest(env.DB, digest.items, "digest");
   return { sent: digest.items.length, subject: digest.subject };
 }
@@ -267,6 +276,8 @@ async function sendBoardReminder(env, waiting) {
   const line = `${waiting} prospects are waiting on your board, so no new ones were added today. New picks resume once there's room.`;
   await sendToFounder(env, `${waiting} prospects waiting on your board`, `${line}\n\n${board}`,
     `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#1f2937"><p>${esc(line)}</p><p><a href="${esc(board)}" style="display:inline-block;padding:10px 16px;border-radius:8px;background:#4338ca;color:#ffffff;font-weight:bold;text-decoration:none">Open your prospect board</a></p></div>`);
+  const { discordSend } = await import("./discord.js");
+  await discordSend(env, "hq", { content: line });
 }
 
 // ---------------------------------------------------------------------------
@@ -288,6 +299,8 @@ async function handleSentCopy(env, message, founders, ops) {
   const line = `The hidden copy of an email you sent (${what}) reached ${env.OPS_ADDRESS}, but nothing was marked (${reason}). If it was a prospect, tap Sent on the board.`;
   await sendToFounder(env, "Prospector: a sent email didn't match a prospect", `${line}\n\n${board}`,
     `<p>${esc(line)}</p><p><a href="${esc(board)}">Open your prospect board</a></p>`);
+  const { discordSend } = await import("./discord.js");
+  await discordSend(env, "approvals", { content: line });
 }
 
 // ---------------------------------------------------------------------------

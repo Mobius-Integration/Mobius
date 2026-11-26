@@ -68,7 +68,7 @@ export async function pauseAuto(env, reason) {
   await metaSet(env.DB, "auto_pause_reason", reason);
 }
 
-async function notify(env, subject, lines, link) {
+async function notify(env, subject, lines, link, action) {
   try {
     const { sendToFounder } = await import("./mail.js");
     const { boardUrl } = await import("./tokens.js");
@@ -76,6 +76,17 @@ async function notify(env, subject, lines, link) {
     const text = [...lines, "", `Your prospect board: ${board}`].join("\n");
     const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#1f2937;max-width:640px">${lines.map((l) => (l ? `<p style="margin:0 0 8px">${esc(l)}</p>` : "")).join("")}${link ? `<p style="margin:0 0 8px"><a href="${esc(link)}">Open the conversation in Gmail</a></p>` : ""}<p style="margin:8px 0 0"><a href="${esc(board)}">Open your prospect board</a></p></div>`;
     await sendToFounder(env, subject, text, html);
+    const { discordSend, discordButtons } = await import("./discord.js");
+    const paused = /paused|pause/i.test(subject);
+    const actions = paused
+      ? [{ id: "auto:resume", label: "Resume auto-send", style: 3 }]
+      : [{ id: "auto:pause", label: "Pause auto-send", style: 2 }, ...(action ? [action] : [])];
+    if (link) actions.push({ url: link, label: "Open Gmail conversation" });
+    const channel = /reply/i.test(subject) ? "replies" : /bounce/i.test(subject) ? "outreach" : "approvals";
+    await discordSend(env, channel, {
+      content: `**${subject}**\n${lines.join("\n")}${link ? `\n${link}` : ""}`.slice(0, 1900),
+      components: discordButtons(actions),
+    });
   } catch (e) {
     console.error("prospector: notify failed:", e && e.message);
   }
@@ -362,7 +373,7 @@ async function sendInitial(env, st, row, now) {
     await db.prepare("UPDATE outreach SET send_at = ? WHERE id = ?").bind(sqlTime(nextMorning(etParts(now).ymd, row.category)), row.oid).run();
     return false;
   }
-  if (pre.hold) { await db.prepare("UPDATE outreach SET auto_state = 'held', hold_reason = ? WHERE id = ?").bind(pre.hold, row.oid).run(); return false; }
+  if (pre.hold) { await db.prepare("UPDATE outreach SET auto_state = 'held', hold_reason = ? WHERE id = ?").bind(pre.hold, row.oid).run(); await notify(env, `Held send: ${row.name}`, [pre.hold, "Review this send on the prospect board."], null, { id: `prospect:cancel:${row.prospect_id}`, label: "Cancel queued send" }); return false; }
   // The draft quotes findings from an earlier look at their site: every one must still be there.
   const quoted = parseJson(row.quoted, null);
   if (row.track !== "partner" && Array.isArray(quoted) && quoted.length) {
@@ -371,6 +382,7 @@ async function sendInitial(env, st, row, now) {
     if (gone.length) {
       await db.prepare("UPDATE outreach SET auto_state = 'held', hold_reason = ? WHERE id = ?")
         .bind(`The finding about ${gone.map((f) => FAMILY_NAMES[f] || f).join(" and ")} no longer shows up on their site, so I held the email for you.`, row.oid).run();
+      await notify(env, `Held send: ${row.name}`, [`The finding about ${gone.map((f) => FAMILY_NAMES[f] || f).join(" and ")} no longer shows up on their site, so I held the email for you.`, "Review this send on the prospect board."], null, { id: `prospect:cancel:${row.prospect_id}`, label: "Cancel queued send" });
       return false;
     }
     // Then a real browser: every quoted finding must show up there too (the light check can be wrong on
@@ -379,6 +391,7 @@ async function sendInitial(env, st, row, now) {
     if (v.ran && v.missing.length) {
       await db.prepare("UPDATE outreach SET auto_state = 'held', hold_reason = ? WHERE id = ?")
         .bind(`A real browser doesn't see the finding about ${v.missing.map((f) => FAMILY_NAMES[f] || f).join(" and ")} that the email mentions, so I held it for you.`, row.oid).run();
+      await notify(env, `Held send: ${row.name}`, [`A real browser doesn't see the finding about ${v.missing.map((f) => FAMILY_NAMES[f] || f).join(" and ")} that the email mentions, so I held it for you.`, "Review this send on the prospect board."], null, { id: `prospect:cancel:${row.prospect_id}`, label: "Cancel queued send" });
       return false;
     }
     if (!v.ran && v.error) console.error(`prospector: browser re-check skipped for ${row.domain}: ${v.error}`);
@@ -452,6 +465,12 @@ async function afterSend(env, st, row, res, kind, now, body) {
       ]);
       if (res.thread_id && !row.thread_ref) await db.prepare("UPDATE outreach SET thread_ref = ? WHERE id = ?").bind(res.thread_id, row.oid).run();
     }
+    const { discordSend, discordButtons } = await import("./discord.js");
+    const kindLabel = kind === "initial" ? "First email sent" : `Follow-up ${row.n} sent`;
+    await discordSend(env, "outreach", {
+      content: `${kindLabel} to **${row.name}**.`,
+      components: discordButtons([{ id: `prospect:nofollow:${id}`, label: "Stop follow-ups" }]),
+    });
     return true;
   }
   if (res && res.replied) {
@@ -610,8 +629,8 @@ export async function dailyPlanEmail(env, fill) {
   const st = await autoState(env);
   const sum = await autoSummary(env);
   const { results } = await db.prepare(
-    `SELECT p.name, o.send_at, 'first email' AS what FROM outreach o JOIN prospects p ON p.id = o.prospect_id WHERE o.auto_state = 'queued'
-     UNION ALL SELECT p.name, t.due_at, 'follow-up ' || t.n FROM touches t JOIN prospects p ON p.id = t.prospect_id WHERE t.state = 'queued'
+    `SELECT p.name, o.send_at, 'first email' AS what, p.id AS pid FROM outreach o JOIN prospects p ON p.id = o.prospect_id WHERE o.auto_state = 'queued'
+     UNION ALL SELECT p.name, t.due_at, 'follow-up ' || t.n, p.id AS pid FROM touches t JOIN prospects p ON p.id = t.prospect_id WHERE t.state = 'queued'
      ORDER BY 2 LIMIT 40`,
   ).all();
   const lines = (results || []).map((r) => `${whenLabel(r.send_at)}  ${r.name} (${r.what})`);
@@ -620,4 +639,14 @@ export async function dailyPlanEmail(env, fill) {
   const text = [subject, "", intro, "", ...(lines.length ? lines : ["(nothing queued)"]), "", `Your prospect board: ${board}`].join("\n");
   const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#1f2937;max-width:640px"><h1 style="font-size:20px;margin:0 0 6px">${esc(subject)}</h1><p style="margin:0 0 10px;color:#4b5563">${esc(intro)}</p>${lines.length ? `<ul style="margin:0 0 12px;padding-left:20px">${lines.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>` : ""}<p style="margin:0"><a href="${esc(board)}" style="display:inline-block;padding:10px 16px;border-radius:8px;background:#4338ca;color:#ffffff;font-weight:bold;text-decoration:none">Open your prospect board</a></p></div>`;
   await sendToFounder(env, subject, text, html);
+  const { discordSend, discordButtons } = await import("./discord.js");
+  const actionRows = [];
+  actionRows.push(st.paused
+    ? { id: "auto:resume", label: "Resume auto-send", style: 3 }
+    : { id: "auto:pause", label: "Pause auto-send", style: 2 });
+  for (const r of (results || []).slice(0, 20)) {
+    if (r.what === "first email") actionRows.push({ id: `prospect:cancel:${r.pid}`, label: `Cancel ${r.name}`.slice(0, 80) });
+    else actionRows.push({ id: `prospect:nofollow:${r.pid}`, label: `Stop follow-ups: ${r.name}`.slice(0, 80) });
+  }
+  await discordSend(env, "hq", { content: `**${subject}**\n${intro}\n${(lines.length ? lines : ["(nothing queued)"]).join("\n")}`.slice(0, 1900), components: discordButtons(actionRows.slice(0, 5)) });
 }
