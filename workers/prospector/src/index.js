@@ -41,7 +41,7 @@ export default {
   async scheduled(controller, env, ctx) {
     if (controller.cron === CRON_STUDIO) {
       if (env.STUDIO_ENABLED === "false") return;
-      try { const { pollStudio } = await import("./studio.js"); const task = pollStudio(env); if (ctx?.waitUntil) ctx.waitUntil(task); else await task; }
+      try { const [{ pollStudio }, { fallbackStudioTurns }] = await Promise.all([import("./studio.js"), import("./studio-turns.js")]); await fallbackStudioTurns(env); const task = pollStudio(env); if (ctx?.waitUntil) ctx.waitUntil(task); else await task; }
       catch (e) { console.error("prospector: Studio poll failed:", e?.message || "unknown error"); }
       return;
     }

@@ -5,3 +5,4 @@ _planning/
 .dev.vars
 workers/prospector/wrangler.harvest-local.toml
 workers/prospector/wrangler.check-local.toml
+workers/prospector/scripts/studio-pc.log

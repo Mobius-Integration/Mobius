@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { contrastRatio, generateTexture, handleStudioInteraction, paletteEmbed, parseStudioReply, pollStudio, replyAI, resolveStudioOption } from "../src/studio.js";
+import { contrastRatio, generateTexture, handleStudioInteraction, paletteEmbed, parseStudioReply, pollStudio, postTurn, replyAI, resolveStudioOption } from "../src/studio.js";
 
 test("Studio JSON replies validate fields and bound button options", () => {
   const valid = { reply: "A warm start.", options: Array.from({ length: 5 }, (_, i) => ({ label: `Option ${i}` })), palette: [{ name: "Gulf", hex: "#167C80", use: "Accent" }], textures: [], brief_updates: {} };
@@ -21,6 +21,14 @@ test("Studio contrast math uses WCAG luminance ratios", () => {
 test("Studio option clicks resolve saved labels by button index", () => {
   assert.equal(resolveStudioOption(["Warm", "Direct"], "1"), "Direct");
   assert.equal(resolveStudioOption(["Warm"], "8"), null);
+});
+
+test("every Studio answer carries a Think deeper button", async (t) => {
+  const env={DISCORD_APP_ID:"app",DISCORD_BOT_TOKEN:"YXBw.x.y",DB:{prepare(){return{bind(){return this;},async run(){return{meta:{changes:1}};}};}}};
+  const original=globalThis.fetch;let posted;t.after(()=>{globalThis.fetch=original;});
+  globalThis.fetch=async(_url,opts)=>{posted=JSON.parse(opts.body);return Response.json({id:"sent"});};
+  await postTurn(env,{reply:"A warm direction.",options:[],palette:[],textures:[],brief_updates:{}},"studio");
+  assert.ok(posted.components.some(row=>row.components.some(button=>button.custom_id==="studio:deep"&&button.label==="Think deeper")));
 });
 
 test("Studio retries invalid JSON on the main model, tries the backup model, then uses the plain fallback", async () => {
