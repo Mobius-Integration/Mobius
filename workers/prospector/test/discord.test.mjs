@@ -112,6 +112,8 @@ test("setup creates Discord resources once and persists ids", async (t) => {
     if (path === "/api/v10/guilds/12345678901234567") return Response.json({ id: "12345678901234567", owner_id: "98765432109876543" });
     if (path === "/api/v10/guilds/12345678901234567/channels" && opts.method === "GET") return Response.json(channels);
     if (path === "/api/v10/users/@me") return Response.json({ id: "bot" });
+    if (path.endsWith("/channels/10/webhooks") && opts.method !== "POST") return Response.json([]);
+    if (path.endsWith("/channels/10/webhooks") && opts.method === "POST") return Response.json({ id: "hook", token: "hook-secret", name: "Mobius Office agents" });
     if (path.startsWith("/api/v10/channels/") && path.endsWith("/messages" ) && opts.method !== "POST") return Response.json(messages);
     if (path.startsWith("/api/v10/channels/") && path.includes("/pins/")) return new Response(null, { status: 204 });
     if (path.startsWith("/api/v10/channels/") && path.endsWith("/messages") && opts.method === "POST") { const msg = { id: "welcome", author: { id: "bot" }, components: JSON.parse(opts.body).components, pinned: false }; messages.push(msg); return Response.json(msg); }

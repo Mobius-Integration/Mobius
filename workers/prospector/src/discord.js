@@ -2,7 +2,7 @@ import { markProspect } from "./marks.js";
 import { metaSet, pauseAuto } from "./outbox.js";
 
 const API = "https://discord.com/api/v10";
-const CHANNELS = ["hq", "approvals", "replies", "outreach", "builds", "brand-studio"];
+const CHANNELS = ["hq", "approvals", "replies", "outreach", "builds", "brand-studio", "office"];
 const CATEGORIES = ["HQ", "Operations", "Projects"];
 const json = (status, value) => new Response(JSON.stringify(value), { status, headers: { "Content-Type": "application/json" } });
 const configured = (env) => !!(env.DISCORD_APP_ID && env.DISCORD_PUBLIC_KEY);
@@ -64,6 +64,13 @@ export async function handleDiscord(request, env, ctx) {
     const { handleStudioInteraction } = await import("./studio.js");
     const result = await handleStudioInteraction(body, env, ctx);
     if (result) return json(200, result);
+  }
+  if (id.startsWith("office:")) {
+    if(id==="office:run"||id==="office:pause"||id==="office:resume"){
+      const {handleOfficeControl}=await import("./office.js");const result=await handleOfficeControl(id,env);
+      return json(200,result);
+    }
+    const {handleOfficeInteraction}=await import("./office.js");const result=await handleOfficeInteraction(body,env);if(result)return json(200,result);
   }
   if (id === "studio:brief" || id === "studio:kit") {
     if (String(body.channel_id || "") !== String(cfg.channels?.["brand-studio"] || "")) return json(200, { type: 4, data: { content: "Studio buttons only work in #brand-studio.", flags: 64 } });
@@ -153,7 +160,7 @@ export async function setupDiscord(env, guildId) {
     }
     const ids = {};
     for (const name of CHANNELS) {
-      const category = name === "hq" ? "HQ" : ["builds", "brand-studio"].includes(name) ? "Projects" : "Operations";
+      const category = name === "hq" ? "HQ" : ["builds", "brand-studio"].includes(name) ? "Projects" : name==="office"?"HQ":"Operations";
       let found = channels.find((c) => c.name === name && c.type === 0);
       if (!found) found = await discordFetch(env, `/guilds/${guildId}/channels`, "POST", { name, type: 0, parent_id: categories[category] });
       ids[name] = found.id;
@@ -167,6 +174,15 @@ export async function setupDiscord(env, guildId) {
       }
     }
     ids.tasks = forum.id;
+    const hooks=await discordFetch(env,`/channels/${ids.office}/webhooks`);
+    let webhook=hooks.find(w=>w.name==="Mobius Office agents"&&w.application_id===me.id);
+    if(!webhook)webhook=await discordFetch(env,`/channels/${ids.office}/webhooks`,"POST",{name:"Mobius Office agents"});
+    // Store secret webhook credentials only in D1 meta; never log or return them.
+    const hookSecret={id:webhook.id,token:webhook.token};
+    const controlRecent=await discordFetch(env,`/channels/${ids.office}/messages?limit=50`);
+    let control=controlRecent.find(m=>m.author?.id===me.id&&m.components?.some(r=>r.components?.some(b=>b.custom_id==="office:run")));
+    if(!control)control=await discordFetch(env,`/channels/${ids.office}/messages`,"POST",{content:"Office standups run at 9 AM, 12 PM, 3 PM, 6 PM and 9 PM Eastern. Admin controls:",components:[{type:1,components:[{type:2,style:1,label:"Run a standup now",custom_id:"office:run"},{type:2,style:4,label:"Pause the office",custom_id:"office:pause"},{type:2,style:3,label:"Resume",custom_id:"office:resume"}]}],allowed_mentions:{parse:[]}});
+    if(!control.pinned)await discordFetch(env,`/channels/${ids.office}/pins/${control.id}`,"PUT");
     // Keep the welcome panel pinned and avoid posting another copy on setup reruns.
     const recent = await discordFetch(env, `/channels/${ids["brand-studio"]}/messages?limit=50`);
     let welcome = recent.find((m) => m.author?.id === me.id && m.components?.some((row) => row.components?.some((b) => b.custom_id === "studio:brief")));
@@ -174,7 +190,8 @@ export async function setupDiscord(env, guildId) {
     if (!welcome.pinned) await discordFetch(env, `/channels/${ids["brand-studio"]}/pins/${welcome.id}`, "PUT");
     const ownerId = guild.owner_id;
     if (!ownerId) throw new Error("Could not identify server owner.");
-    await metaSet(env.DB, "discord", JSON.stringify({ guild: String(guildId), admins: [String(ownerId)], bot: me.id, categories, channels: ids }));
+    const old=await discordConfig(env);
+    await metaSet(env.DB, "discord", JSON.stringify({ guild: String(guildId), admins: [String(ownerId)], bot: me.id, categories, channels: ids, webhooks:{...(old.webhooks||{}),office:hookSecret} }));
     return { ok: true, channels: ids };
   } catch (e) {
     console.error("prospector: Discord setup failed:", e.message);

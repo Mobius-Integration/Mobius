@@ -40,9 +40,8 @@ const ROBOTS_MAX_BYTES = 32 * 1024;
 export default {
   async scheduled(controller, env, ctx) {
     if (controller.cron === CRON_STUDIO) {
-      if (env.STUDIO_ENABLED === "false") return;
-      try { const [{ pollStudio }, { fallbackStudioTurns }] = await Promise.all([import("./studio.js"), import("./studio-turns.js")]); await fallbackStudioTurns(env); const task = pollStudio(env); if (ctx?.waitUntil) ctx.waitUntil(task); else await task; }
-      catch (e) { console.error("prospector: Studio poll failed:", e?.message || "unknown error"); }
+      try { const [{ pollStudio }, { fallbackStudioTurns }, {pollOffice}] = await Promise.all([import("./studio.js"), import("./studio-turns.js"),import("./office.js")]); await fallbackStudioTurns(env); if(env.STUDIO_ENABLED!=="false") {const task = pollStudio(env); if (ctx?.waitUntil) ctx.waitUntil(task); else await task;} await pollOffice(env); }
+      catch (e) { console.error("prospector: minute poll failed:", e?.message || "unknown error"); }
       return;
     }
     const kind = { [CRON_HARVEST]: "harvest", [CRON_CHECK]: "check", [CRON_DIGEST]: "digest" }[controller.cron];

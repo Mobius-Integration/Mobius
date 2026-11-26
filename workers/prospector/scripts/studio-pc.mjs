@@ -44,9 +44,16 @@ export async function handleTurn(turn,{spawn=nodeSpawn,fetchImpl=fetch,baseUrl})
   let dir;
   try {
     dir=await mkdtemp(join(tmpdir(),"studio-codex-"));
-    await writeFile(join(dir,"schema.json"),JSON.stringify(schema));
-    await runCodex(buildPrompt(turn),turn,dir,spawn);
-    const result=toStudioResult(JSON.parse(await readFile(join(dir,"out.json"),"utf8")));
+    const custom=typeof turn.prompt==="string"&&turn.schema&&typeof turn.schema==="object";
+    await writeFile(join(dir,"schema.json"),JSON.stringify(custom?turn.schema:schema));
+    await runCodex(custom?turn.prompt:buildPrompt(turn),turn,dir,spawn);
+    const parsed=JSON.parse(await readFile(join(dir,"out.json"),"utf8"));
+    const result=custom?parsed:toStudioResult(parsed);
+    if(custom){
+      const response=await fetchImpl(`${baseUrl}/studio/done`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({id:turn.id,result})});
+      if(!response.ok)throw new Error("Office completion rejected");
+      return {ok:true,id:turn.id,ms:Date.now()-start};
+    }
     if (!result || typeof result.reply!=="string" || !Array.isArray(result.options)||!Array.isArray(result.palette)||!Array.isArray(result.textures)||!result.brief_updates||typeof result.brief_updates!=="object"||Array.isArray(result.brief_updates)) throw new Error("Invalid Codex JSON");
     const response=await fetchImpl(`${baseUrl}/studio/done`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({id:turn.id,result})});
     if(!response.ok) throw new Error("Studio completion rejected");

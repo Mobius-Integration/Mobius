@@ -219,3 +219,10 @@ Enable the bot's Message Content intent in the Discord Developer Portal. Studio 
 The defaults are `@cf/openai/gpt-oss-120b` for chat and `@cf/black-forest-labs/flux-1-schnell` for images. Cloudflare currently lists both. At listed rates, 150 turns are usage-metered by tokens (gpt-oss-120b: $0.35/M input and $0.75/M output tokens); 30 512×512 FLUX tiles are about $0.0016 total at $0.0000528 each. Actual chat cost depends on context and reply size. [Model details](https://developers.cloudflare.com/workers-ai/models/gpt-oss-120b/) · [Workers AI pricing](https://developers.cloudflare.com/workers-ai/platform/pricing/).
 
 Before rollout, apply migrations `0008_brand_studio.sql` and `0009_studio_turns.sql`, deploy the Worker, then start the PC script. Rerun **Set up Discord** from the board if the channel panel is not present. The Discord bot needs Attach Files permission for texture images.
+# Office
+
+The Office holds daily standups in Discord `#office` at 9 AM, 12 PM, 3 PM, 6 PM and 9 PM America/New_York. Each run creates a thread, then queues the Chief's opening, Growth and Studio work, their discussion turns, and the Chief's wrap. The agents post under their own names. Studio can render proposed textures into the thread. Results and notebooks are validated and kept in D1. Proposals appear in `#tasks` with Approve and Reject buttons; only configured Discord admins can decide them.
+
+Use **Run a standup now** on the pinned `#office` control message for a manual run. **Pause the office** stops new runs; **Resume** starts the schedule again. The Worker uses `OFFICE_MAX_TURNS_PER_RUN` (default 8) and `OFFICE_MAX_RUNS_PER_DAY` (default 6), each capped in code. PC Codex turns count against the existing daily Studio call cap (`STUDIO_MAX_CALLS_PER_DAY`); when the PC is unavailable or Codex fails, Workers AI answers instead. Cloudflare answers are labeled in Discord.
+
+Run `setupDiscord` again after applying migration `0010_office.sql` so it creates `#office`, its app-owned webhook and pinned controls. Deploy the Worker manually after review; do not deploy from this repository.

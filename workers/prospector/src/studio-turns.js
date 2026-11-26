@@ -10,7 +10,7 @@ export async function markPcSeen(env) {
   await env.DB.prepare("INSERT INTO meta (key,value) VALUES ('studio_pc_seen',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(new Date().toISOString()).run();
 }
 export async function queueStudioTurn(env, input, deep = false) {
-  await env.DB.prepare("INSERT INTO studio_turns (input,deep,state) VALUES (?,?, 'pending')").bind(String(input).slice(0, 5000), deep ? 1 : 0).run();
+  await env.DB.prepare("INSERT INTO studio_turns (input,deep,state,kind) VALUES (?,?, 'pending','studio')").bind(String(input).slice(0, 5000), deep ? 1 : 0).run();
 }
 export async function claimStudioCall(env) {
   const author = "usage:calls";
@@ -20,15 +20,17 @@ export async function claimStudioCall(env) {
 }
 export async function nextStudioTurn(env) {
   await markPcSeen(env);
-  const row = await env.DB.prepare("SELECT id,input,deep FROM studio_turns WHERE state='pending' ORDER BY id LIMIT 1").first();
+  const row = await env.DB.prepare("SELECT id,input,deep,kind,run_id,role,step,prompt,schema_json FROM studio_turns WHERE state='pending' ORDER BY id LIMIT 1").first();
   if (!row) return null;
   const claim = await env.DB.prepare("UPDATE studio_turns SET state='claimed',claimed_at=datetime('now') WHERE id=? AND state='pending'").bind(row.id).run();
   if (!Number(claim.meta?.changes || 0)) return null;
   if (!(await claimStudioCall(env))) {
-    await cloudFallback(env,{...row,state:"claimed"},"Codex reached today's Studio call cap; Cloudflare answered instead.");
+    if(row.kind==="office") await cloudOfficeFallback(env,{...row,state:"claimed"},"Codex reached today's Studio call cap; Cloudflare answered instead.");
+    else await cloudFallback(env,{...row,state:"claimed"},"Codex reached today's Studio call cap; Cloudflare answered instead.");
     await env.DB.prepare("UPDATE studio_turns SET state='fallback',done_at=datetime('now'),note='Daily call cap' WHERE id=? AND state='claimed'").bind(row.id).run();
     return null;
   }
+  if(row.kind==="office")return {id:row.id,kind:"office",run_id:row.run_id,role:row.role,step:row.step,prompt:row.prompt,schema:JSON.parse(row.schema_json||"{}"),input:row.input||""};
   const hist = await env.DB.prepare("SELECT author,content FROM studio_messages WHERE author NOT LIKE 'usage:%' AND author NOT LIKE 'texture:%' AND author NOT LIKE 'texturemsg:%' ORDER BY seq DESC LIMIT 30").all();
   const cfgRow = await env.DB.prepare("SELECT value FROM meta WHERE key='discord'").first(); let cfg={}; try { cfg=JSON.parse(cfgRow?.value||"{}"); } catch {}
   const history=(hist.results||[]).reverse(); if(history.at(-1)?.content===row.input)history.pop();
@@ -45,6 +47,11 @@ async function cloudFallback(env, row, note) {
   await postTurn(env,result,channel);
 }
 export async function doneStudioTurn(env, id, raw) {
+  const office=await env.DB.prepare("SELECT id,kind,run_id,role,step FROM studio_turns WHERE id=?").bind(Number(id)).first();
+  if(office?.kind==="office"){
+    const {officeTurnResult}=await import("./office.js");const ok=await officeTurnResult(env,office,raw,false);
+    if(ok)await env.DB.prepare("UPDATE studio_turns SET state='done',done_at=datetime('now') WHERE id=? AND state='claimed'").bind(id).run();return ok;
+  }
   const parsed=parseStudioReply(raw);
   if (!parsed) return failStudioTurn(env,id,"Codex returned invalid JSON");
   const row=await env.DB.prepare("SELECT id,input,state FROM studio_turns WHERE id=?").bind(Number(id)).first();
@@ -57,10 +64,23 @@ export async function doneStudioTurn(env, id, raw) {
 export async function failStudioTurn(env,id,reason="PC brain unavailable") {
   const row=await env.DB.prepare("SELECT id,input,state FROM studio_turns WHERE id=?").bind(Number(id)).first();
   if (!row || !["claimed","pending"].includes(row.state)) return false;
+  const full=await env.DB.prepare("SELECT id,input,state,kind,run_id,role,step,prompt,schema_json FROM studio_turns WHERE id=?").bind(Number(id)).first();
+  if(full?.kind==="office"){
+    await env.DB.prepare("UPDATE studio_turns SET state='claimed' WHERE id=? AND state='pending'").bind(id).run();
+    await cloudOfficeFallback(env,full,reason);
+    await env.DB.prepare("UPDATE studio_turns SET state='fallback',done_at=datetime('now'),note=? WHERE id=?").bind(String(reason).slice(0,250),id).run();return true;
+  }
   await cloudFallback(env,row,`Codex was unavailable; Cloudflare answered instead (${String(reason).slice(0,120)}).`);
   await env.DB.prepare("UPDATE studio_turns SET state='fallback',done_at=datetime('now'),note=? WHERE id=? AND state IN ('claimed','pending')").bind(String(reason).slice(0,250),id).run(); return true;
 }
 export async function fallbackStudioTurns(env) {
-  const rows=await env.DB.prepare("SELECT id,input,state FROM studio_turns WHERE state IN ('pending','claimed') AND created_at < datetime('now','-4 minutes')").all();
+  const rows=await env.DB.prepare("SELECT id,input,state,kind,run_id,role,step,prompt,schema_json FROM studio_turns WHERE state IN ('pending','claimed') AND created_at < datetime('now','-4 minutes')").all();
   for (const row of rows.results||[]) { try { await failStudioTurn(env,row.id,"Turn exceeded four minutes"); } catch (e) { console.error("prospector: Studio fallback failed:",e?.message||"unknown error"); } }
+}
+async function cloudOfficeFallback(env,row,reason){
+ const {modelText}=await import("./studio.js");let output;
+ try{const r=await env.AI.run(env.STUDIO_MODEL||"@cf/openai/gpt-oss-120b",{messages:[{role:"system",content:"Return JSON matching the supplied schema exactly."},{role:"user",content:`${row.prompt}\n\nSchema: ${row.schema_json}`}],max_tokens:1200});output=modelText(r);}catch{output="";}
+ const {strictOfficeResult,officeTurnResult}=await import("./office.js");let parsed=strictOfficeResult(output,row.step);
+ if(!parsed){parsed=row.step==="chief:open"?{message:"Office backup could not produce a valid opening; proceeding with available data.",notebook:""}:row.step==="chief:wrap"?{summary:"Standup completed with backup model fallback.\nNo verified proposal produced.\nReview the run thread for evidence.",proposals:[],notebook:""}:{message:"Backup model could not produce a validated result; no claims or proposals added.",proposals_json:"[]",notebook:"",texture_prompts:[]};}
+ await officeTurnResult(env,row,parsed,true);
 }
