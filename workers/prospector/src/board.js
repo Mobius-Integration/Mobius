@@ -27,7 +27,7 @@ import { createWriteup, writeupPdf } from "./writeup.js";
 import { PARTNER_KINDS, isLawFirm } from "./partners.js";
 import { setupDiscord, discordApi, discordSend, saveBotKey } from "./discord.js";
 
-const ROUTE = /^\/ops\/b\/(\d{9,11})\/([A-Za-z0-9_-]{43})(?:\/(studio\/(?:next|done|fail)|mark|more|auto|discord|say|tasks|task|writeup|brandkit|texture)(?:\/([A-Za-z0-9_-]{1,80}))?)?\/?$/;
+const ROUTE = /^\/ops\/b\/(\d{9,11})\/([A-Za-z0-9_-]{43})(?:\/(studio\/(?:next|done|fail)|builder\/(?:next|update)|mark|more|auto|discord|say|tasks|task|writeup|brandkit|texture)(?:\/([A-Za-z0-9_-]{1,80}))?)?\/?$/;
 const num = (v, dflt, min, max) => Math.min(max, Math.max(min, Number.isFinite(parseInt(v, 10)) ? parseInt(v, 10) : dflt));
 const isGet = (request) => request.method === "GET" || request.method === "HEAD";
 // The page's own script sends JSON. A form on another site can't (that would need a CORS preflight,
@@ -62,6 +62,20 @@ export async function handleOps(request, env) {
     return linkPage(env, 410, "This board link has expired", "Get a fresh one by email, or use the board button in the newest prospects email.");
   }
   const base = `/ops/b/${m[1]}/${m[2]}`;
+
+  if (sub?.startsWith("builder/")) {
+    if (m[4]) return notFound();
+    const { nextBuilderTask, updateBuilderTask } = await import("./builder.js");
+    const fresh = Number(m[1]) * 1000 - Date.now() < 15 * 86400 * 1000 ? await boardUrl(env) : null;
+    if (sub === "builder/next") {
+      if (request.method !== "GET") return json(405, { ok:false,error:"Use GET." });
+      return json(200,{task:await nextBuilderTask(env),fresh});
+    }
+    if (request.method !== "POST" || !isJson(request)) return json(405,{ok:false,error:"Use a JSON POST."});
+    let body; try { body=await request.json(); } catch { return json(400,{ok:false,error:"Bad request."}); }
+    try { const ok=await updateBuilderTask(env,body); return json(ok?200:400,{ok}); }
+    catch { return json(502,{ok:false,error:"Couldn't save builder update."}); }
+  }
 
   if (sub?.startsWith("studio/")) {
     if (m[4]) return notFound();

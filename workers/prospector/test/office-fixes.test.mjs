@@ -28,13 +28,23 @@ function setup() {
   const calls = [];
   globalThis.fetch = async (url, init = {}) => {
     calls.push({ url: String(url), method: init.method || "GET", body: init.body });
-    if (String(url).includes("/channels/200") && (init.method || "GET") === "GET") return Response.json({ available_tags: [{ id: "t1", name: "proposed" }] });
+    if (String(url).includes("/channels/200") && (init.method || "GET") === "GET") return Response.json({ available_tags: [{ id: "t1", name: "proposed" },{id:"t2",name:"approved"},{id:"t3",name:"done"}] });
     if (String(url).endsWith("/threads")) return Response.json({ id: "700" });
     return Response.json({ id: "555" });
   };
   const env = { DB, DISCORD_APP_ID: "app", DISCORD_PUBLIC_KEY: "0".repeat(64), DISCORD_BOT_TOKEN: "YXBw.x.y" };
   return { env, DB, calls };
 }
+
+test("approving an office proposal queues its Builder job", async () => {
+  const {env,DB}=setup();
+  DB.raw.prepare("INSERT INTO office_runs(slot,state) VALUES('approve-test','done')").run();
+  DB.raw.prepare("INSERT INTO office_proposals(run_id,title,why,owner,thread_id) VALUES(1,'Update content','Reason','Mario','700')").run();
+  const {handleOfficeInteraction}=await import("../src/office.js");
+  const result=await handleOfficeInteraction({data:{custom_id:"office:proposal:approve:1"},member:{user:{id:"1"}}},env);
+  assert.equal(result.type,6);
+  assert.deepEqual({...DB.raw.prepare("SELECT state,build_state FROM office_proposals WHERE id=1").get()},{state:"approved",build_state:"queued"});
+});
 
 test("agent messages go into the standup thread (thread_id as a query parameter)", async () => {
   const { env, DB, calls } = setup();

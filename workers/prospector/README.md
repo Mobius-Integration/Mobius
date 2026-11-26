@@ -226,3 +226,9 @@ The Office holds daily standups in Discord `#office` at 9 AM, 12 PM, 3 PM, 6 PM 
 Use **Run a standup now** on the pinned `#office` control message for a manual run. **Pause the office** stops new runs; **Resume** starts the schedule again. The Worker uses `OFFICE_MAX_TURNS_PER_RUN` (default 8) and `OFFICE_MAX_RUNS_PER_DAY` (default 6), each capped in code. PC Codex turns count against the existing daily Studio call cap (`STUDIO_MAX_CALLS_PER_DAY`); when the PC is unavailable or Codex fails, Workers AI answers instead. Cloudflare answers are labeled in Discord.
 
 Run `setupDiscord` again after applying migration `0010_office.sql` so it creates `#office`, its app-owned webhook and pinned controls. Deploy the Worker manually after review; do not deploy from this repository.
+
+## Builder
+
+Approving a `#tasks` proposal queues it in D1. The Builder PC polls the token protected board every two minutes, classifies one task at a time as a decision, content draft, or code job, and posts progress in the task thread and `#builds`. Code jobs get a separate `build/task-<id>` branch and worktree cut from `office`; their brief and runner output are kept in the planning agents folders. The result waits for Claude's review, and nothing ships without that review plus Mario's tap. The PC never pushes, deploys, merges, or runs Wrangler.
+
+Apply migration `0011_builder.sql` before deploying the Worker. On the PC, set `BUILDER_BOARD_URL_FILE` to the local file containing the signed board URL, then run `node scripts/builder-pc.mjs` from `workers/prospector`. Use `node scripts/builder-pc.mjs --once` for one poll. `BUILDER_MAX_PER_DAY` defaults to 3.
