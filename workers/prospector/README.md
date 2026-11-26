@@ -177,3 +177,31 @@ A test email needs `Message-ID` and `Date` headers. Local `send_email` writes th
 ## Data and attribution
 
 Business data (c) OpenStreetMap contributors (openstreetmap.org/copyright), used under the ODbL. Rows with `source = 'overture'` come from Overture Maps Foundation places data (overturemaps.org), released under CDLA Permissive 2.0. Email addresses in the database are only those the businesses publish on their own websites, for prospects that were in a digest, plus addresses the founder emailed or explicitly STOPped.
+# Discord office
+
+Discord is optional. With no `DISCORD_APP_ID`, `DISCORD_PUBLIC_KEY`, and `DISCORD_BOT_TOKEN`, the Worker makes no Discord calls and its existing email and board behavior stays in place.
+
+## What posts where
+
+- `#hq`: the weekday auto-send plan and morning queue summary.
+- `#approvals`: held sends, auto-send pauses, and delivery trouble. Alerts offer Pause or Resume, and held sends can be cancelled.
+- `#replies`: prospect replies, including angry replies, and drafted-answer notices, with a Gmail link when available.
+- `#outreach`: successful first sends and follow-ups, plus bounce alerts. Send notices include Stop follow-ups.
+- `#builds`: reserved for code and agent updates.
+- `#tasks`: the forum for agent tasks, tagged proposed, approved, in-progress, review, and done.
+
+## Codex in the chat
+
+The token-protected board routes let the PC job runner post plain-text start and finish updates to `#builds` or `#hq`. It can also list approved threads from `#tasks`, then post an update in a task thread and move its tag to in-progress, review, or done. These routes use the existing signed board link and the configured Discord bot; they do not send email.
+
+Messages include buttons where the board offers the same action: pause or resume auto-send, cancel a queued send, and stop follow-ups. Only the Discord server owner saved during setup can use them.
+
+## Setup
+
+1. Create a Discord application and bot, then add the app ID and public key to `[vars]` as `DISCORD_APP_ID` and `DISCORD_PUBLIC_KEY` in `wrangler.toml`.
+2. Set the bot token as a Worker secret: `npx wrangler secret put DISCORD_BOT_TOKEN`. Never put the token in a file.
+3. Invite the bot to Mario's private server with this OAuth2 permissions URL (replace `APPLICATION_ID`): `https://discord.com/oauth2/authorize?client_id=APPLICATION_ID&permissions=326417599504&scope=bot`. It requests exactly: View Channels, Send Messages, Embed Links, Read Message History, Manage Channels, Create Public Threads, Send Messages in Threads, and Manage Threads.
+4. In the Discord Developer Portal, set the Interactions Endpoint URL to `https://mobiusintegration.com/discord/interactions`.
+5. Open the prospect board, copy the server ID with Discord Developer Mode enabled, enter it in the Discord server ID field, and press **Set up Discord**. Setup creates missing channels and categories, saves their IDs and the server owner's ID in D1, and can be run again safely.
+
+To switch Discord off, remove the `DISCORD_BOT_TOKEN` secret and clear both Discord vars. Existing Discord channels and messages remain in Discord; the Worker stops posting and rejects interactions without a public key.

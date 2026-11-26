@@ -15,6 +15,7 @@ browser = { binding = "BROWSER" }
 # The founder's prospect board lives under the site's own domain (signed links only, see src/board.js).
 # "/ops" itself is the board's permanent address; "/ops/*" doesn't match it, so it has its own route.
 routes = [
+  { pattern = "mobiusintegration.com/discord/interactions", zone_name = "mobiusintegration.com" },
   { pattern = "mobiusintegration.com/ops", zone_name = "mobiusintegration.com" },
   { pattern = "mobiusintegration.com/ops/*", zone_name = "mobiusintegration.com" },
 ]
@@ -62,6 +63,8 @@ OPS_ADDRESS = "ops@in.mobiusintegration.com"
 # The founder's Workspace address: accepted as a sender alongside FOUNDER_TO, and the account the
 # Write in Gmail button opens on a computer.
 FOUNDER_FROM = "mario@mobiusintegration.com"
+DISCORD_APP_ID = ""
+DISCORD_PUBLIC_KEY = ""
 SITE_NAME = "Mobius Integration"
 BOARD_ORIGIN = "https://mobiusintegration.com"
 # Hillsborough, Pinellas and Pasco plus Lakeland and Plant City (south,west,north,east), as a 4 x 5 grid

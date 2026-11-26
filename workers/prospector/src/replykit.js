@@ -259,6 +259,11 @@ async function sendNote(env, subject, lines, buttons) {
     const text = [...lines, "", ...buttons.map(([href, label]) => `${label}: ${href}`)].join("\n");
     const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#1f2937;max-width:640px">${lines.filter(Boolean).map((l) => `<p style="margin:0 0 10px">${esc(l)}</p>`).join("")}<p style="margin:12px 0 0">${buttons.map(([href, label, kind]) => button(href, label, kind)).join("")}</p></div>`;
     await sendToFounder(env, subject, text, html);
+    const { discordSend, discordButtons } = await import("./discord.js");
+    await discordSend(env, "replies", {
+      content: `**${subject}**\n${lines.join("\n")}`.slice(0, 1900),
+      components: discordButtons(buttons.filter((b) => /^https:\/\//.test(b[0])).slice(0, 5).map(([url, label]) => ({ url, label: label.slice(0, 80) }))),
+    });
   } catch (e) {
     console.error("replykit: note to the founder failed:", e && e.message);
   }

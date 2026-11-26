@@ -3,6 +3,9 @@
   "private": true,
   "description": "Prospect finder, outbox and board (Cloudflare Worker). Deploy: npx wrangler deploy",
   "type": "module",
+  "scripts": {
+    "test": "node --experimental-test-isolation=none --import ./test/loader.mjs --test test/*.test.mjs"
+  },
   "dependencies": {
     "@cloudflare/puppeteer": "2.0.1",
     "axe-core": "4.14.0"

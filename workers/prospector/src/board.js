@@ -25,8 +25,9 @@ import { sendToFounder } from "./mail.js";
 import { autoSummary, fillQueue, autoState, metaSet, pauseAuto } from "./outbox.js";
 import { createWriteup, writeupPdf } from "./writeup.js";
 import { PARTNER_KINDS, isLawFirm } from "./partners.js";
+import { setupDiscord, discordApi, discordSend } from "./discord.js";
 
-const ROUTE = /^\/ops\/b\/(\d{9,11})\/([A-Za-z0-9_-]{43})(?:\/(mark|more|auto|writeup)(?:\/(\d{1,9}))?)?\/?$/;
+const ROUTE = /^\/ops\/b\/(\d{9,11})\/([A-Za-z0-9_-]{43})(?:\/(mark|more|auto|discord|say|tasks|task|writeup)(?:\/(\d{1,9}))?)?\/?$/;
 const num = (v, dflt, min, max) => Math.min(max, Math.max(min, Number.isFinite(parseInt(v, 10)) ? parseInt(v, 10) : dflt));
 const isGet = (request) => request.method === "GET" || request.method === "HEAD";
 // The page's own script sends JSON. A form on another site can't (that would need a CORS preflight,
@@ -67,6 +68,61 @@ export async function handleOps(request, env) {
     const page = await boardPage(env, base, platformOf(request.headers.get("user-agent")));
     page.headers.append("Set-Cookie", await deviceCookie(env));
     return page;
+  }
+  if (sub === "discord") {
+    if (request.method !== "POST" || !isJson(request)) return json(405, { ok: false, error: "Use a JSON POST." });
+    let body; try { body = await request.json(); } catch { return json(400, { ok: false, error: "Bad request." }); }
+    const r = await setupDiscord(env, String(body.guild_id || ""));
+    return json(r.ok ? 200 : 400, r);
+  }
+  if (sub === "say") {
+    if (request.method !== "POST" || !isJson(request)) return json(405, { ok: false, error: "Use a JSON POST." });
+    let body; try { body = await request.json(); } catch { return json(400, { ok: false, error: "Bad request." }); }
+    if (!body || !["builds", "hq"].includes(body.channel) || typeof body.content !== "string" || body.content.length > 1900 || !body.content.trim() || /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/.test(body.content)) return json(400, { ok: false, error: "Bad request." });
+    const sent = await discordSend(env, body.channel, { content: body.content });
+    return json(sent ? 200 : 502, { ok: !!sent });
+  }
+  if (sub === "tasks" && request.method === "GET") {
+    try {
+      const cfg = await env.DB.prepare("SELECT value FROM meta WHERE key='discord'").first();
+      const discord = JSON.parse(cfg?.value || "{}");
+      const forumId = discord.channels?.tasks;
+      if (!discord.guild || !forumId) return json(200, []);
+      const [forum, active] = await Promise.all([
+        discordApi(env, `/channels/${forumId}`),
+        discordApi(env, `/guilds/${discord.guild}/threads/active`),
+      ]);
+      const approvedTag = (forum.available_tags || []).find((tag) => tag.name === "approved");
+      const threads = (active.threads || []).filter((thread) => thread.parent_id === forumId && approvedTag && (thread.applied_tags || []).includes(approvedTag.id));
+      const tasks = await Promise.all(threads.map(async (thread) => {
+        const messages = await discordApi(env, `/channels/${thread.id}/messages?around=${thread.id}&limit=1`);
+        const first = Array.isArray(messages) ? messages[0] : null;
+        return { id: thread.id, title: thread.name || "", firstMessage: first?.content || "", url: `https://discord.com/channels/${discord.guild}/${thread.id}` };
+      }));
+      return json(200, tasks);
+    } catch (e) { console.error("prospector: Discord task list failed:", e.message); return json(502, { ok: false, error: "Couldn't load tasks." }); }
+  }
+  if (sub === "task") {
+    if (request.method !== "POST" || !isJson(request)) return json(405, { ok: false, error: "Use a JSON POST." });
+    let body; try { body = await request.json(); } catch { return json(400, { ok: false, error: "Bad request." }); }
+    if (!body || typeof body.id !== "string" || !/^\d{17,20}$/.test(body.id) || !["in-progress", "review", "done"].includes(body.status) || typeof body.message !== "string" || body.message.length > 1900 || !body.message.trim() || /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/.test(body.message)) return json(400, { ok: false, error: "Bad request." });
+    try {
+      const row = await env.DB.prepare("SELECT value FROM meta WHERE key='discord'").first();
+      const discord = JSON.parse(row?.value || "{}");
+      const forumId = discord.channels?.tasks;
+      if (!forumId) return json(400, { ok: false, error: "Discord tasks are not configured." });
+      const forum = await discordApi(env, `/channels/${forumId}`);
+      const statusTag = (forum.available_tags || []).find((tag) => tag.name === body.status);
+      const thread = await discordApi(env, `/channels/${body.id}`);
+      if (!statusTag || thread.parent_id !== forumId) return json(400, { ok: false, error: "Invalid task." });
+      const sent = await discordApi(env, `/channels/${body.id}/messages`, "POST", { content: body.message, allowed_mentions: { parse: [] } });
+      if (!sent) return json(502, { ok: false, error: "Couldn't post task update." });
+      const stateIds = (forum.available_tags || []).filter((tag) => ["proposed", "approved", "in-progress", "review", "done"].includes(tag.name)).map((tag) => tag.id);
+      const applied = (thread.applied_tags || []).filter((id) => !stateIds.includes(id));
+      applied.push(statusTag.id);
+      await discordApi(env, `/channels/${body.id}`, "PATCH", { applied_tags: applied });
+      return json(200, { ok: true });
+    } catch (e) { console.error("prospector: Discord task update failed:", e.message); return json(502, { ok: false, error: "Couldn't update task." }); }
   }
   if (m[4]) {
     // Only a write-up has an id in its address: GET /writeup/<id> is the PDF.
@@ -344,6 +400,7 @@ async function boardPage(env, base, platform) {
 <h1>Prospect board</h1>
 <p class="stats"><strong>${queued.length}</strong> sending automatically · <strong>${ready.length}</strong> need you · <strong>${stats.sent7 || 0}</strong> sent this week · <strong>${stats.replies || 0}</strong> ${stats.replies === 1 ? "reply" : "replies"} from ${plural(stats.sent_all || 0, "email", "emails")} · ${plural(stats.pool || 0, "more checked prospect", "more checked prospects")} and ${plural(stats.partners || 0, "partner", "partners")} in the queue</p>
 <button type="button" class="btn primary" id="more" data-size="${size}">Get ${size} more</button>
+${env.DISCORD_APP_ID && env.DISCORD_PUBLIC_KEY && env.DISCORD_BOT_TOKEN ? `<div class="row"><label for="discord-guild">Discord server ID</label><input id="discord-guild" inputmode="numeric" autocomplete="off"><button type="button" class="btn" id="discord-setup">Set up Discord</button></div>` : ""}
 </header>
 <nav class="tabs" role="tablist" aria-label="Board sections">
 ${[["today","Today",0], ["need-you","Need you",needYou.length], ["replies","Replies",replyCount], ["outreach","Outreach",0], ["prospects","Prospects",0], ["results","Results",0], ["how","How it works",0]].map(([id,label,count]) => `<button class="tab" id="tab-${id}" role="tab" aria-selected="false" aria-controls="panel-${id}" tabindex="-1" data-tab="${id}">${label}${count ? ` <span class="tab-count">${count}</span>` : ""}</button>`).join("")}
@@ -638,6 +695,11 @@ const SCRIPT = `
   var toastText = document.getElementById("toast-text");
   var toastUndo = document.getElementById("toast-undo");
   var undoFn = null, timer = 0;
+  var discordSetup = document.getElementById("discord-setup");
+  if (discordSetup) discordSetup.addEventListener("click", function () {
+    var input = document.getElementById("discord-guild"); discordSetup.disabled = true;
+    post("/discord", { guild_id: input.value }).then(function (d) { say(d.ok ? "Discord office is ready." : (d.error || "Discord setup failed.")); discordSetup.disabled = false; });
+  });
   var INVERSE = { sent: "undo", skip: "undo", never: "undo", replied: "unreplied", unreplied: "replied", nofollow: "follow", follow: "nofollow" };
   function say(text, undo) {
     toastText.textContent = text;
