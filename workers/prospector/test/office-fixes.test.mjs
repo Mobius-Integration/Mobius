@@ -103,3 +103,20 @@ test("a manual standup (Run a standup now) creates its thread and queues Chief's
   const turn = DB.raw.prepare("SELECT role, step, state FROM studio_turns WHERE kind='office' AND run_id=?").get(r.id);
   assert.deepEqual({ ...turn }, { role: "chief", step: "open", state: "pending" });
 });
+
+test("wrap posts plain proposals (If you approve / Why / Effort) and names the thread after its topic", async () => {
+  const { env, DB, calls } = setup();
+  DB.raw.prepare("INSERT INTO office_runs (slot, state, thread_id) VALUES ('2026-11-28 21', 'active', '600')").run();
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (url, init = {}) => (String(url).endsWith("/channels/600") && (init.method || "GET") === "GET") ? Response.json({ name: "Standup · Sat Nov 28 · 9 PM" }) : realFetch(url, init);
+  const { officeTurnResult } = await import("../src/office.js");
+  const raw = { summary: "Done.", thread_title: "Follow-up test + palette", notebook: "n",
+    proposals: [{ title: "Change the day-4 follow-up to offer the write-up first (next 6 sends)", if_approved: "The Builder changes one email template on a branch for review.", why: "0 replies from 18 sends so far.", effort: "small: one email template", owner: "Builder" }] };
+  assert.equal(await officeTurnResult(env, { run_id: 1, role: "chief", step: "wrap" }, raw, false), true);
+  const post = calls.find((c) => c.url.endsWith("/channels/200/threads"));
+  const content = JSON.parse(post.body).message.content;
+  assert.match(content, /^\*\*If you approve:\*\* The Builder changes one email template/);
+  assert.match(content, /\*\*Effort:\*\* small: one email template/);
+  const rename = calls.find((c) => c.url.endsWith("/channels/600") && c.method === "PATCH");
+  assert.equal(JSON.parse(rename.body).name, "Standup · Sat Nov 28 · 9 PM · Follow-up test + palette");
+});
