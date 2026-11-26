@@ -10,6 +10,13 @@
   font-weight: 100 900;
   src: url("/assets/fonts/inter-latin-wght-normal.woff2") format("woff2-variations");
 }
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 200 800;
+  src: url("/assets/fonts/plus-jakarta-sans-latin-wght-normal.woff2") format("woff2-variations");
+}
 /* Shared component classes. Pages should use these instead of re-inventing
    buttons, cards and headings, so the whole site stays consistent and
    every text/background pair meets WCAG 2.1 AA contrast. */
@@ -22,7 +29,7 @@
   }
 
   body {
-    background: #f8f7f2;
+    background: #f5f0e7;
     color: #182d34;
   }
 
@@ -88,7 +95,7 @@
     @apply inline-block border-l-2 border-indigo-700 pl-3 text-sm font-medium text-gray-700;
   }
   .h-display {
-    @apply text-4xl font-medium leading-tight tracking-tight text-gray-900 md:text-6xl;
+    @apply text-4xl font-semibold leading-tight tracking-tight text-gray-900 md:text-6xl;
   }
   .h-section {
     @apply text-3xl font-medium text-gray-900 md:text-4xl;
@@ -124,12 +131,23 @@
     @apply bg-gray-900 text-white;
   }
   .local-rule {
-    height: 2px;
-    background: #176a64;
+    height: 4px;
+    background: #963c27;
   }
+
+  .hero-local {
+    background-color: #f5f0e7;
+    background-image: repeating-linear-gradient(135deg, transparent 0 18px, rgba(24,45,52,.035) 18px 19px, transparent 19px 38px);
+  }
+  .band-gulf { background: #174a48; color: #fff; }
+  .band-gulf > .wrap > h2,
+  .band-gulf > .wrap > p { color: #fff; }
+  .step-marker { border-color: #963c27; color: #7c3022; }
 
   .report-preview {
     @apply relative rounded-xl border border-gray-300 bg-white p-5 shadow-lg md:p-6;
+    box-shadow: 8px 10px 0 #ead2c2, 0 12px 30px rgba(24, 45, 52, 0.12);
+    background-image: linear-gradient(90deg, transparent 0 19px, rgba(150,60,39,.08) 19px 20px, transparent 20px), linear-gradient(#fff, #fff);
   }
   .report-page {
     @apply rounded-lg border border-gray-200 bg-gray-50 p-4;

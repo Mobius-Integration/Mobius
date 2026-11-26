@@ -561,14 +561,14 @@ html {
 }
 
 body {
-  background: #f8f7f2;
+  background: #f5f0e7;
   color: #182d34;
 }
 
 h1,
   h2,
   h3 {
-  font-family: "Inter Variable", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
 }
 
 strong,
@@ -1545,7 +1545,7 @@ main:focus {
   display: inline-block;
   border-left-width: 2px;
   --tw-border-opacity: 1;
-  border-color: rgb(17 89 81 / var(--tw-border-opacity, 1));
+  border-color: rgb(124 48 34 / var(--tw-border-opacity, 1));
   padding-left: 0.75rem;
   font-size: 0.875rem;
   line-height: 1.25rem;
@@ -1557,7 +1557,7 @@ main:focus {
 .h-display {
   font-size: 2.25rem;
   line-height: 2.5rem;
-  font-weight: 500;
+  font-weight: 600;
   line-height: 1.25;
   letter-spacing: -0.025em;
   --tw-text-opacity: 1;
@@ -1603,15 +1603,15 @@ main:focus {
 .link {
   font-weight: 500;
   --tw-text-opacity: 1;
-  color: rgb(18 73 64 / var(--tw-text-opacity, 1));
+  color: rgb(101 41 31 / var(--tw-text-opacity, 1));
   text-decoration-line: underline;
-  text-decoration-color: #5f9d92;
+  text-decoration-color: #b66a49;
   text-underline-offset: 4px;
 }
 
 .link:hover {
   --tw-text-opacity: 1;
-  color: rgb(18 58 53 / var(--tw-text-opacity, 1));
+  color: rgb(81 35 28 / var(--tw-text-opacity, 1));
 }
 
 /* Buttons: all at least 44px tall */
@@ -1623,7 +1623,7 @@ main:focus {
   justify-content: center;
   border-radius: 0.375rem;
   --tw-bg-opacity: 1;
-  background-color: rgb(18 73 64 / var(--tw-bg-opacity, 1));
+  background-color: rgb(101 41 31 / var(--tw-bg-opacity, 1));
   padding-left: 1.5rem;
   padding-right: 1.5rem;
   padding-top: 0.75rem;
@@ -1639,7 +1639,7 @@ main:focus {
 
 .btn-primary:hover {
   --tw-bg-opacity: 1;
-  background-color: rgb(18 58 53 / var(--tw-bg-opacity, 1));
+  background-color: rgb(81 35 28 / var(--tw-bg-opacity, 1));
 }
 
 .btn-secondary {
@@ -1743,8 +1743,28 @@ main:focus {
 }
 
 .local-rule {
-  height: 2px;
-  background: #176a64;
+  height: 4px;
+  background: #963c27;
+}
+
+.hero-local {
+  background-color: #f5f0e7;
+  background-image: repeating-linear-gradient(135deg, transparent 0 18px, rgba(24,45,52,.035) 18px 19px, transparent 19px 38px);
+}
+
+.band-gulf {
+  background: #174a48;
+  color: #fff;
+}
+
+.band-gulf > .wrap > h2,
+  .band-gulf > .wrap > p {
+  color: #fff;
+}
+
+.band-gulf > .\!wrap > h2,
+  .band-gulf > .\!wrap > p {
+  color: #fff !important;
 }
 
 .report-preview {
@@ -1766,6 +1786,11 @@ main:focus {
   .report-preview {
     padding: 1.5rem;
   }
+}
+
+.report-preview {
+  box-shadow: 8px 10px 0 #ead2c2, 0 12px 30px rgba(24, 45, 52, 0.12);
+  background-image: linear-gradient(90deg, transparent 0 19px, rgba(150,60,39,.08) 19px 20px, transparent 20px), linear-gradient(#fff, #fff);
 }
 
 .report-page {
@@ -2287,12 +2312,12 @@ main:focus {
 
 .border-indigo-600 {
   --tw-border-opacity: 1;
-  border-color: rgb(23 106 100 / var(--tw-border-opacity, 1));
+  border-color: rgb(150 60 39 / var(--tw-border-opacity, 1));
 }
 
 .border-indigo-700 {
   --tw-border-opacity: 1;
-  border-color: rgb(17 89 81 / var(--tw-border-opacity, 1));
+  border-color: rgb(124 48 34 / var(--tw-border-opacity, 1));
 }
 
 .border-red-700 {
@@ -2317,12 +2342,12 @@ main:focus {
 
 .bg-indigo-50 {
   --tw-bg-opacity: 1;
-  background-color: rgb(232 241 238 / var(--tw-bg-opacity, 1));
+  background-color: rgb(245 233 225 / var(--tw-bg-opacity, 1));
 }
 
 .bg-indigo-700 {
   --tw-bg-opacity: 1;
-  background-color: rgb(17 89 81 / var(--tw-bg-opacity, 1));
+  background-color: rgb(124 48 34 / var(--tw-bg-opacity, 1));
 }
 
 .bg-red-50 {
@@ -2425,6 +2450,10 @@ main:focus {
 
 .pt-6 {
   padding-top: 1.5rem;
+}
+
+.pt-8 {
+  padding-top: 2rem;
 }
 
 .text-left {
@@ -2557,17 +2586,17 @@ main:focus {
 
 .text-indigo-100 {
   --tw-text-opacity: 1;
-  color: rgb(212 230 223 / var(--tw-text-opacity, 1));
+  color: rgb(234 210 194 / var(--tw-text-opacity, 1));
 }
 
 .text-indigo-700 {
   --tw-text-opacity: 1;
-  color: rgb(17 89 81 / var(--tw-text-opacity, 1));
+  color: rgb(124 48 34 / var(--tw-text-opacity, 1));
 }
 
 .text-indigo-800 {
   --tw-text-opacity: 1;
-  color: rgb(18 73 64 / var(--tw-text-opacity, 1));
+  color: rgb(101 41 31 / var(--tw-text-opacity, 1));
 }
 
 .text-red-900 {
@@ -2629,6 +2658,18 @@ main:focus {
   src: url("/assets/fonts/inter-latin-wght-normal.woff2") format("woff2-variations");
 }
 
+@font-face {
+  font-family: "Plus Jakarta Sans";
+
+  font-style: normal;
+
+  font-display: swap;
+
+  font-weight: 200 800;
+
+  src: url("/assets/fonts/plus-jakarta-sans-latin-wght-normal.woff2") format("woff2-variations");
+}
+
 /* Shared component classes. Pages should use these instead of re-inventing
    buttons, cards and headings, so the whole site stays consistent and
    every text/background pair meets WCAG 2.1 AA contrast. */
@@ -2642,7 +2683,7 @@ main:focus {
 }
 
 .marker\:text-indigo-700 *::marker {
-  color: rgb(17 89 81 );
+  color: rgb(124 48 34 );
 }
 
 .marker\:font-bold::marker {
@@ -2654,17 +2695,17 @@ main:focus {
 }
 
 .marker\:text-indigo-700::marker {
-  color: rgb(17 89 81 );
+  color: rgb(124 48 34 );
 }
 
 .hover\:text-indigo-700:hover {
   --tw-text-opacity: 1;
-  color: rgb(17 89 81 / var(--tw-text-opacity, 1));
+  color: rgb(124 48 34 / var(--tw-text-opacity, 1));
 }
 
 .hover\:text-indigo-800:hover {
   --tw-text-opacity: 1;
-  color: rgb(18 73 64 / var(--tw-text-opacity, 1));
+  color: rgb(101 41 31 / var(--tw-text-opacity, 1));
 }
 
 .hover\:text-white:hover {
@@ -2704,7 +2745,7 @@ main:focus {
 
 .prose-a\:text-indigo-700 :is(:where(a):not(:where([class~="not-prose"],[class~="not-prose"] *))) {
   --tw-text-opacity: 1;
-  color: rgb(17 89 81 / var(--tw-text-opacity, 1));
+  color: rgb(124 48 34 / var(--tw-text-opacity, 1));
 }
 
 .prose-a\:underline :is(:where(a):not(:where([class~="not-prose"],[class~="not-prose"] *))) {
@@ -2717,7 +2758,7 @@ main:focus {
 
 .hover\:prose-a\:text-indigo-900 :is(:where(a):not(:where([class~="not-prose"],[class~="not-prose"] *))):hover {
   --tw-text-opacity: 1;
-  color: rgb(18 58 53 / var(--tw-text-opacity, 1));
+  color: rgb(81 35 28 / var(--tw-text-opacity, 1));
 }
 
 .prose-li\:text-gray-800 :is(:where(li):not(:where([class~="not-prose"],[class~="not-prose"] *))) {
