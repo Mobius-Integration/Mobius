@@ -85,6 +85,10 @@ export async function discordSend(env, channelKey, { content, embeds, components
   } catch (e) { console.error("prospector: Discord send failed:", e?.message || "unknown error"); return null; }
 }
 
+export async function discordApi(env, path, method = "GET", body) {
+  return discordFetch(env, path, method, body);
+}
+
 async function discordFetch(env, path, method = "GET", body) {
   const res = await fetch(`${API}${path}`, { method, headers: { Authorization: `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" }, ...(body ? { body: JSON.stringify(body) } : {}) });
   if (!res.ok) throw new Error(`Discord API ${res.status}`);

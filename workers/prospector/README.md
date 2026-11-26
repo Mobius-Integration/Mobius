@@ -188,7 +188,11 @@ Discord is optional. With no `DISCORD_APP_ID`, `DISCORD_PUBLIC_KEY`, and `DISCOR
 - `#replies`: prospect replies, including angry replies, and drafted-answer notices, with a Gmail link when available.
 - `#outreach`: successful first sends and follow-ups, plus bounce alerts. Send notices include Stop follow-ups.
 - `#builds`: reserved for code and agent updates.
-- `#tasks`: an empty forum for future agent tasks, tagged proposed, approved, in-progress, review, and done.
+- `#tasks`: the forum for agent tasks, tagged proposed, approved, in-progress, review, and done.
+
+## Codex in the chat
+
+The token-protected board routes let the PC job runner post plain-text start and finish updates to `#builds` or `#hq`. It can also list approved threads from `#tasks`, then post an update in a task thread and move its tag to in-progress, review, or done. These routes use the existing signed board link and the configured Discord bot; they do not send email.
 
 Messages include buttons where the board offers the same action: pause or resume auto-send, cancel a queued send, and stop follow-ups. Only the Discord server owner saved during setup can use them.
 

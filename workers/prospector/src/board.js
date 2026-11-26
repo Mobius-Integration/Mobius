@@ -25,9 +25,9 @@ import { sendToFounder } from "./mail.js";
 import { autoSummary, fillQueue, autoState, metaSet, pauseAuto } from "./outbox.js";
 import { createWriteup, writeupPdf } from "./writeup.js";
 import { PARTNER_KINDS, isLawFirm } from "./partners.js";
-import { setupDiscord } from "./discord.js";
+import { setupDiscord, discordApi, discordSend } from "./discord.js";
 
-const ROUTE = /^\/ops\/b\/(\d{9,11})\/([A-Za-z0-9_-]{43})(?:\/(mark|more|auto|writeup|discord)(?:\/(\d{1,9}))?)?\/?$/;
+const ROUTE = /^\/ops\/b\/(\d{9,11})\/([A-Za-z0-9_-]{43})(?:\/(mark|more|auto|discord|say|tasks|task|writeup)(?:\/(\d{1,9}))?)?\/?$/;
 const num = (v, dflt, min, max) => Math.min(max, Math.max(min, Number.isFinite(parseInt(v, 10)) ? parseInt(v, 10) : dflt));
 const isGet = (request) => request.method === "GET" || request.method === "HEAD";
 // The page's own script sends JSON. A form on another site can't (that would need a CORS preflight,
@@ -74,6 +74,55 @@ export async function handleOps(request, env) {
     let body; try { body = await request.json(); } catch { return json(400, { ok: false, error: "Bad request." }); }
     const r = await setupDiscord(env, String(body.guild_id || ""));
     return json(r.ok ? 200 : 400, r);
+  }
+  if (sub === "say") {
+    if (request.method !== "POST" || !isJson(request)) return json(405, { ok: false, error: "Use a JSON POST." });
+    let body; try { body = await request.json(); } catch { return json(400, { ok: false, error: "Bad request." }); }
+    if (!body || !["builds", "hq"].includes(body.channel) || typeof body.content !== "string" || body.content.length > 1900 || !body.content.trim() || /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/.test(body.content)) return json(400, { ok: false, error: "Bad request." });
+    const sent = await discordSend(env, body.channel, { content: body.content });
+    return json(sent ? 200 : 502, { ok: !!sent });
+  }
+  if (sub === "tasks" && request.method === "GET") {
+    try {
+      const cfg = await env.DB.prepare("SELECT value FROM meta WHERE key='discord'").first();
+      const discord = JSON.parse(cfg?.value || "{}");
+      const forumId = discord.channels?.tasks;
+      if (!discord.guild || !forumId) return json(200, []);
+      const [forum, active] = await Promise.all([
+        discordApi(env, `/channels/${forumId}`),
+        discordApi(env, `/guilds/${discord.guild}/threads/active`),
+      ]);
+      const approvedTag = (forum.available_tags || []).find((tag) => tag.name === "approved");
+      const threads = (active.threads || []).filter((thread) => thread.parent_id === forumId && approvedTag && (thread.applied_tags || []).includes(approvedTag.id));
+      const tasks = await Promise.all(threads.map(async (thread) => {
+        const messages = await discordApi(env, `/channels/${thread.id}/messages?around=${thread.id}&limit=1`);
+        const first = Array.isArray(messages) ? messages[0] : null;
+        return { id: thread.id, title: thread.name || "", firstMessage: first?.content || "", url: `https://discord.com/channels/${discord.guild}/${thread.id}` };
+      }));
+      return json(200, tasks);
+    } catch (e) { console.error("prospector: Discord task list failed:", e.message); return json(502, { ok: false, error: "Couldn't load tasks." }); }
+  }
+  if (sub === "task") {
+    if (request.method !== "POST" || !isJson(request)) return json(405, { ok: false, error: "Use a JSON POST." });
+    let body; try { body = await request.json(); } catch { return json(400, { ok: false, error: "Bad request." }); }
+    if (!body || typeof body.id !== "string" || !/^\d{17,20}$/.test(body.id) || !["in-progress", "review", "done"].includes(body.status) || typeof body.message !== "string" || body.message.length > 1900 || !body.message.trim() || /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/.test(body.message)) return json(400, { ok: false, error: "Bad request." });
+    try {
+      const row = await env.DB.prepare("SELECT value FROM meta WHERE key='discord'").first();
+      const discord = JSON.parse(row?.value || "{}");
+      const forumId = discord.channels?.tasks;
+      if (!forumId) return json(400, { ok: false, error: "Discord tasks are not configured." });
+      const forum = await discordApi(env, `/channels/${forumId}`);
+      const statusTag = (forum.available_tags || []).find((tag) => tag.name === body.status);
+      const thread = await discordApi(env, `/channels/${body.id}`);
+      if (!statusTag || thread.parent_id !== forumId) return json(400, { ok: false, error: "Invalid task." });
+      const sent = await discordApi(env, `/channels/${body.id}/messages`, "POST", { content: body.message, allowed_mentions: { parse: [] } });
+      if (!sent) return json(502, { ok: false, error: "Couldn't post task update." });
+      const stateIds = (forum.available_tags || []).filter((tag) => ["proposed", "approved", "in-progress", "review", "done"].includes(tag.name)).map((tag) => tag.id);
+      const applied = (thread.applied_tags || []).filter((id) => !stateIds.includes(id));
+      applied.push(statusTag.id);
+      await discordApi(env, `/channels/${body.id}`, "PATCH", { applied_tags: applied });
+      return json(200, { ok: true });
+    } catch (e) { console.error("prospector: Discord task update failed:", e.message); return json(502, { ok: false, error: "Couldn't update task." }); }
   }
   if (m[4]) {
     // Only a write-up has an id in its address: GET /writeup/<id> is the PDF.

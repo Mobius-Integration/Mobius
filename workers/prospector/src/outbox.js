@@ -68,14 +68,16 @@ export async function pauseAuto(env, reason) {
   await metaSet(env.DB, "auto_pause_reason", reason);
 }
 
-async function notify(env, subject, lines, link, action) {
+export async function notify(env, subject, lines, link, action, { email = true } = {}) {
   try {
-    const { sendToFounder } = await import("./mail.js");
-    const { boardUrl } = await import("./tokens.js");
-    const board = await boardUrl(env);
-    const text = [...lines, "", `Your prospect board: ${board}`].join("\n");
-    const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#1f2937;max-width:640px">${lines.map((l) => (l ? `<p style="margin:0 0 8px">${esc(l)}</p>` : "")).join("")}${link ? `<p style="margin:0 0 8px"><a href="${esc(link)}">Open the conversation in Gmail</a></p>` : ""}<p style="margin:8px 0 0"><a href="${esc(board)}">Open your prospect board</a></p></div>`;
-    await sendToFounder(env, subject, text, html);
+    if (email) {
+      const { sendToFounder } = await import("./mail.js");
+      const { boardUrl } = await import("./tokens.js");
+      const board = await boardUrl(env);
+      const text = [...lines, "", `Your prospect board: ${board}`].join("\n");
+      const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#1f2937;max-width:640px">${lines.map((l) => (l ? `<p style="margin:0 0 8px">${esc(l)}</p>` : "")).join("")}${link ? `<p style="margin:0 0 8px"><a href="${esc(link)}">Open the conversation in Gmail</a></p>` : ""}<p style="margin:8px 0 0"><a href="${esc(board)}">Open your prospect board</a></p></div>`;
+      await sendToFounder(env, subject, text, html);
+    }
     const { discordSend, discordButtons } = await import("./discord.js");
     const paused = /paused|pause/i.test(subject);
     const actions = paused
@@ -373,7 +375,7 @@ async function sendInitial(env, st, row, now) {
     await db.prepare("UPDATE outreach SET send_at = ? WHERE id = ?").bind(sqlTime(nextMorning(etParts(now).ymd, row.category)), row.oid).run();
     return false;
   }
-  if (pre.hold) { await db.prepare("UPDATE outreach SET auto_state = 'held', hold_reason = ? WHERE id = ?").bind(pre.hold, row.oid).run(); await notify(env, `Held send: ${row.name}`, [pre.hold, "Review this send on the prospect board."], null, { id: `prospect:cancel:${row.prospect_id}`, label: "Cancel queued send" }); return false; }
+  if (pre.hold) { await db.prepare("UPDATE outreach SET auto_state = 'held', hold_reason = ? WHERE id = ?").bind(pre.hold, row.oid).run(); await notify(env, `Held send: ${row.name}`, [pre.hold, "Review this send on the prospect board."], null, { id: `prospect:cancel:${row.prospect_id}`, label: "Cancel queued send" }, { email: false }); return false; }
   // The draft quotes findings from an earlier look at their site: every one must still be there.
   const quoted = parseJson(row.quoted, null);
   if (row.track !== "partner" && Array.isArray(quoted) && quoted.length) {
@@ -382,7 +384,7 @@ async function sendInitial(env, st, row, now) {
     if (gone.length) {
       await db.prepare("UPDATE outreach SET auto_state = 'held', hold_reason = ? WHERE id = ?")
         .bind(`The finding about ${gone.map((f) => FAMILY_NAMES[f] || f).join(" and ")} no longer shows up on their site, so I held the email for you.`, row.oid).run();
-      await notify(env, `Held send: ${row.name}`, [`The finding about ${gone.map((f) => FAMILY_NAMES[f] || f).join(" and ")} no longer shows up on their site, so I held the email for you.`, "Review this send on the prospect board."], null, { id: `prospect:cancel:${row.prospect_id}`, label: "Cancel queued send" });
+      await notify(env, `Held send: ${row.name}`, [`The finding about ${gone.map((f) => FAMILY_NAMES[f] || f).join(" and ")} no longer shows up on their site, so I held the email for you.`, "Review this send on the prospect board."], null, { id: `prospect:cancel:${row.prospect_id}`, label: "Cancel queued send" }, { email: false });
       return false;
     }
     // Then a real browser: every quoted finding must show up there too (the light check can be wrong on
@@ -391,7 +393,7 @@ async function sendInitial(env, st, row, now) {
     if (v.ran && v.missing.length) {
       await db.prepare("UPDATE outreach SET auto_state = 'held', hold_reason = ? WHERE id = ?")
         .bind(`A real browser doesn't see the finding about ${v.missing.map((f) => FAMILY_NAMES[f] || f).join(" and ")} that the email mentions, so I held it for you.`, row.oid).run();
-      await notify(env, `Held send: ${row.name}`, [`A real browser doesn't see the finding about ${v.missing.map((f) => FAMILY_NAMES[f] || f).join(" and ")} that the email mentions, so I held it for you.`, "Review this send on the prospect board."], null, { id: `prospect:cancel:${row.prospect_id}`, label: "Cancel queued send" });
+      await notify(env, `Held send: ${row.name}`, [`A real browser doesn't see the finding about ${v.missing.map((f) => FAMILY_NAMES[f] || f).join(" and ")} that the email mentions, so I held it for you.`, "Review this send on the prospect board."], null, { id: `prospect:cancel:${row.prospect_id}`, label: "Cancel queued send" }, { email: false });
       return false;
     }
     if (!v.ran && v.error) console.error(`prospector: browser re-check skipped for ${row.domain}: ${v.error}`);
