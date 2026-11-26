@@ -5,7 +5,31 @@ const API = "https://discord.com/api/v10";
 const CHANNELS = ["hq", "approvals", "replies", "outreach", "builds"];
 const CATEGORIES = ["HQ", "Operations", "Projects"];
 const json = (status, value) => new Response(JSON.stringify(value), { status, headers: { "Content-Type": "application/json" } });
-const configured = (env) => !!(env.DISCORD_APP_ID && env.DISCORD_PUBLIC_KEY && env.DISCORD_BOT_TOKEN);
+const configured = (env) => !!(env.DISCORD_APP_ID && env.DISCORD_PUBLIC_KEY);
+
+// The bot key: the Worker secret when it's a real key for this app, otherwise the key Mario pasted into the
+// board's Discord box (D1 meta "discord_key"; the board is token-protected, like the mailbox agent's token).
+// A bot key's first part is the bot's id in base64, which is how a wrong paste is caught. Never logged or returned.
+const keyShapeOk = (env, t) => {
+  try { const p = t.split("."); return p.length === 3 && atob(p[0].replace(/-/g, "+").replace(/_/g, "/")) === String(env.DISCORD_APP_ID); }
+  catch { return false; }
+};
+export async function botKey(env) {
+  const s = String(env.DISCORD_BOT_TOKEN || "").trim();
+  if (keyShapeOk(env, s)) return s;
+  const row = await env.DB.prepare("SELECT value FROM meta WHERE key = 'discord_key'").first();
+  const m = String((row && row.value) || "").trim();
+  return keyShapeOk(env, m) ? m : "";
+}
+// Saves a key pasted on the board, only after Discord accepts it.
+export async function saveBotKey(env, raw) {
+  const t = String(raw || "").trim();
+  if (!keyShapeOk(env, t)) return { ok: false, error: "That isn't the Mobius Office bot key. In the Developer Portal open Bot, press Reset Token, then Copy, and paste it here." };
+  const res = await fetch(`${API}/users/@me`, { headers: { Authorization: `Bot ${t}` } });
+  if (!res.ok) return { ok: false, error: `Discord didn't accept that key (${res.status}). It may have been reset again after you copied it.` };
+  await metaSet(env.DB, "discord_key", t);
+  return { ok: true };
+}
 
 export async function verifyDiscordRequest(request, publicKeyHex) {
   const signature = request.headers.get("x-signature-ed25519");
@@ -70,10 +94,12 @@ export async function handleDiscord(request, env, ctx) {
 export async function discordSend(env, channelKey, { content, embeds, components } = {}) {
   if (!configured(env)) return null;
   try {
+    const key = await botKey(env);
+    if (!key) return null;
     const cfg = await discordConfig(env);
     const channel_id = cfg.channels?.[channelKey];
     if (!channel_id) return null;
-    const send = () => fetch(`${API}/channels/${channel_id}/messages`, { method: "POST", headers: { Authorization: `Bot ${env.DISCORD_BOT_TOKEN}`, "Content-Type": "application/json" }, body: JSON.stringify({ content, embeds, components, allowed_mentions: { parse: [] } }) });
+    const send = () => fetch(`${API}/channels/${channel_id}/messages`, { method: "POST", headers: { Authorization: `Bot ${key}`, "Content-Type": "application/json" }, body: JSON.stringify({ content, embeds, components, allowed_mentions: { parse: [] } }) });
     let res = await send();
     if (res.status === 429) {
       let wait = 0; try { wait = Math.min(30000, Math.max(0, Number((await res.json()).retry_after) * 1000)); } catch {}
@@ -91,7 +117,7 @@ export async function discordApi(env, path, method = "GET", body) {
 
 async function discordFetch(env, path, method = "GET", body) {
   // trim(): a token pasted from a phone often carries a trailing space or newline, which Discord rejects as 401.
-  const res = await fetch(`${API}${path}`, { method, headers: { Authorization: `Bot ${String(env.DISCORD_BOT_TOKEN || "").trim()}`, "Content-Type": "application/json" }, ...(body ? { body: JSON.stringify(body) } : {}) });
+  const res = await fetch(`${API}${path}`, { method, headers: { Authorization: `Bot ${await botKey(env)}`, "Content-Type": "application/json" }, ...(body ? { body: JSON.stringify(body) } : {}) });
   if (!res.ok) {
     // Say which call failed (method, path with ids masked, Discord's own error code), never the token.
     let code = "";
@@ -139,12 +165,8 @@ export async function setupDiscord(env, guildId) {
     // a bot token's first part is the bot's id in base64.
     let hint = "";
     if (/ 401 /.test(e.message)) {
-      const t = String(env.DISCORD_BOT_TOKEN || "").trim();
-      let ours = false;
-      try { ours = atob(t.split(".")[0].replace(/-/g, "+").replace(/_/g, "/")) === String(env.DISCORD_APP_ID); } catch { /* not base64 */ }
-      hint = t.split(".").length !== 3 ? " The saved value isn't shaped like a bot key (wrong thing pasted?)."
-        : ours ? " The saved key belongs to Mobius Office but Discord no longer accepts it (it was reset after it was copied?)."
-        : " The saved value is shaped like a bot key, but not this app's.";
+      hint = (await botKey(env)) ? " The saved bot key belongs to Mobius Office but Discord no longer accepts it (reset after it was copied?). Paste a fresh one in the board's Discord box."
+        : " No working bot key is saved yet: paste it in the board's Discord box.";
     }
     return { ok: false, error: `Discord setup failed: ${e.message}.${hint}` };
   }

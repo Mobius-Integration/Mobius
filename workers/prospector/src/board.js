@@ -25,7 +25,7 @@ import { sendToFounder } from "./mail.js";
 import { autoSummary, fillQueue, autoState, metaSet, pauseAuto } from "./outbox.js";
 import { createWriteup, writeupPdf } from "./writeup.js";
 import { PARTNER_KINDS, isLawFirm } from "./partners.js";
-import { setupDiscord, discordApi, discordSend } from "./discord.js";
+import { setupDiscord, discordApi, discordSend, saveBotKey } from "./discord.js";
 
 const ROUTE = /^\/ops\/b\/(\d{9,11})\/([A-Za-z0-9_-]{43})(?:\/(mark|more|auto|discord|say|tasks|task|writeup)(?:\/(\d{1,9}))?)?\/?$/;
 const num = (v, dflt, min, max) => Math.min(max, Math.max(min, Number.isFinite(parseInt(v, 10)) ? parseInt(v, 10) : dflt));
@@ -72,7 +72,8 @@ export async function handleOps(request, env) {
   if (sub === "discord") {
     if (request.method !== "POST" || !isJson(request)) return json(405, { ok: false, error: "Use a JSON POST." });
     let body; try { body = await request.json(); } catch { return json(400, { ok: false, error: "Bad request." }); }
-    const r = await setupDiscord(env, String(body.guild_id || ""));
+    // The same action saves a pasted bot key (checked with Discord first) or runs the channel setup.
+    const r = body.key !== undefined ? await saveBotKey(env, String(body.key || "")) : await setupDiscord(env, String(body.guild_id || ""));
     return json(r.ok ? 200 : 400, r);
   }
   if (sub === "say") {
@@ -400,7 +401,7 @@ async function boardPage(env, base, platform) {
 <h1>Prospect board</h1>
 <p class="stats"><strong>${queued.length}</strong> sending automatically · <strong>${ready.length}</strong> need you · <strong>${stats.sent7 || 0}</strong> sent this week · <strong>${stats.replies || 0}</strong> ${stats.replies === 1 ? "reply" : "replies"} from ${plural(stats.sent_all || 0, "email", "emails")} · ${plural(stats.pool || 0, "more checked prospect", "more checked prospects")} and ${plural(stats.partners || 0, "partner", "partners")} in the queue</p>
 <button type="button" class="btn primary" id="more" data-size="${size}">Get ${size} more</button>
-${env.DISCORD_APP_ID && env.DISCORD_PUBLIC_KEY && env.DISCORD_BOT_TOKEN ? `<div class="row"><label for="discord-guild">Discord server ID</label><input id="discord-guild" inputmode="numeric" autocomplete="off"><button type="button" class="btn" id="discord-setup">Set up Discord</button></div>` : ""}
+${env.DISCORD_APP_ID && env.DISCORD_PUBLIC_KEY ? `<div class="row"><label for="discord-key">Discord bot key</label><input id="discord-key" type="password" autocomplete="off" spellcheck="false"><button type="button" class="btn" id="discord-key-save">Save key</button></div><div class="row"><label for="discord-guild">Discord server ID</label><input id="discord-guild" inputmode="numeric" autocomplete="off"><button type="button" class="btn" id="discord-setup">Set up Discord</button></div>` : ""}
 </header>
 <nav class="tabs" role="tablist" aria-label="Board sections">
 ${[["today","Today",0], ["need-you","Need you",needYou.length], ["replies","Replies",replyCount], ["outreach","Outreach",0], ["prospects","Prospects",0], ["results","Results",0], ["how","How it works",0]].map(([id,label,count]) => `<button class="tab" id="tab-${id}" role="tab" aria-selected="false" aria-controls="panel-${id}" tabindex="-1" data-tab="${id}">${label}${count ? ` <span class="tab-count">${count}</span>` : ""}</button>`).join("")}
@@ -695,6 +696,11 @@ const SCRIPT = `
   var toastText = document.getElementById("toast-text");
   var toastUndo = document.getElementById("toast-undo");
   var undoFn = null, timer = 0;
+  var discordKeySave = document.getElementById("discord-key-save");
+  if (discordKeySave) discordKeySave.addEventListener("click", function () {
+    var input = document.getElementById("discord-key"); discordKeySave.disabled = true;
+    post("/discord", { key: input.value }).then(function (d) { input.value = ""; say(d.ok ? "Bot key saved, and Discord accepted it." : (d.error || "Could not save the key.")); discordKeySave.disabled = false; });
+  });
   var discordSetup = document.getElementById("discord-setup");
   if (discordSetup) discordSetup.addEventListener("click", function () {
     var input = document.getElementById("discord-guild"); discordSetup.disabled = true;

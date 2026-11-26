@@ -71,13 +71,13 @@ test("PING and all registered buttons dispatch against fake D1", async () => {
 
 test("discordSend posts with bot auth and retries one 429", async (t) => {
   const db = fakeDb({ discord: JSON.stringify({ channels: { hq: "123" } }) });
-  const env = { DB: db, DISCORD_APP_ID: "app", DISCORD_PUBLIC_KEY: publicKey, DISCORD_BOT_TOKEN: "secret-token" };
+  const env = { DB: db, DISCORD_APP_ID: "app", DISCORD_PUBLIC_KEY: publicKey, DISCORD_BOT_TOKEN: "YXBw.x.y" };
   let calls = 0;
   const original = globalThis.fetch;
   t.after(() => { globalThis.fetch = original; });
   globalThis.fetch = async (_url, opts) => {
     calls++;
-    assert.equal(opts.headers.Authorization, "Bot secret-token");
+    assert.equal(opts.headers.Authorization, "Bot YXBw.x.y");
     return calls === 1 ? new Response(JSON.stringify({ retry_after: 0 }), { status: 429 }) : Response.json({ id: "ok" });
   };
   assert.equal((await discordSend(env, "hq", { content: "hello" })).id, "ok");
@@ -85,7 +85,7 @@ test("discordSend posts with bot auth and retries one 429", async (t) => {
 });
 
 test("slow button actions defer the update and finish the original message", async (t) => {
-  const env = { DB: fakeDb({ discord: JSON.stringify({ admins: ["admin"] }) }), DISCORD_PUBLIC_KEY: publicKey, DISCORD_BOT_TOKEN: "secret-token" };
+  const env = { DB: fakeDb({ discord: JSON.stringify({ admins: ["admin"] }) }), DISCORD_PUBLIC_KEY: publicKey, DISCORD_BOT_TOKEN: "YXBw.x.y" };
   const waits = [];
   const original = globalThis.fetch;
   t.after(() => { globalThis.fetch = original; });
@@ -101,7 +101,7 @@ test("slow button actions defer the update and finish the original message", asy
 
 test("setup creates Discord resources once and persists ids", async (t) => {
   const db = fakeDb();
-  const env = { DB: db, DISCORD_APP_ID: "app", DISCORD_PUBLIC_KEY: publicKey, DISCORD_BOT_TOKEN: "secret-token" };
+  const env = { DB: db, DISCORD_APP_ID: "app", DISCORD_PUBLIC_KEY: publicKey, DISCORD_BOT_TOKEN: "YXBw.x.y" };
   const channels = [];
   let creations = 0;
   const original = globalThis.fetch;

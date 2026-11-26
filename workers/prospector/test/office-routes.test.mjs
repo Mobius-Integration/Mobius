@@ -7,7 +7,7 @@ import { notify } from "../src/outbox.js";
 
 globalThis.crypto ||= webcrypto;
 const actionKey = "test-action-key-with-more-than-32-characters";
-const routeEnv = (discord) => ({ ACTION_KEY: actionKey, DB: { prepare(sql) { let args = []; return { bind(...v) { args = v; return this; }, async first() { return sql.includes("discord") ? { value: JSON.stringify(discord) } : null; }, async run() { return {}; } }; } }, DISCORD_APP_ID: "app", DISCORD_PUBLIC_KEY: "0".repeat(64), DISCORD_BOT_TOKEN: "bot" });
+const routeEnv = (discord) => ({ ACTION_KEY: actionKey, DB: { prepare(sql) { let args = []; return { bind(...v) { args = v; return this; }, async first() { return sql.includes("discord") ? { value: JSON.stringify(discord) } : null; }, async run() { return {}; } }; } }, DISCORD_APP_ID: "app", DISCORD_PUBLIC_KEY: "0".repeat(64), DISCORD_BOT_TOKEN: "YXBw.x.y" });
 async function url(env, path) { return `https://example.test${await boardPath(env)}${path}`; }
 function req(url, method, body) { return new Request(url, { method, headers: { "content-type": "application/json" }, ...(body ? { body: JSON.stringify(body) } : {}) }); }
 
