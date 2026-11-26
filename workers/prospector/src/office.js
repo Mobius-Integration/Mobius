@@ -13,13 +13,20 @@ const schemas = {
 const bounded = (s,n=1500)=>String(s||"").slice(0,n);
 export function escapeMentions(s){return String(s||"").replace(/@(everyone|here)/gi,"@\u200b$1").slice(0,1900);}
 export function strictOfficeResult(raw,step){
- try { const x=typeof raw==="string"?JSON.parse(raw):raw; if(!x||Array.isArray(x)||typeof x!=="object")return null;
-  const exact=(o,keys)=>o&&typeof o==="object"&&!Array.isArray(o)&&Object.keys(o).length===keys.length&&keys.every(k=>Object.hasOwn(o,k));
-  if(step==="chief:open")return exact(x,["message","notebook"])&&typeof x.message==="string"&&typeof x.notebook==="string"?{message:bounded(x.message),notebook:bounded(x.notebook)}:null;
-  if(step==="chief:wrap")return exact(x,["summary","proposals","notebook"])&&typeof x.summary==="string"&&typeof x.notebook==="string"&&Array.isArray(x.proposals)&&x.proposals.length<=3&&x.proposals.every(p=>exact(p,["title","why","owner"])&&typeof p.title==="string"&&typeof p.why==="string"&&typeof p.owner==="string")?{summary:bounded(x.summary),notebook:bounded(x.notebook),proposals:x.proposals.map(p=>({title:bounded(p.title,100),why:bounded(p.why,700),owner:bounded(p.owner,80)}))}:null;
-  let proposals=JSON.parse(x.proposals_json); if(typeof x.message!=="string"||typeof x.notebook!=="string"||!Array.isArray(proposals)||!Array.isArray(x.texture_prompts)||x.texture_prompts.some(p=>typeof p!=="string"))return null;
-  if(!exact(x,["message","proposals_json","notebook","texture_prompts"])||proposals.some(p=>!exact(p,["title","why","effort"])||typeof p.title!=="string"||typeof p.why!=="string"||typeof p.effort!=="string"))return null;
- return {message:bounded(x.message,step.endsWith(":discuss")?600:1900),notebook:bounded(x.notebook),proposals:proposals.slice(0,3).map(p=>({title:bounded(p.title,100),why:bounded(`${p.why} Effort: ${p.effort}`,700),owner:"Mario"})),texture_prompts:x.texture_prompts.slice(0,2).map(p=>bounded(p,500))};
+ try {
+  const x=typeof raw==="string"?JSON.parse(raw):raw; if(!x||Array.isArray(x)||typeof x!=="object")return null;
+  const str=(v)=>typeof v==="string";
+  if(step==="chief:open")return str(x.message)&&str(x.notebook)?{message:bounded(x.message),notebook:bounded(x.notebook)}:null;
+  if(step==="chief:wrap"){
+   if(!str(x.summary)||!str(x.notebook)||!Array.isArray(x.proposals))return null;
+   const proposals=x.proposals.filter(p=>p&&str(p.title)&&str(p.why)).slice(0,3).map(p=>({title:bounded(p.title,100),why:bounded(p.why,700),owner:bounded(str(p.owner)?p.owner:"Mario",80)}));
+   return {summary:bounded(x.summary),notebook:bounded(x.notebook),proposals};
+  }
+  if(!str(x.message)||!str(x.notebook))return null;
+  let drafts=[]; try{const d=JSON.parse(str(x.proposals_json)?x.proposals_json:"[]");if(Array.isArray(d))drafts=d;}catch{}
+  const proposals=drafts.filter(p=>p&&str(p.title)&&str(p.why)).slice(0,3).map(p=>({title:bounded(p.title,100),why:bounded(str(p.effort)&&p.effort?`${p.why} Effort: ${p.effort}`:p.why,700),owner:"Mario"}));
+  const textures=Array.isArray(x.texture_prompts)?x.texture_prompts.filter(str).slice(0,2).map(p=>bounded(p,500)):[];
+  return {message:bounded(x.message,step.endsWith(":discuss")?600:1900),notebook:bounded(x.notebook),proposals,texture_prompts:textures};
  }catch{return null;}
 }
 export function officeSlot(date=new Date()){
@@ -32,14 +39,16 @@ export function officeSlot(date=new Date()){
 async function cfg(env){const r=await env.DB.prepare("SELECT value FROM meta WHERE key='discord'").first();try{return JSON.parse(r?.value||"{}")}catch{return {};}}
 async function notebook(env,role){await env.DB.prepare("INSERT OR IGNORE INTO office_agents(role,notebook) VALUES (?, '')").bind(role).run(); const r=await env.DB.prepare("SELECT notebook FROM office_agents WHERE role=?").bind(role).first();return bounded(r?.notebook);}
 async function snapshot(env){
- const [a,queue,held,props,byKind,bySubject]=await Promise.all([
+ const [a,queue,held,props,byKind,bySubject,recent,decided]=await Promise.all([
   autoSummary(env),env.DB.prepare("SELECT COUNT(*) AS n FROM outreach WHERE auto_state='queued'").first(),env.DB.prepare("SELECT COUNT(*) AS n FROM outreach WHERE auto_state='held'").first(),
   env.DB.prepare("SELECT state,COUNT(*) AS n FROM office_proposals GROUP BY state").all(),
   env.DB.prepare("SELECT p.kind,COUNT(*) AS sent,SUM(o.replied_at IS NOT NULL) AS replies FROM outreach o JOIN prospects p ON p.id=o.prospect_id WHERE o.founder_status='sent' GROUP BY p.kind").all(),
-  env.DB.prepare("SELECT o.variant,COUNT(*) AS sent,SUM(o.replied_at IS NOT NULL) AS replies FROM outreach o WHERE o.founder_status='sent' GROUP BY o.variant").all()
+  env.DB.prepare("SELECT o.variant,COUNT(*) AS sent,SUM(o.replied_at IS NOT NULL) AS replies FROM outreach o WHERE o.founder_status='sent' GROUP BY o.variant").all(),
+  env.DB.prepare("SELECT COUNT(*) AS n FROM outreach WHERE founder_status='sent' AND COALESCE(sent_at,updated_at) >= datetime('now','-1 day')").first(),
+  env.DB.prepare("SELECT title,state FROM office_proposals WHERE state<>'proposed' ORDER BY id DESC LIMIT 5").all()
  ]);
  const rates=rows=>(rows||[]).map(r=>({...r,reply_rate:r.sent?Number((100*Number(r.replies||0)/Number(r.sent)).toFixed(1)):0}));
- return {sends_today:a.sent||0,sends_total:(byKind.results||[]).reduce((n,r)=>n+Number(r.sent||0),0),replies_total:(byKind.results||[]).reduce((n,r)=>n+Number(r.replies||0),0),reply_rate_by_kind:rates(byKind.results),reply_rate_by_subject:rates(bySubject.results),queue:queue?.n||0,held:held?.n||0,proposals:props.results||[]};
+ return {sends_last_24h:Number(recent?.n||0),recent_decisions:(decided.results||[]).map(r=>({title:r.title,decision:r.state})),sends_total:(byKind.results||[]).reduce((n,r)=>n+Number(r.sent||0),0),replies_total:(byKind.results||[]).reduce((n,r)=>n+Number(r.replies||0),0),reply_rate_by_kind:rates(byKind.results),reply_rate_by_subject:rates(bySubject.results),queue:queue?.n||0,held:held?.n||0,proposals:props.results||[]};
 }
 async function makeThread(env,channel,slot){const p=Object.fromEntries(new Intl.DateTimeFormat("en-US",{timeZone:"America/New_York",weekday:"short",month:"short",day:"numeric",hour:"numeric",hour12:true}).formatToParts(new Date()).map(x=>[x.type,x.value]));const label=`${p.weekday} ${p.month} ${p.day} · ${p.hour} ${p.dayPeriod}${String(slot).startsWith("manual:")?" (test run)":""}`;const m=await discordApi(env,`/channels/${channel}/messages`,"POST",{content:"Standup starting.",allowed_mentions:{parse:[]}}); return await discordApi(env,`/channels/${channel}/messages/${m.id}/threads`,"POST",{name:`Standup · ${label}`});}
 export async function startOfficeRun(env,{manual=false,now=new Date()}={}){
@@ -60,10 +69,15 @@ async function queueStep(env,run,index,mario=""){
  const prior=await env.DB.prepare("SELECT role,step,message FROM office_run_messages WHERE run_id=? ORDER BY id").bind(run).all();
  const data={stats:snap,previous_summary:priorRun?.summary||"",notebook:book,brand_brief:brief,mario_said:bounded(mario,1500),discussion:prior.results||[]};
  let prompt=`${shared}\nRole: ${ROLES[role]}. `;
- if(step==="chief:open")prompt+=`Open the standup with real numbers, focus and agenda. Include last summary, stats and notebook. One concise agenda. Data: ${JSON.stringify(data)}`;
- else if(role==="growth")prompt+=`Goal: gain local business clients using only these stats. Produce one evidenced piece of work about outreach experiments, segmented by business and subject where available; no assumed outcomes. For discuss, respond briefly with evidence to other agents.\nTurn: ${phase}\nData: ${JSON.stringify(data)}`;
- else if(role==="studio")prompt+=`Goal: develop Mobius sound and look, coordinate with Growth. Share the provided brand brief; work on one concrete brand item. You may propose up to two texture prompts. For discuss, reply to the others with evidence.\nTurn: ${phase}\nData: ${JSON.stringify(data)}`;
- else prompt+=`Run the standup. Wrap with three lines and at most three actionable proposals. Data: ${JSON.stringify(data)}`;
+ const speakers=`Discussion so far is in data.discussion: each entry says who spoke (chief = Chief of Staff, growth = Growth, studio = Studio).`;
+ if(step==="chief:open")prompt+=`Open the standup in 2-3 short lines: the numbers that matter (do not dwell on zeros), today's focus, and what you want Growth and Studio each to deliver this round. Data: ${JSON.stringify(data)}`;
+ else if(role==="growth")prompt+=phase==="work"?`You are Growth. Goal: win local small-business clients for Mobius. Deliver ONE concrete artifact this turn, from your notebook's next step or Chief's ask: e.g. a subject line or opening line to test next week (with why), a target-segment plan with reasons, a LinkedIn post draft, or a referral-partner idea. Use the stats and say plainly when a sample is too small; never invent results. Draft proposals (in proposals_json) only for things Mario must decide. Keep your plan in your notebook.
+Data: ${JSON.stringify(data)}`:`You are Growth, replying in the standup discussion. ${speakers} React to what Chief and Studio said (not your own earlier message): build on it, disagree with a reason, or ask Studio for something specific. Add one new point. Max 3 sentences.
+Data: ${JSON.stringify(data)}`;
+ else if(role==="studio")prompt+=phase==="work"?`You are Studio, Mobius's brand designer. Goal: build the Mobius brand (local, warm, competent; not a generic template). Deliver ONE concrete brand artifact this turn, from your notebook's next step or Chief's ask: a palette (3-5 named hex colours with roles and Tampa Bay inspiration), 3 tagline options, voice do/don't examples, or a texture concept. For a texture, put 1-2 image prompts in texture_prompts so it gets drawn. Keep your working brand draft in your notebook; Mario approves anything final.
+Data: ${JSON.stringify(data)}`:`You are Studio, replying in the standup discussion. ${speakers} React to what Growth and Chief said (not your own earlier message): connect the brand to what Growth is seeing, or ask Growth for something specific. Add one new point. Max 3 sentences.
+Data: ${JSON.stringify(data)}`;
+ else prompt+=`You are Chief of Staff, closing the standup. ${speakers} Summary: 3 short lines on what got done and decided. Then at most 3 proposals Mario can approve with one tap: each a clear action with who does it. Use the drafts Growth and Studio posted when they are good; skip proposals entirely if nothing needs his decision. Data: ${JSON.stringify(data)}`;
  if(!mario){const pending=await env.DB.prepare("SELECT value FROM meta WHERE key='office_mario_pending'").first();mario=pending?.value||"";if(mario)await env.DB.prepare("DELETE FROM meta WHERE key='office_mario_pending'").run();}
  if(mario)prompt=`Mario said (top priority; address directly): ${bounded(mario,1500)}\n\n${prompt}`;
  const type=step==="chief:open"?"open":step==="chief:wrap"?"wrap":"work";
