@@ -23,14 +23,14 @@ test("Studio option clicks resolve saved labels by button index", () => {
   assert.equal(resolveStudioOption(["Warm"], "8"), null);
 });
 
-test("Studio retries invalid JSON once, then uses the plain fallback", async () => {
+test("Studio retries invalid JSON on the main model, tries the backup model, then uses the plain fallback", async () => {
   let calls = 0;
   const env = {
     DB: { prepare() { return { bind() { return this; }, async first() { return { n: 0 }; }, async run() { return { meta: { changes: 1 } }; } }; } },
     AI: { async run() { calls++; return { response: "not JSON" }; } },
   };
   const result = await replyAI(env, {}, [], "Let's talk about color.");
-  assert.equal(calls, 2);
+  assert.equal(calls, 3);
   assert.match(result.reply, /trouble shaping/);
   assert.deepEqual(result.options, []);
 });
@@ -85,4 +85,12 @@ test("Studio image generation uploads an attachment with texture controls and Ke
   const waits=[];const result=await handleStudioInteraction({channel_id:"studio",data:{custom_id:keep},member:{user:{id:"admin"}}},env,{waitUntil(p){waits.push(p);}});assert.equal(result.type,6);await waits[0];
   assert.equal(stored.has(`brand/texture/${textureId}`),true);
   assert.equal(brief.textures[0].id,textureId);
+});
+
+test("Studio reads Responses-API output (gpt-oss) as well as chat output", async () => {
+  const { modelText } = await import("../src/studio.js");
+  assert.equal(modelText({ output: [{ type: "reasoning", content: [] }, { type: "message", content: [{ type: "output_text", text: "{\"a\":1}" }] }] }), "{\"a\":1}");
+  assert.equal(modelText({ response: "hi" }), "hi");
+  assert.equal(modelText({ choices: [{ message: { content: "yo" } }] }), "yo");
+  assert.equal(modelText(null), "");
 });
