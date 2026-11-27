@@ -2,7 +2,7 @@ import { markProspect } from "./marks.js";
 import { metaSet, pauseAuto } from "./outbox.js";
 
 const API = "https://discord.com/api/v10";
-const CHANNELS = ["hq", "approvals", "replies", "outreach", "builds", "brand-studio", "office"];
+const CHANNELS = ["hq", "approvals", "replies", "outreach", "builds", "brand-studio", "office", "gallery"];
 const CATEGORIES = ["HQ", "Operations", "Projects"];
 const json = (status, value) => new Response(JSON.stringify(value), { status, headers: { "Content-Type": "application/json" } });
 const configured = (env) => !!(env.DISCORD_APP_ID && env.DISCORD_PUBLIC_KEY);
@@ -44,7 +44,7 @@ export async function verifyDiscordRequest(request, publicKeyHex) {
 }
 
 function hex(s) { return Uint8Array.from(s.match(/../g) || [], (x) => parseInt(x, 16)); }
-async function discordConfig(env) {
+export async function discordConfig(env) {
   const row = await env.DB.prepare("SELECT value FROM meta WHERE key='discord'").first();
   try { return JSON.parse(row?.value || "{}"); } catch { return {}; }
 }
@@ -174,7 +174,7 @@ export async function setupDiscord(env, guildId) {
     }
     const ids = {};
     for (const name of CHANNELS) {
-      const category = name === "hq" ? "HQ" : ["builds", "brand-studio"].includes(name) ? "Projects" : name==="office"?"HQ":"Operations";
+      const category = name === "hq" ? "HQ" : ["builds", "brand-studio", "gallery"].includes(name) ? "Projects" : name==="office"?"HQ":"Operations";
       let found = channels.find((c) => c.name === name && c.type === 0);
       if (!found) found = await discordFetch(env, `/guilds/${guildId}/channels`, "POST", { name, type: 0, parent_id: categories[category] });
       ids[name] = found.id;
