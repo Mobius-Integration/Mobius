@@ -3,6 +3,27 @@ import { autoSummary } from "./outbox.js";
 import { readBrief, modelText } from "./studio.js";
 
 const STEPS = ["chief:open", "growth:work", "studio:work", "growth:discuss", "studio:discuss", "chief:wrap"];
+// Each standup hands Growth and Studio one assigned job, rotating by run id, so runs produce new work instead of recaps.
+export const GROWTH_JOBS = [
+ "Write 2 new subject lines and matching opening lines to test next week. They must differ from the current two (A names the costliest problem found on their site; B is \"Question about <Business>'s website\"). Give the reason for each.",
+ "Write a 30-second walk-in script for one business type (restaurant, dental office, law firm or salon; pick the one not covered in your notebook), plus the one line Mario says when handing over the free write-up.",
+ "Draft one LinkedIn post for Mario: under 120 words, local and helpful, teaching one website fix a Tampa Bay owner can check in a minute. No hype, no invented stats.",
+ "Name 3 Tampa Bay referral-partner types who meet owners Mobius wants (e.g. accountants, sign shops, chambers) and draft a short intro email to the first one.",
+ "Draft Mario's reply for when a prospect answers \"How much?\": warm, plain, points to the free write-up first, mentions prices start at the published starting rates only.",
+ "Draft the reply for a prospect who says \"We already have a web guy\": respectful, no pressure, offers the free write-up as a second opinion.",
+ "Pick the next business type to prospect after the current list and give 3 concrete reasons from what Mobius fixes (security warnings, online booking, speed)."
+];
+export const STUDIO_JOBS = [
+ "Logo direction: describe 3 distinct logo concepts in words (mark, wordmark style, how the palette is used), and put one image prompt per concept in texture_prompts.",
+ "Type pairing: pick a heading and a body font from Google Fonts with roles, sizes and why they fit a local, warm, competent brand.",
+ "Voice: take one real line from the current outreach and rewrite it 3 ways (warmer, shorter, more local), and say which fits the brand and why.",
+ "Texture set: 2 texture concepts tied to Tampa Bay (water, mangrove, sand, sky) with where each is used; put 2 image prompts in texture_prompts.",
+ "Layout the cover page of the free write-up PDF: sections, palette use, type, and what the owner sees first. Plain enough for the Builder to build later.",
+ "Business card and email signature: layout, palette use and the exact text lines (no invented phone numbers or addresses; use placeholders).",
+ "Social post template: one square layout for tips posts, with palette, type and where the logo sits."
+];
+export const jobsFor = (run) => { const n = Math.abs(Number(run) || 0); return { growth: GROWTH_JOBS[n % GROWTH_JOBS.length], studio: STUDIO_JOBS[n % STUDIO_JOBS.length] }; };
+const NO_RECAP = "Do not restate the stats or the previous summary. Mention a number only if it changed since data.previous_summary, in one short line at most.";
 const ROLES = { chief: "🧭 Chief of Staff", growth: "📈 Growth", studio: "🎨 Studio" };
 // What already exists, so agents build on it instead of proposing it again (update when the system changes).
 const SYSTEM_FACTS = [
@@ -79,17 +100,17 @@ async function queueStep(env,run,index,mario=""){
  const brief=role==="studio"?await readBrief(env):null;
  const priorRun=await env.DB.prepare("SELECT summary FROM office_runs WHERE state='done' AND summary<>'' ORDER BY id DESC LIMIT 1").first();
  const prior=await env.DB.prepare("SELECT role,step,message FROM office_run_messages WHERE run_id=? ORDER BY id").bind(run).all();
- const data={stats:snap,previous_summary:priorRun?.summary||"",notebook:book,brand_brief:brief,mario_said:bounded(mario,1500),discussion:prior.results||[]};
+ const data={todays_jobs:jobsFor(run),stats:snap,previous_summary:priorRun?.summary||"",notebook:book,brand_brief:brief,mario_said:bounded(mario,1500),discussion:prior.results||[]};
  let prompt=`${shared}\n${SYSTEM_FACTS}\nRole: ${ROLES[role]}. `;
  const speakers=`Discussion so far is in data.discussion: each entry says who spoke (chief = Chief of Staff, growth = Growth, studio = Studio).`;
- if(step==="chief:open")prompt+=`Open the standup in 2-3 short lines: the numbers that matter (do not dwell on zeros), today's focus, and what you want Growth and Studio each to deliver this round. Data: ${JSON.stringify(data)}`;
- else if(role==="growth")prompt+=phase==="work"?`You are Growth. Goal: win local small-business clients for Mobius. Deliver ONE concrete artifact this turn, from your notebook's next step or Chief's ask: e.g. a subject line or opening line to test next week (with why), a target-segment plan with reasons, a LinkedIn post draft, or a referral-partner idea. Use the stats and say plainly when a sample is too small; never invent results. Draft proposals (in proposals_json) only for things Mario must decide. Keep your plan in your notebook.
+ if(step==="chief:open")prompt+=`Open the standup in 2-3 short lines: name today's assigned jobs for Growth and Studio (data.todays_jobs) in plain words, and one thing to watch. ${NO_RECAP} Data: ${JSON.stringify(data)}`;
+ else if(role==="growth")prompt+=phase==="work"?`You are Growth. Goal: win local small-business clients for Mobius. Do today's assigned job (data.todays_jobs.growth) and post the finished piece itself in message, ready to use, not a description of it. If Mario said something, that comes first. ${NO_RECAP} Never invent results. Log the job as done in your notebook. Draft proposals (in proposals_json) only for things Mario must decide. Keep your plan in your notebook.
 Data: ${JSON.stringify(data)}`:`You are Growth, replying in the standup discussion. ${speakers} React to what Chief and Studio said (not your own earlier message): build on it, disagree with a reason, or ask Studio for something specific. Add one new point. Max 3 sentences.
 Data: ${JSON.stringify(data)}`;
- else if(role==="studio")prompt+=phase==="work"?`You are Studio, Mobius's brand designer. Goal: build the Mobius brand (local, warm, competent; not a generic template). Deliver ONE concrete brand artifact this turn, from your notebook's next step or Chief's ask: a palette (3-5 named hex colours with roles and Tampa Bay inspiration), 3 tagline options, voice do/don't examples, or a texture concept. For a texture, put 1-2 image prompts in texture_prompts so it gets drawn. Keep your working brand draft in your notebook; Mario approves anything final.
+ else if(role==="studio")prompt+=phase==="work"?`You are Studio, Mobius's brand designer. Goal: build the Mobius brand (local, warm, competent; not a generic template). Do today's assigned job (data.todays_jobs.studio) using the approved draft palette, and post the finished piece itself in message, not a description of it. If Mario said something, that comes first. Image prompts go in texture_prompts so they get drawn. Do not re-describe the palette. Log the job as done in your notebook. Keep your working brand draft in your notebook; Mario approves anything final.
 Data: ${JSON.stringify(data)}`:`You are Studio, replying in the standup discussion. ${speakers} React to what Growth and Chief said (not your own earlier message): connect the brand to what Growth is seeing, or ask Growth for something specific. Add one new point. Max 3 sentences.
 Data: ${JSON.stringify(data)}`;
- else prompt+=`You are Chief of Staff, closing the standup. ${speakers} summary: 3 short lines on what got done and decided. thread_title: 3-6 words naming what this standup was about (e.g. "Day-4 follow-up test + palette"). Then at most 3 proposals Mario can approve with one tap; skip them if nothing needs his decision. Mario finds vague proposals hard to judge, so each one must be concrete and plain: title = the exact action in under 80 characters, naming what changes and where (e.g. "Change the day-4 follow-up to offer the free write-up first, for the next 6 sends"); if_approved = exactly what happens next, who does it and when (the Builder builds code changes on a branch for review; decisions just get recorded); why = the evidence with numbers, in one or two sentences; effort = small, medium or large, plus what it touches (e.g. "small: one email template"). No jargon. Data: ${JSON.stringify(data)}`;
+ else prompt+=`You are Chief of Staff, closing the standup. ${speakers} summary: 3 short lines on what Growth and Studio produced this round and anything decided. ${NO_RECAP} thread_title: 3-6 words naming what this standup was about (e.g. "Day-4 follow-up test + palette"). Then at most 3 proposals Mario can approve with one tap; skip them if nothing needs his decision. Mario finds vague proposals hard to judge, so each one must be concrete and plain: title = the exact action in under 80 characters, naming what changes and where (e.g. "Change the day-4 follow-up to offer the free write-up first, for the next 6 sends"); if_approved = exactly what happens next, who does it and when (the Builder builds code changes on a branch for review; decisions just get recorded); why = the evidence with numbers, in one or two sentences; effort = small, medium or large, plus what it touches (e.g. "small: one email template"). No jargon. Data: ${JSON.stringify(data)}`;
  if(!mario){const pending=await env.DB.prepare("SELECT value FROM meta WHERE key='office_mario_pending'").first();mario=pending?.value||"";if(mario)await env.DB.prepare("DELETE FROM meta WHERE key='office_mario_pending'").run();}
  if(mario)prompt=`Mario said (top priority; address directly): ${bounded(mario,1500)}\n\n${prompt}`;
  const type=step==="chief:open"?"open":step==="chief:wrap"?"wrap":"work";
