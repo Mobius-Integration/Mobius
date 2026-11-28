@@ -17,7 +17,7 @@ export const GROWTH_JOBS = [
  "Pick the next business type to prospect after the current list and give 3 concrete reasons from what Mobius fixes (security warnings, online booking, speed)."
 ];
 export const STUDIO_JOBS = [
- "Icon set: 6 simple line icons drawn as inline SVG in mockup_html (website tune-up, accessibility, security warning fixed, online booking, automation, ongoing tech partner), 2px strokes in Mangrove with one Gulf Teal detail each, shown on Sky Haze tiles with labels. The logo is decided; never propose new logo concepts.",
+ "Icon set: 6 simple line icons drawn as inline SVG in mockup_html (website tune-up, accessibility, security warning fixed, online booking, automation, ongoing tech partner), 2px strokes in ink #1B1B3A with one pink, teal or sunshine detail each, shown on pastel tiles with labels. The logo is decided; never propose new logo concepts.",
  "Type pairing: pick a heading and a body font from Google Fonts with roles, sizes and why they fit a local, warm, competent brand.",
  "Voice: take one real line from the current outreach and rewrite it 3 ways (warmer, shorter, more local), and say which fits the brand and why.",
  "Texture set: 2 texture concepts tied to Tampa Bay (water, mangrove, sand, sky) with where each is used; put 2 image prompts in texture_prompts.",
@@ -26,7 +26,7 @@ export const STUDIO_JOBS = [
  "Social post template: one square layout for tips posts, with palette, type and where the logo sits."
 ];
 export const jobsFor = (run) => { const n = Math.abs(Number(run) || 0); return { growth: GROWTH_JOBS[n % GROWTH_JOBS.length], studio: STUDIO_JOBS[n % STUDIO_JOBS.length] }; };
-const VISUAL = "mockup_html: a self-contained HTML fragment (inline <style> only, no scripts, no external images; Google Fonts via @import is fine) laid out 1200px wide that SHOWS your piece as a finished visual, rendered to an image for #gallery. Use the approved palette (Gulf Teal #247C78, Mangrove #294B42, Bay Sand #E8D7B7, Sky Haze #DCE9E7) with Fraunces headings and DM Sans body (Google Fonts @import) and real text, never lorem ipsum, invented phone numbers or addresses. Make it look designed: generous spacing, clear hierarchy, labeled swatches or sections.";
+const VISUAL = "mockup_html: a self-contained HTML fragment (inline <style> only, no scripts, no external images; Google Fonts via @import is fine) laid out 1200px wide that SHOWS your piece as a finished visual, rendered to an image for #gallery. Use the brand: Beach Pop (approved Nov 28): Mario's original colorful Möbius strip logo; pink #D6336C (buttons, white text), teal #00A0A4 (shapes; use #007E82 for small text), sunshine #FFD447, ink #1B1B3A, pastel tints #FFE7F0 / #DDF7F7 / #FFF4C2; Baloo 2 headings and DM Sans body (Google Fonts @import); show the logo with <mobius-mark></mobius-mark> and real text, never lorem ipsum, invented phone numbers or addresses. Make it look designed: generous spacing, clear hierarchy, labeled swatches or sections.";
 // A one-off focus (meta office_focus, JSON {growth,studio}) replaces the rotation for the next standup only.
 async function jobsForRun(env,run){const r=await env.DB.prepare("SELECT value FROM meta WHERE key=?").bind("office_focus:"+run).first();if(r?.value){try{const f=JSON.parse(r.value);return {...jobsFor(run),...f};}catch{}}return jobsFor(run);}
 // The real first email going out now, cut at the signature so the footer (mailing address) never reaches a model.
@@ -44,8 +44,8 @@ const SYSTEM_FACTS = [
   "- Already automatic: picking a person's email over shared inboxes, rotating kinds of business (professional offices, dental/medical, med spa/salon, home services, fitness, retail, restaurants, real estate), and a real-browser re-check before each send.",
   "- About 10,800 local businesses with checked websites are waiting, so the list isn't the bottleneck; replies are.",
   "- Packages: Website & Accessibility Tune-Up from $497, 48-Hour Automation Sprint $997, Website Launch from $1,497, Tech Partner $297/month.",
-  "- Mario approved the brand palette on Nov 27: Gulf Teal #247C78, Mangrove #294B42, Bay Sand #E8D7B7, Sky Haze #DCE9E7. It is final; never propose approving it again.",
-  "- Brand decisions (Nov 28): the logo stays Mario's existing Möbius strip (never propose new logo concepts); fonts approved: Fraunces for headings, DM Sans for body. The website is being rebuilt with this kit on a review branch.",
+  "- Brand: Beach Pop (approved Nov 28): Mario's original colorful Möbius strip logo; pink #D6336C (buttons, white text), teal #00A0A4 (shapes; use #007E82 for small text), sunshine #FFD447, ink #1B1B3A, pastel tints #FFE7F0 / #DDF7F7 / #FFF4C2; Baloo 2 headings and DM Sans body. It replaced the Nov 27 teal palette and Fraunces. Never propose new logo concepts or palette approvals.",
+  "- The website is being rebuilt in the Beach Pop style on a review branch (stickers around the logo sun: Works on phones, Online booking, Loads fast, No Not secure warning, Text reminders, Works for every visitor; plus a tools row).",
   "- data.live_email is the real first email going out now (the body above the signature). Quote it whenever a job asks for a real line.",
   "- Other things in motion: walk-ins with a printed kit (Davis Islands and Ybor, Dec 5), referral partners (law and accounting firms), a published Tampa Bay website report. The website redesign waits for the brand kit.",
 ].join("\n");
@@ -94,7 +94,7 @@ export function eveningSummaryText({made=[],proposals=[],builder=[],held=[],repl
 const nyDay=(d)=>new Intl.DateTimeFormat("en-CA",{timeZone:"America/New_York",year:"numeric",month:"2-digit",day:"2-digit"}).format(d);
 export async function postEveningSummary(env,now=new Date()) {
  const parts=new Intl.DateTimeFormat("en-US",{timeZone:"America/New_York",hour:"numeric",minute:"numeric",hour12:false}).formatToParts(now),v=Object.fromEntries(parts.map(x=>[x.type,x.value]));
- if(Number(v.hour)%24!==21||Number(v.minute)!==30)return false;
+ if(Number(v.hour)%24!==21||Number(v.minute)<30)return false;
  const day=nyDay(now),key="office_evening_summary_day",sent=await env.DB.prepare("SELECT value FROM meta WHERE key=?").bind(key).first();if(sent?.value===day)return false;
  const c=await cfg(env);if(!c.channels?.hq)return false;
  const [gallery,proposals,builder,held,replies]=await Promise.all([
@@ -113,7 +113,7 @@ export async function postEveningSummary(env,now=new Date()) {
   env.DB.prepare("SELECT COUNT(*) AS n FROM outreach WHERE bounced_at IS NOT NULL AND bounced_at>=? AND bounced_at<?").bind(from,to).first()
  ]);
  const text=eveningSummaryText({made:links.map(x=>({...x,guild})),proposals:props,builder:builder.results||[],held:(held.results||[]).map(x=>x.label),replies:(replies.results||[]).map(x=>x.label),outreach:{first:first?.n||0,follow:touch?.n||0,replies:reply?.n||0,bounces:bounce?.n||0}});
- const {discordSend}=await import("./discord.js");const summary=await discordSend(env,"hq",{content:text});if(summary?.id)await env.DB.prepare("INSERT INTO meta(key,value) VALUES('office_evening_summary_message',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(summary.id).run();
+ const {discordSend}=await import("./discord.js");const summary=await discordSend(env,"hq",{content:text});try{const {postLibrarySummary}=await import("./library.js");await postLibrarySummary(env,c.channels.hq);}catch(e){console.error("prospector: ready-to-post list failed:",e?.message||"unknown error");}if(summary?.id)await env.DB.prepare("INSERT INTO meta(key,value) VALUES('office_evening_summary_message',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(summary.id).run();
  await env.DB.prepare("INSERT INTO meta(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(key,day).run();return true;
 }
 async function cfg(env){const r=await env.DB.prepare("SELECT value FROM meta WHERE key='discord'").first();try{return JSON.parse(r?.value||"{}")}catch{return {};}}

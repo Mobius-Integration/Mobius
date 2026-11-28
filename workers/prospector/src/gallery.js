@@ -8,6 +8,7 @@ const FONT_HOSTS = ["https://fonts.googleapis.com/", "https://fonts.gstatic.com/
 export const MOCKUP_MAX = 14000;
 
 export function substituteMobiusMarks(html) {
+  const color = LOGO_SVG.replace(/<path[^>]*fill="black"[^>]*\/>/gi, "").replace(/viewBox="[^"]*"/, 'viewBox="1.3 1.4 346.3 209.7"');
   const svg = LOGO_SVG.replace(/<defs>[\s\S]*?<\/defs>/i, "")
     .replace(/fill="url\(#paint0_linear_[^)]+\)"/g, 'fill="var(--mark-outer,#247C78)"')
     .replace(/fill="url\(#paint1_linear_[^)]+\)"/g, 'fill="var(--mark-inner,#294B42)"')
@@ -18,7 +19,7 @@ export function substituteMobiusMarks(html) {
     const attrs = self || paired;
     const style = attrs.match(/\bstyle\s*=\s*(["'])(.*?)\1/i)?.[2];
     const klass = attrs.match(/\bclass\s*=\s*(["'])(.*?)\1/i)?.[2];
-    return svg.replace(/<svg\b/, `<svg${klass ? ` class="${klass}"` : ""}${style ? ` style="${style}"` : ""}`);
+    return (/--mark-/.test(style || "") ? svg : color).replace(/<svg\b/, `<svg${klass ? ` class="${klass}"` : ""}${style ? ` style="${style}"` : ""}`);
   });
 }
 

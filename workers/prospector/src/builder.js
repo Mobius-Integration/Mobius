@@ -14,7 +14,7 @@ export async function nextBuilderTask(env) {
   const task = await env.DB.prepare("SELECT id,title,why,owner,thread_id FROM office_proposals WHERE id=?").bind(candidate.id).first();
   // Brand context so visual tasks use the approved palette and fonts instead of guessing.
   let brief = ""; try { brief = JSON.stringify(await readBrief(env)).slice(0, 3000); } catch {}
-  return task ? { ...task, context: { brand_brief: brief, palette: "Approved: Gulf Teal #247C78, Mangrove #294B42, Bay Sand #E8D7B7, Sky Haze #DCE9E7" } } : null;
+  return task ? { ...task, context: { brand_brief: brief, palette: "Beach Pop (approved Nov 28): Mario's original colorful Möbius strip logo; pink #D6336C (buttons, white text), teal #00A0A4 (shapes; use #007E82 for small text), sunshine #FFD447, ink #1B1B3A, pastel tints #FFE7F0 / #DDF7F7 / #FFF4C2; Baloo 2 headings and DM Sans body" } } : null;
 }
 async function post(env, channel, content) {
   const token = await botKey(env); if (!token) throw new Error("Discord bot is not configured.");

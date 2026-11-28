@@ -10,10 +10,10 @@ globalThis.crypto ||= webcrypto;
 
 function db(){const raw=new DatabaseSync(":memory:");for(const f of readdirSync(new URL("../migrations/",import.meta.url)).sort())raw.exec(readFileSync(new URL(`../migrations/${f}`,import.meta.url),"utf8"));return {raw,prepare(sql){let a=[];const s=raw.prepare(sql);return{bind(...v){a=v;return this},async first(){return s.get(...a)||null},async all(){return{results:s.all(...a)}},async run(){const r=s.run(...a);return{meta:{changes:Number(r.changes),last_row_id:Number(r.lastInsertRowid)}}}}}}}
 
-test("Use it inserts ready library pieces by kind and calls the draft agent with the piece subject",async()=>{
+test("Use it inserts ready library pieces by kind; new emails stay in the library (no thread-less Gmail drafts yet)",async()=>{
  const DB=db();DB.raw.prepare("INSERT INTO meta(key,value) VALUES('agent_url','https://script.google.com/macros/s/abcdefghijklmnopqrst/exec'),('agent_token','test')").run();
  DB.raw.prepare("INSERT INTO office_runs(slot,state) VALUES('x','done')").run();DB.raw.prepare("INSERT INTO office_run_messages(run_id,role,step,message,piece_kind,piece_title,piece_text) VALUES(1,'growth','work','Hi','email_draft','Subject: Local website idea','Hello there. This is a useful draft.')").run();
- let call;const out=await usePiece({DB},1,"standup",{callAgent:async(...a)=>(call=a,{ok:true})});assert.equal(out.message,"Draft saved in Gmail.");assert.equal(call[1],"draft");assert.deepEqual(call[2],{to:"",subject:"Local website idea",body:"Hello there. This is a useful draft."});
+ let call;const out=await usePiece({DB},1,"standup",{callAgent:async(...a)=>(call=a,{ok:true})});assert.match(out.message,/Saved in your library/);assert.equal(call,undefined);
  assert.deepEqual({...DB.raw.prepare("SELECT kind,title,body,source,state FROM library").get()},{kind:"email_draft",title:"Subject: Local website idea",body:"Hello there. This is a useful draft.",source:"standup",state:"ready"});DB.raw.close();
 });
 

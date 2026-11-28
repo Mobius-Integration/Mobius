@@ -104,7 +104,7 @@ test("Use it button acknowledges immediately and schedules its work", async (t) 
   const waits=[];const original=globalThis.fetch;t.after(()=>{globalThis.fetch=original});
   globalThis.fetch=async()=>Response.json({id:"message"});
   const response=await handleDiscord(await signatureRequest({type:3,data:{custom_id:"office:use:12"},member:{user:{id:"admin"}},channel_id:"channel",message:{id:"message"}}),env,{waitUntil(p){waits.push(p)}});
-  assert.equal((await response.json()).type,5);assert.equal(waits.length,1);
+  assert.equal((await response.json()).type,6);assert.equal(waits.length,1);
   await waits[0];
 });
 

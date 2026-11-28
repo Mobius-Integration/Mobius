@@ -67,7 +67,7 @@ test("updateBuilderTask takes a mockup, rejects an oversized one, and survives h
   assert.ok(!posts.some((u) => u.includes("/channels/900/")), "no gallery post without a renderer");
   DB.raw.prepare("INSERT INTO office_proposals(run_id,title,why,owner,thread_id,build_state) VALUES(1,'Next','w','Studio','701','queued')").run();
   const t = await nextBuilderTask(env);
-  assert.equal(t.title, "Next"); assert.match(t.context.palette, /Gulf Teal/); assert.equal(typeof t.context.brand_brief, "string");
+  assert.equal(t.title, "Next"); assert.match(t.context.palette, /Beach Pop/); assert.equal(typeof t.context.brand_brief, "string");
 });
 
 test("agents get the live email body without the signature, footer, phone or email", async () => {

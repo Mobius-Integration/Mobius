@@ -89,7 +89,7 @@ export async function handleDiscord(request, env, ctx) {
       const [,action,rowId]=/^office:(use|skip):(\d+)$/.exec(id);
       const task=(async()=>{const {usePiece}=await import("./library.js");const state=action==="use"?await usePiece(env,Number(rowId)):null;await env.DB.prepare("UPDATE office_run_messages SET use_state=? WHERE id=? AND use_state='pending'").bind(action==="use"?"used":"skipped",Number(rowId)).run();await discordFetch(env,`/channels/${body.channel_id}/messages/${body.message.id}`,"PATCH",{content:state?.message||"Skipped.",components:[]});})().catch(e=>console.error("prospector: use piece failed:",e?.message||"unknown error"));
       if(ctx?.waitUntil)ctx.waitUntil(task);else await task;
-      return json(200,{type:5,data:{flags:64}});
+      return json(200,{type:6});
     }
   }
   if(/^library:used:\d+$/.test(id)){
@@ -99,7 +99,7 @@ export async function handleDiscord(request, env, ctx) {
     const [,action,rowId]=/^builder:(use|skip):(\d+)$/.exec(id);
     const task=(async()=>{let result=null;if(action==="use"){const {usePiece}=await import("./library.js");result=await usePiece(env,Number(rowId),"builder");}await discordFetch(env,`/channels/${body.channel_id}/messages/${body.message.id}`,"PATCH",{content:result?.message||"Skipped.",components:[]});})();
     if(ctx?.waitUntil)ctx.waitUntil(task.catch(e=>console.error("prospector: builder content action failed:",e?.message||"unknown error")));else await task;
-    return json(200,{type:5,data:{flags:64}});
+    return json(200,{type:6});
   }
   if (id === "studio:brief" || id === "studio:kit") {
     if (String(body.channel_id || "") !== String(cfg.channels?.["brand-studio"] || "")) return json(200, { type: 4, data: { content: "Studio buttons only work in #brand-studio.", flags: 64 } });
@@ -111,7 +111,7 @@ export async function handleDiscord(request, env, ctx) {
   if (approval) {
     const task = async () => {
       const { skipHeldSend, recheckHeldSend } = await import("./outbox.js");
-      if (approval[1] === "skip") await skipHeldSend(env, Number(approval[2]));
+      if (approval[1] === "skip") { const r = await skipHeldSend(env, Number(approval[2])); if (body.channel_id && body.message?.id) await discordFetch(env, `/channels/${body.channel_id}/messages/${body.message.id}`, "PATCH", { content: r?.ok ? `**Skipped: ${r.name || "this business"}**. Nothing will be sent.` : `Couldn't skip: ${r?.error || "unknown error"}`, components: r?.ok ? [] : undefined }); }
       else await recheckHeldSend(env, Number(approval[2]), body);
     };
     if (ctx?.waitUntil) ctx.waitUntil(task().catch((e) => console.error("prospector: held send action failed:", e?.message || "unknown error")));
