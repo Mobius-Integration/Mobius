@@ -10,7 +10,7 @@
 // Same-origin only: no CORS headers are sent. IP addresses are never stored.
 
 const MAX_BODY_BYTES = 20 * 1024;
-const MIN_FILL_MS = 2000;
+const MIN_FILL_MS = 3000;
 
 const SHORT_MAX = 200;
 const MESSAGE_MAX = 5000;
@@ -63,7 +63,7 @@ export async function onRequestPost(context) {
   const source = cleanSource(body.source);
 
   // Spam checks: pretend success, store nothing.
-  if (isSpam(body)) {
+  if (isBotTrap(body)) {
     return success(request, wantsJson);
   }
 
@@ -98,7 +98,8 @@ export async function onRequestPost(context) {
   lead.ref = /^[abcdefghjkmnpqrstuvwxyz23456789]{6}$/.test(lead.ref) ? lead.ref : "";
 
   const receivedAt = new Date();
-  const record = { ...lead, received_at: receivedAt.toISOString() };
+  const pitch = classifyPitch(lead);
+  const record = { ...lead, ...(pitch ? { spam: "pitch" } : {}), received_at: receivedAt.toISOString() };
 
   const hasKv = !!(env && env.LEADS && typeof env.LEADS.put === "function");
   const hasWebhook = !!(env && typeof env.NOTIFY_WEBHOOK_URL === "string" && env.NOTIFY_WEBHOOK_URL.trim());
@@ -127,7 +128,7 @@ export async function onRequestPost(context) {
     }
   }
 
-  if (hasWebhook) {
+  if (hasWebhook && !pitch) {
     try {
       const res = await fetch(env.NOTIFY_WEBHOOK_URL.trim(), {
         method: "POST",
@@ -155,7 +156,7 @@ export async function onRequestPost(context) {
   // Lead autopilot (workers/lead-alert): pre-check the lead's website, score the lead,
   // draft a reply and email the owner. Runs after the response is sent, so a slow or
   // failed alert never affects the visitor; the lead is already stored above.
-  if (env && env.LEAD_ALERT && typeof env.LEAD_ALERT.fetch === "function") {
+  if (!pitch && env && env.LEAD_ALERT && typeof env.LEAD_ALERT.fetch === "function") {
     const alert = env.LEAD_ALERT.fetch("https://lead-alert.internal/notify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -268,13 +269,34 @@ function isEmail(value) {
   return value.length <= 254 && /^[^\s@<>()]+@[^\s@<>()]+\.[^\s@<>()]{2,}$/.test(value);
 }
 
-function isSpam(body) {
-  if (clean(body.company_fax, false) !== "") return true;
+export function isBotTrap(body, now = Date.now()) {
+  if (clean(body.company_site, false) !== "") return true;
   const started = Number(clean(body.started_at, false));
   if (Number.isFinite(started) && started > 0) {
-    const elapsed = Date.now() - started;
+    const elapsed = now - started;
     // A negative value means the visitor's clock is ahead of ours; don't punish that.
     if (elapsed >= 0 && elapsed < MIN_FILL_MS) return true;
+  }
+  return false;
+}
+
+const PITCH_OFFERS = /\b(?:seo|rank(?:ing)?|google\s+search|search\s+results|backlinks|traffic|leads\s+for\s+you|marketing\s+services|web\s+design\s+services|we\s+help\s+businesses|i\s+can\s+help|proposal|quote)\b/i;
+const BIG_NONLOCAL_SITES = new Set(["bbc.com", "cnn.com", "nytimes.com", "wikipedia.org", "youtube.com", "facebook.com", "amazon.com"]);
+
+export function classifyPitch(lead) {
+  const emailDomain = String(lead.email || "").split("@").pop().trim().toLowerCase();
+  if (emailDomain.includes("mobiusintegration") && emailDomain !== "mobiusintegration.com") return true;
+  if (emailDomain === "mobiusintegration.com") return true;
+
+  const message = String(lead.message || "");
+  if ((/mobiusintegration\.com|your\s+(?:website|site)/i.test(message)) && PITCH_OFFERS.test(message)) return true;
+
+  const site = String(lead.site_url || "").trim();
+  if (site) {
+    try {
+      const host = new URL(/^https?:\/\//i.test(site) ? site : `https://${site}`).hostname.toLowerCase().replace(/^www\./, "");
+      if ([...BIG_NONLOCAL_SITES].some((domain) => host === domain || host.endsWith(`.${domain}`))) return true;
+    } catch { /* invalid site values are handled as ordinary form data */ }
   }
   return false;
 }
