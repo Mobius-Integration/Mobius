@@ -235,7 +235,7 @@ async function draftOne(env, cfg, r, deps) {
   if (!res || !res.ok) throw new Error((res && res.error) || "the agent didn't make the draft");
   await db.prepare("UPDATE replies SET state = 'drafted', intent = ?, writeup_id = ?, draft_id = ?, draft_to = ?, note = ?, updated_at = datetime('now') WHERE id = ?")
     .bind(intent, w && w.ok ? w.id : null, res.draft_id || null, res.to ? String(res.to).slice(0, 254) : null, res.existing ? "a draft was already waiting in that thread" : null, r.id).run();
-  await notifyDrafted(env, r, { intent, w, attached, clean, answer, res });
+  await notifyDrafted(env, r, { intent, w, attached, clean, answer, res, body });
 }
 
 // ---------------------------------------------------------------------------
@@ -269,10 +269,12 @@ async function sendNote(env, subject, lines, buttons) {
   }
 }
 
-async function notifyDrafted(env, r, { intent, w, attached, clean, answer, res }) {
+async function notifyDrafted(env, r, { intent, w, attached, clean, answer, res, body }) {
   const name = displayName(r.name);
-  const lines = [`${name} replied: “${snippetOf(r)}”`];
+  const draftLines = String(body || "").split(/\r?\n/).map(x => x.trim()).filter(Boolean).slice(0, 3).join(" ").slice(0, 300);
+  const lines = [`${name} replied:`, snippetOf(r) || "(no reply text)"];
   if (INTENT_LINES[intent]) lines.push(INTENT_LINES[intent]);
+  if (draftLines) lines.push(`Draft answer: ${draftLines}`);
   lines.push(res.existing
     ? "A draft was already waiting in that Gmail thread, so I left it as it was."
     : `I left a reply in that Gmail thread as a draft${attached ? ", with the write-up attached" : ""}. Open the conversation, read the draft, change anything you like, and tap Send. Nothing goes out until you do.`);
@@ -281,18 +283,19 @@ async function notifyDrafted(env, r, { intent, w, attached, clean, answer, res }
   if (w && !w.ok) lines.push(`I couldn't make the write-up (${w.error}). The draft says it's coming shortly: tap Make write-up on their card on the board, then attach the PDF to your reply.`);
   if (w && w.ok && w.missingQuoted && w.missingQuoted.length) lines.push(`Heads up: my first email mentioned ${w.missingQuoted.map((f) => FAMILY_LABELS[f] || f).join(" and ")}, but it didn't show up on a fresh look, so the write-up leaves it out.`);
   if (res.to && r.from_addr && !String(res.to).toLowerCase().includes(String(r.from_addr).toLowerCase())) lines.push(`The draft is addressed to ${res.to} (the reply-to address on their email).`);
-  const buttons = [[gmailThread(env, r.thread_id), "Open the conversation in Gmail", "primary"]];
+  const buttons = [[`https://mail.google.com/mail/?authuser=${encodeURIComponent(env.FOUNDER_FROM || "")}#drafts/${encodeURIComponent(res.draft_id || "")}`, "Open Gmail draft", "primary"]];
   if (w && w.ok && w.id) buttons.push([`${ORIGIN(env)}${await boardPath(env)}/writeup/${w.id}`, "Open the write-up (PDF)"]);
-  buttons.push([await boardUrl(env), "Open your prospect board"]);
+
   const subject = intent === "no" ? `${name} replied: not interested (a short thank-you is drafted)` : `${name} replied: your draft answer is waiting in Gmail`;
   await sendNote(env, subject, lines, buttons);
 }
 
 async function notifyPlain(env, r, why) {
   const name = displayName(r.name);
-  const lines = [`${name} replied: “${snippetOf(r)}”`, why, "Answer from your Gmail. Follow-ups to them are cancelled."];
+  const intent = INTENT_LINES[replyIntent(r.text)];
+  const lines = [`${name} replied:`, snippetOf(r) || "(no reply text)", ...(intent ? [intent] : []), why, "Answer from your Gmail. Follow-ups to them are cancelled."];
   const buttons = [];
   if (r.thread_id) buttons.push([gmailThread(env, r.thread_id), "Open the conversation in Gmail", "primary"]);
-  buttons.push([await boardUrl(env), "Open your prospect board"]);
+
   await sendNote(env, `Reply from ${name}`, lines, buttons);
 }

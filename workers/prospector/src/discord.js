@@ -107,6 +107,17 @@ export async function handleDiscord(request, env, ctx) {
     const task = async () => { const { showBrief, sendKit } = await import("./studio.js"); if (id === "studio:brief") await showBrief(env, body.channel_id); else await sendKit(env); };
     ctx.waitUntil(task()); return json(200, { type: 6 });
   }
+  const approval = /^prospect:(skip|recheck):(\d{1,9})$/.exec(id);
+  if (approval) {
+    const task = async () => {
+      const { skipHeldSend, recheckHeldSend } = await import("./outbox.js");
+      if (approval[1] === "skip") await skipHeldSend(env, Number(approval[2]));
+      else await recheckHeldSend(env, Number(approval[2]), body);
+    };
+    if (ctx?.waitUntil) ctx.waitUntil(task().catch((e) => console.error("prospector: held send action failed:", e?.message || "unknown error")));
+    else await task();
+    return json(200, { type: 6 });
+  }
   const match = /^(auto:(pause|resume)|prospect:(cancel|nofollow):(\d{1,9}))$/.exec(id);
   if (!match) return json(200, { type: 4, data: { content: "Invalid action.", flags: 64 } });
   const [, , autoAction, markAction, prospectId] = match;
@@ -236,5 +247,9 @@ export async function setupDiscord(env, guildId) {
 }
 
 export function discordButtons(items) {
-  return items?.length ? [{ type: 1, components: items.map(({ id, label, style = 2, url }) => ({ type: url ? 2 : 2, style: url ? 5 : style, label, ...(url ? { url } : { custom_id: id }) })) }] : [];
+  if (!items?.length) return [];
+  const buttons = items.slice(0, 25).map(({ id, label, style = 2, url }) => ({ type: 2, style: url ? 5 : style, label, ...(url ? { url } : { custom_id: id }) }));
+  const rows = [];
+  for (let i = 0; i < buttons.length; i += 5) rows.push({ type: 1, components: buttons.slice(i, i + 5) });
+  return rows;
 }

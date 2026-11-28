@@ -338,6 +338,61 @@ function nextMorning(ymd, category, rand = Math.random) {
   return new Date(etToUtc(d, 10, 0).getTime() + Math.floor(rand() * 90) * 60000);
 }
 
+async function holdNotice(env, row, reason) {
+  await env.DB.prepare("UPDATE outreach SET auto_state='held', hold_reason=? WHERE id=?").bind(reason, row.oid).run();
+  const { discordSend, discordButtons } = await import("./discord.js");
+  const bodyLines = String(row.draft_body || "").replace(/\r/g, "").split("\n").filter((x) => x.trim()).slice(0, 2);
+  await discordSend(env, "approvals", {
+    content: `**Held: ${row.name}**\n${reason}\n**${row.draft_subject || "(no subject)"}**\n${bodyLines.join("\n")}`.slice(0, 1900),
+    components: discordButtons([
+      { id: `prospect:skip:${row.prospect_id}`, label: "Skip", style: 2 },
+      { id: `prospect:recheck:${row.prospect_id}`, label: "Re-check", style: 3 },
+    ]),
+  });
+}
+
+export async function skipHeldSend(env, prospectId) {
+  return markProspect(env, prospectId, "skip", "discord");
+}
+
+export async function recheckHeldSend(env, prospectId, interaction) {
+  const db = env.DB;
+  const row = await db.prepare(`SELECT o.id AS oid,o.prospect_id,o.draft_subject,o.draft_body,o.quoted,o.contact_email AS "to",
+    p.domain,p.website,p.name,p.category,p.track,p.kind FROM outreach o JOIN prospects p ON p.id=o.prospect_id
+    WHERE o.prospect_id=? AND o.auto_state='held' ORDER BY o.id DESC LIMIT 1`).bind(prospectId).first();
+  if (!row) return;
+  let reason = null;
+  const pre = await preSend(env, row, new Date());
+  if (pre.cancel) reason = pre.cancel;
+  else if (pre.defer) reason = "This business is still in a send deferral window.";
+  else if (pre.hold) reason = pre.hold;
+  else if (row.track !== "partner") {
+    const quoted = parseJson(row.quoted, []) || [];
+    const issues = new Set(familiesOf(pre.issues));
+    const gone = quoted.filter((f) => !issues.has(f));
+    if (gone.length) reason = `The finding about ${gone.map((f) => FAMILY_NAMES[f] || f).join(" and ")} no longer shows up on their site.`;
+    else if (quoted.length) {
+      const v = await verifyInBrowser(env, row, quoted);
+      if (v.ran && v.missing.length) reason = `A real browser doesn't see the finding about ${v.missing.map((f) => FAMILY_NAMES[f] || f).join(" and ")} that the email mentions.`;
+    }
+  }
+  let sendAt = null;
+  if (reason) {
+    await db.prepare("UPDATE outreach SET auto_state='held',hold_reason=?,updated_at=datetime('now') WHERE id=?").bind(reason, row.oid).run();
+  } else {
+    sendAt = nextMorning(etParts(new Date()).ymd, row.category);
+    await db.prepare("UPDATE outreach SET auto_state='queued',send_at=?,hold_reason=NULL,updated_at=datetime('now') WHERE id=?")
+      .bind(sqlTime(sendAt), row.oid).run();
+  }
+  if (interaction?.channel_id && interaction.message?.id) {
+    const { discordApi } = await import("./discord.js");
+    await discordApi(env, `/channels/${interaction.channel_id}/messages/${interaction.message.id}`, "PATCH", {
+      content: reason ? `**Still held: ${row.name}**\n${reason}` : `**Re-checked: ${row.name}**\nThe email passed verification and is queued for ${whenLabel(sqlTime(sendAt))}.`,
+      components: reason ? undefined : [],
+    });
+  }
+}
+
 // Is this email still OK to send right now? -> { ok, issues } | { hold } | { cancel } | { defer }
 async function preSend(env, row, now) {
   const db = env.DB;
@@ -359,8 +414,12 @@ async function recordFailure(env, row, kind, error) {
   const db = env.DB;
   if (kind === "initial") {
     const hold = Number(row.attempts) + 1 >= 3;
-    await db.prepare("UPDATE outreach SET attempts = attempts + 1, auto_state = ?, hold_reason = ? WHERE id = ?")
-      .bind(hold ? "held" : "queued", hold ? `Sending failed three times (${String(error).slice(0, 100)}).` : null, row.oid).run();
+    const reason = hold ? `Sending failed three times (${String(error).slice(0, 100)}).` : null;
+    if (hold) {
+      await db.prepare("UPDATE outreach SET attempts=attempts+1 WHERE id=?").bind(row.oid).run();
+      await holdNotice(env, row, reason);
+    }
+    else await db.prepare("UPDATE outreach SET attempts = attempts + 1, auto_state = 'queued', hold_reason = NULL WHERE id = ?").bind(row.oid).run();
   }
   const errs = Number((await db.prepare("SELECT value FROM meta WHERE key = 'agent_errors'").first() || {}).value) || 0;
   await metaSet(db, "agent_errors", errs + 1);
@@ -375,25 +434,21 @@ async function sendInitial(env, st, row, now) {
     await db.prepare("UPDATE outreach SET send_at = ? WHERE id = ?").bind(sqlTime(nextMorning(etParts(now).ymd, row.category)), row.oid).run();
     return false;
   }
-  if (pre.hold) { await db.prepare("UPDATE outreach SET auto_state = 'held', hold_reason = ? WHERE id = ?").bind(pre.hold, row.oid).run(); await notify(env, `Held send: ${row.name}`, [pre.hold, "Review this send on the prospect board."], null, { id: `prospect:cancel:${row.prospect_id}`, label: "Cancel queued send" }, { email: false }); return false; }
+  if (pre.hold) { await holdNotice(env, row, pre.hold); return false; }
   // The draft quotes findings from an earlier look at their site: every one must still be there.
   const quoted = parseJson(row.quoted, null);
   if (row.track !== "partner" && Array.isArray(quoted) && quoted.length) {
     const now_ = new Set(familiesOf(pre.issues));
     const gone = quoted.filter((f) => !now_.has(f));
     if (gone.length) {
-      await db.prepare("UPDATE outreach SET auto_state = 'held', hold_reason = ? WHERE id = ?")
-        .bind(`The finding about ${gone.map((f) => FAMILY_NAMES[f] || f).join(" and ")} no longer shows up on their site, so I held the email for you.`, row.oid).run();
-      await notify(env, `Held send: ${row.name}`, [`The finding about ${gone.map((f) => FAMILY_NAMES[f] || f).join(" and ")} no longer shows up on their site, so I held the email for you.`, "Review this send on the prospect board."], null, { id: `prospect:cancel:${row.prospect_id}`, label: "Cancel queued send" }, { email: false });
+      await holdNotice(env, row, `The finding about ${gone.map((f) => FAMILY_NAMES[f] || f).join(" and ")} no longer shows up on their site, so I held the email for you.`);
       return false;
     }
     // Then a real browser: every quoted finding must show up there too (the light check can be wrong on
     // sites that fix things with JavaScript). If the browser can't run, the light check's answer stands.
     const v = await verifyInBrowser(env, row, quoted);
     if (v.ran && v.missing.length) {
-      await db.prepare("UPDATE outreach SET auto_state = 'held', hold_reason = ? WHERE id = ?")
-        .bind(`A real browser doesn't see the finding about ${v.missing.map((f) => FAMILY_NAMES[f] || f).join(" and ")} that the email mentions, so I held it for you.`, row.oid).run();
-      await notify(env, `Held send: ${row.name}`, [`A real browser doesn't see the finding about ${v.missing.map((f) => FAMILY_NAMES[f] || f).join(" and ")} that the email mentions, so I held it for you.`, "Review this send on the prospect board."], null, { id: `prospect:cancel:${row.prospect_id}`, label: "Cancel queued send" }, { email: false });
+      await holdNotice(env, row, `A real browser doesn't see the finding about ${v.missing.map((f) => FAMILY_NAMES[f] || f).join(" and ")} that the email mentions, so I held it for you.`);
       return false;
     }
     if (!v.ran && v.error) console.error(`prospector: browser re-check skipped for ${row.domain}: ${v.error}`);
@@ -467,12 +522,6 @@ async function afterSend(env, st, row, res, kind, now, body) {
       ]);
       if (res.thread_id && !row.thread_ref) await db.prepare("UPDATE outreach SET thread_ref = ? WHERE id = ?").bind(res.thread_id, row.oid).run();
     }
-    const { discordSend, discordButtons } = await import("./discord.js");
-    const kindLabel = kind === "initial" ? "First email sent" : `Follow-up ${row.n} sent`;
-    await discordSend(env, "outreach", {
-      content: `${kindLabel} to **${row.name}**.`,
-      components: discordButtons([{ id: `prospect:nofollow:${id}`, label: "Stop follow-ups" }]),
-    });
     return true;
   }
   if (res && res.replied) {
@@ -495,6 +544,7 @@ export async function outboxTick(env, { now = new Date() } = {}) {
   // Replies get their draft answers (and write-ups) even while sending is paused.
   try { await processReplies(env, st, now); } catch (e) { console.error("prospector: reply kit failed:", e && e.message); }
   await scheduleFollowups(env, now);
+  await postOutreachSummary(env, now);
   if (st.paused) return { skipped: "paused" };
 
   const p = etParts(now);
@@ -533,6 +583,36 @@ export async function outboxTick(env, { now = new Date() } = {}) {
     if (await sendInitial(env, st, row, now)) sent.push({ sent: "initial", name: row.name });
   }
   return sent.length ? { ...sent[0], all: sent } : { sent: null };
+}
+
+export async function postOutreachSummary(env, now = new Date()) {
+  const p = etParts(now);
+  if (!isSendDay(p.ymd) || p.h * 60 + p.min < 12 * 60 + 45) return false;
+  const db = env.DB;
+  const key = `outreach_summary_${p.ymd}`;
+  if (await db.prepare("SELECT 1 FROM meta WHERE key=?").bind(key).first()) return false;
+  const from = sqlTime(etToUtc(p.ymd, 0));
+  const to = sqlTime(etToUtc(addDays(p.ymd, 1), 0));
+  const nextDay = nextSendDay(p.ymd);
+  const nextFrom = sqlTime(etToUtc(nextDay, 0));
+  const nextTo = sqlTime(etToUtc(addDays(nextDay, 1), 0));
+  const [initial, follows, reply, bounce, queued, nextTouches, queuedFollowups] = await Promise.all([
+    db.prepare("SELECT p.name,p.id FROM outreach o JOIN prospects p ON p.id=o.prospect_id WHERE o.sent_via='auto' AND o.sent_at>=? AND o.sent_at<?").bind(from,to).all(),
+    db.prepare("SELECT p.name,p.id,t.n FROM touches t JOIN outreach o ON o.id=t.outreach_id JOIN prospects p ON p.id=t.prospect_id WHERE t.state='sent' AND t.sent_at>=? AND t.sent_at<?").bind(from,to).all(),
+    db.prepare("SELECT COUNT(*) AS n FROM replies WHERE received_at>=? AND received_at<?").bind(from,to).first(),
+    db.prepare("SELECT COUNT(*) AS n FROM outreach WHERE bounced_at>=? AND bounced_at<?").bind(from,to).first(),
+    db.prepare("SELECT COUNT(*) AS n FROM outreach WHERE auto_state='queued' AND send_at>=? AND send_at<?").bind(nextFrom,nextTo).first(),
+    db.prepare("SELECT COUNT(*) AS n FROM touches WHERE state='queued' AND due_at>=? AND due_at<?").bind(nextFrom,nextTo).first(),
+    db.prepare("SELECT DISTINCT p.name,p.id FROM touches t JOIN prospects p ON p.id=t.prospect_id WHERE t.state='queued' AND p.status='sent' AND due_at>=? AND due_at<? AND EXISTS (SELECT 1 FROM outreach o WHERE o.prospect_id=p.id AND o.no_followups=0 AND o.replied_at IS NULL AND o.bounced_at IS NULL)").bind(nextFrom,nextTo).all(),
+  ]);
+  const sentA = initial.results || [], sentF = follows.results || [];
+  if (!sentA.length && !sentF.length) { await metaSet(db,key,"checked"); return false; }
+  const names = [...sentA.map(r=>`${r.name}: first email`), ...sentF.map(r=>`${r.name}: follow-up ${r.n}`)];
+  const actions = (queuedFollowups.results || []).map(r=>({id:`prospect:nofollow:${r.id}`,label:`Stop follow-ups: ${r.name}`.slice(0,80)}));
+  const { discordSend, discordButtons } = await import("./discord.js");
+  const posted = await discordSend(env,"outreach",{content:[`Sent today: ${sentA.length} first emails, ${sentF.length} follow-ups`,...names,`Replies today: ${reply?.n||0}`,`Bounces today: ${bounce?.n||0}`,`Queued for next send day: ${(queued?.n||0)+(nextTouches?.n||0)}`].join("\n").slice(0,1900),components:discordButtons(actions.slice(0,25))});
+  if (posted) await metaSet(db,key,"sent");
+  return !!posted;
 }
 
 // ---------------------------------------------------------------------------
