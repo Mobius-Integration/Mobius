@@ -85,6 +85,21 @@ export async function handleDiscord(request, env, ctx) {
       if(ctx?.waitUntil)ctx.waitUntil(task);else await task;
       return json(200,{type:6});
     }
+    if(/^office:(use|skip):\d+$/.test(id)){
+      const [,action,rowId]=/^office:(use|skip):(\d+)$/.exec(id);
+      const task=(async()=>{const {usePiece}=await import("./library.js");const state=action==="use"?await usePiece(env,Number(rowId)):null;await env.DB.prepare("UPDATE office_run_messages SET use_state=? WHERE id=? AND use_state='pending'").bind(action==="use"?"used":"skipped",Number(rowId)).run();await discordFetch(env,`/channels/${body.channel_id}/messages/${body.message.id}`,"PATCH",{content:state?.message||"Skipped.",components:[]});})().catch(e=>console.error("prospector: use piece failed:",e?.message||"unknown error"));
+      if(ctx?.waitUntil)ctx.waitUntil(task);else await task;
+      return json(200,{type:5,data:{flags:64}});
+    }
+  }
+  if(/^library:used:\d+$/.test(id)){
+    const libId=Number(id.split(":")[2]);const task=(async()=>{const {markLibraryUsed}=await import("./library.js");await markLibraryUsed(env,libId);await discordFetch(env,`/channels/${body.channel_id}/messages/${body.message.id}`,"PATCH",{content:"Marked posted.",components:[]});})();if(ctx?.waitUntil)ctx.waitUntil(task);else await task;return json(200,{type:6});
+  }
+  if(/^builder:(use|skip):\d+$/.test(id)){
+    const [,action,rowId]=/^builder:(use|skip):(\d+)$/.exec(id);
+    const task=(async()=>{let result=null;if(action==="use"){const {usePiece}=await import("./library.js");result=await usePiece(env,Number(rowId),"builder");}await discordFetch(env,`/channels/${body.channel_id}/messages/${body.message.id}`,"PATCH",{content:result?.message||"Skipped.",components:[]});})();
+    if(ctx?.waitUntil)ctx.waitUntil(task.catch(e=>console.error("prospector: builder content action failed:",e?.message||"unknown error")));else await task;
+    return json(200,{type:5,data:{flags:64}});
   }
   if (id === "studio:brief" || id === "studio:kit") {
     if (String(body.channel_id || "") !== String(cfg.channels?.["brand-studio"] || "")) return json(200, { type: 4, data: { content: "Studio buttons only work in #brand-studio.", flags: 64 } });

@@ -99,6 +99,15 @@ test("slow button actions defer the update and finish the original message", asy
   await waits[0];
 });
 
+test("Use it button acknowledges immediately and schedules its work", async (t) => {
+  const env={DB:fakeDb({discord:JSON.stringify({admins:["admin"]})}),DISCORD_PUBLIC_KEY:publicKey,DISCORD_BOT_TOKEN:"YXBw.x.y"};
+  const waits=[];const original=globalThis.fetch;t.after(()=>{globalThis.fetch=original});
+  globalThis.fetch=async()=>Response.json({id:"message"});
+  const response=await handleDiscord(await signatureRequest({type:3,data:{custom_id:"office:use:12"},member:{user:{id:"admin"}},channel_id:"channel",message:{id:"message"}}),env,{waitUntil(p){waits.push(p)}});
+  assert.equal((await response.json()).type,5);assert.equal(waits.length,1);
+  await waits[0];
+});
+
 test("setup creates Discord resources once and persists ids", async (t) => {
   const db = fakeDb();
   const env = { DB: db, DISCORD_APP_ID: "app", DISCORD_PUBLIC_KEY: publicKey, DISCORD_BOT_TOKEN: "YXBw.x.y" };

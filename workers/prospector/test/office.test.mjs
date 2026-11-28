@@ -15,7 +15,7 @@ test("office output validation needs the required fields, ignores extras, bounds
  assert.deepEqual(strictOfficeResult(open,"chief:open"),open);
  assert.deepEqual(strictOfficeResult({...open,extra:"no"},"chief:open"),open);
  assert.equal(strictOfficeResult({message:"Agenda"},"chief:open"),null);
- const work={message:"Evidence",proposals_json:'[{"title":"Try","why":"Why","effort":"Small"}]',notebook:"Next",texture_prompts:[]};
+ const work={message:"Evidence",proposals_json:'[{"title":"Try","why":"Why","effort":"Small"}]',notebook:"Next",texture_prompts:[],mockup_html:"",piece_kind:"other",piece_title:"Useful piece",piece_text:"Ready text"};
  assert.equal(strictOfficeResult(work,"growth:discuss").message,"Evidence");
  assert.equal(strictOfficeResult({...work,extra:true},"growth:work").message,"Evidence");
  // Draft proposals live in a free-text JSON string, so their shape is forgiving (the live Studio turn was rejected over this).

@@ -50,7 +50,7 @@ test("agent messages go into the standup thread (thread_id as a query parameter)
   const { env, DB, calls } = setup();
   DB.raw.prepare("INSERT INTO office_runs (slot, state, thread_id) VALUES ('2026-11-28 12', 'active', '600')").run();
   const { officeTurnResult } = await import("../src/office.js");
-  const raw = { message: "Auto shops reply 3x more.", proposals_json: JSON.stringify([{ title: "Shift the mix", why: "Reply data", effort: "small" }]), notebook: "Watching auto shops.", texture_prompts: [] };
+  const raw = { message: "Auto shops reply 3x more.", proposals_json: JSON.stringify([{ title: "Shift the mix", why: "Reply data", effort: "small" }]), notebook: "Watching auto shops.", texture_prompts: [],mockup_html:"",piece_kind:"other",piece_title:"Outreach note",piece_text:"Ready text" };
   const ok = await officeTurnResult(env, { run_id: 1, role: "growth", step: "work" }, raw, false);
   assert.equal(ok, true);
   const post = calls.find((c) => c.url.includes("/webhooks/9/tok"));
@@ -77,7 +77,7 @@ test("texture images (base64 from Workers AI) are posted into the thread", async
   DB.raw.prepare("INSERT INTO office_runs (slot, state, thread_id) VALUES ('2026-11-28 18', 'active', '600')").run();
   env.AI = { run: async () => ({ image: Buffer.from("fake-jpeg").toString("base64") }) };
   const { officeTurnResult } = await import("../src/office.js");
-  await officeTurnResult(env, { run_id: 1, role: "studio", step: "work" }, { message: "Texture study", proposals_json: "[]", notebook: "n", texture_prompts: ["blueprint grid on cream paper"] }, false);
+  await officeTurnResult(env, { run_id: 1, role: "studio", step: "work" }, { message: "Texture study", proposals_json: "[]", notebook: "n", texture_prompts: ["blueprint grid on cream paper"],piece_kind:"design",piece_title:"Texture",piece_text:"",mockup_html:"" }, false);
   const img = calls.find((c) => c.url.includes("/webhooks/9/tok") && c.body instanceof FormData);
   assert.ok(img, "an image upload went to the webhook");
   assert.match(img.url, /thread_id=600/);

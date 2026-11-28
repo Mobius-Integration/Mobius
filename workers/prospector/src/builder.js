@@ -21,6 +21,7 @@ async function post(env, channel, content) {
   const r = await fetch(`https://discord.com/api/v10/channels/${channel}/messages`, { method:"POST", headers:{Authorization:`Bot ${token}`,"Content-Type":"application/json"}, body:JSON.stringify({content:content.slice(0,1900),allowed_mentions:{parse:[]}}) });
   if (!r.ok) throw new Error(`Discord post failed (${r.status}).`);
 }
+async function useButtons(env,channel,proposalId){const token=await botKey(env);if(!token)return;const r=await fetch(`https://discord.com/api/v10/channels/${channel}/messages`,{method:"POST",headers:{Authorization:`Bot ${token}`,"Content-Type":"application/json"},body:JSON.stringify({content:"Use this content?",components:[{type:1,components:[{type:2,style:3,label:"Use it",custom_id:`builder:use:${proposalId}`},{type:2,style:2,label:"Skip",custom_id:`builder:skip:${proposalId}`}]}],allowed_mentions:{parse:[]}})});if(!r.ok)throw new Error(`Discord button post failed (${r.status}).`)}
 export async function updateBuilderTask(env, body) {
   if (!body || Object.keys(body).some(k=>!(["id","state","kind","note","branch","mockup_html"].includes(k))) || !Number.isSafeInteger(body.id) || body.id < 1 || !STATES.has(body.state) || !KINDS.has(body.kind) || !validText(body.note,1500,true) || (body.mockup_html !== undefined && !validText(body.mockup_html, MOCKUP_MAX)) || (body.branch !== undefined && (!validText(body.branch,120,true) || !/^[A-Za-z0-9._/-]+$/.test(body.branch)))) return false;
   // The PC reports "classifying" before it knows the kind, so only a finished decision counts as one.
@@ -35,6 +36,7 @@ export async function updateBuilderTask(env, body) {
   }
   const cfgValue=await cfg(env), message=`🛠️ Builder · ${state} · ${body.kind}\n**${task.title}**\n${body.note}`;
   await post(env,task.thread_id,message);
+  if(body.kind==="content"&&state==="done")await useButtons(env,task.thread_id,body.id);
   // #builds gets the milestones (building, ready for review, done, failed), not the "classifying" chatter.
   if(cfgValue.channels?.builds&&["ready_for_review","failed"].includes(state)) await post(env,cfgValue.channels.builds,message);
   // A finished visual is rendered and posted to #gallery, linked back to the task thread.

@@ -57,5 +57,5 @@ test("#builds only gets ready_for_review and failed updates",async()=>{
  raw.prepare("INSERT INTO meta(key,value) VALUES('discord',?)").run(JSON.stringify({channels:{builds:"800"}}));raw.prepare("INSERT INTO office_runs(slot,state) VALUES('x','done')").run();raw.prepare("INSERT INTO office_proposals(run_id,title,why,owner,thread_id) VALUES(1,'T','W','Mario','700')").run();
  const calls=[];globalThis.fetch=async(url)=>{calls.push(String(url));return new Response("{}")};const {updateBuilderTask}=await import("../src/builder.js"),env={DB,DISCORD_APP_ID:"app",DISCORD_BOT_TOKEN:"YXBw.x.y"};
  for(const state of ["classifying","building","done","ready_for_review","failed"])assert.equal(await updateBuilderTask(env,{id:1,state,kind:"content",note:"Status update."}),true);
- assert.equal(calls.filter(u=>u.includes("/channels/800/messages")).length,2);assert.equal(calls.filter(u=>u.includes("/channels/700/messages")).length,5);raw.close();
+ assert.equal(calls.filter(u=>u.includes("/channels/800/messages")).length,2);assert.equal(calls.filter(u=>u.includes("/channels/700/messages")).length,6);raw.close();
 });

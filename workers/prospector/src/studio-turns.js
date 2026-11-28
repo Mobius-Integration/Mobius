@@ -89,6 +89,6 @@ async function cloudOfficeFallback(env,row,reason){
 Schema: ${row.schema_json}`}];
  let parsed=null;
  for(const model of [env.STUDIO_MODEL||"@cf/openai/gpt-oss-120b","@cf/meta/llama-3.3-70b-instruct-fp8-fast"]){let output="";try{output=modelText(await runModel(env,model,messages));}catch{}parsed=strictOfficeResult(String(output).replace(/^```(?:json)?s*|s*```$/g,""),row.step);if(parsed)break;}
- if(!parsed){parsed=row.step==="chief:open"?{message:"Office backup could not produce a valid opening; proceeding with available data.",notebook:""}:row.step==="chief:wrap"?{summary:"Standup completed with backup model fallback.\nNo verified proposal produced.\nReview the run thread for evidence.",proposals:[],notebook:""}:{message:"Backup model could not produce a validated result; no claims or proposals added.",proposals_json:"[]",notebook:"",texture_prompts:[]};}
+ if(!parsed){parsed=row.step==="chief:open"?{message:"Office backup could not produce a valid opening; proceeding with available data.",notebook:""}:row.step==="chief:wrap"?{summary:"Standup completed with backup model fallback.\nNo verified proposal produced.\nReview the run thread for evidence.",thread_title:"Backup summary",proposals:[],notebook:""}:{message:"Backup model could not produce a validated result; no claims or proposals added.",proposals_json:"[]",notebook:"",texture_prompts:[],mockup_html:"",piece_kind:"none",piece_title:"",piece_text:""};}
  await officeTurnResult(env,row,parsed,true);
 }

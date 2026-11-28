@@ -27,7 +27,7 @@ import { createWriteup, writeupPdf } from "./writeup.js";
 import { PARTNER_KINDS, isLawFirm } from "./partners.js";
 import { setupDiscord, discordApi, discordSend, saveBotKey } from "./discord.js";
 
-const ROUTE = /^\/ops\/b\/(\d{9,11})\/([A-Za-z0-9_-]{43})(?:\/(studio\/(?:next|done|fail)|builder\/(?:next|update)|office\/(?:cleanup|run)|mark|more|auto|discord|say|tasks|task|writeup|brandkit|texture)(?:\/([A-Za-z0-9_-]{1,80}))?)?\/?$/;
+const ROUTE = /^\/ops\/b\/(\d{9,11})\/([A-Za-z0-9_-]{43})(?:\/(studio\/(?:next|done|fail)|builder\/(?:next|update)|office\/(?:cleanup|run)|mark|more|auto|discord|say|tasks|task|writeup|brandkit|texture|kit)(?:\/([A-Za-z0-9_-]{1,80}))?)?\/?$/;
 const num = (v, dflt, min, max) => Math.min(max, Math.max(min, Number.isFinite(parseInt(v, 10)) ? parseInt(v, 10) : dflt));
 const isGet = (request) => request.method === "GET" || request.method === "HEAD";
 // The page's own script sends JSON. A form on another site can't (that would need a CORS preflight,
@@ -62,6 +62,14 @@ export async function handleOps(request, env) {
     return linkPage(env, 410, "This board link has expired", "Get a fresh one by email, or use the board button in the newest prospects email.");
   }
   const base = `/ops/b/${m[1]}/${m[2]}`;
+
+  if(sub==="kit"){
+    if(!isGet(request)||m[4])return json(405,{ok:false,error:"Use GET."});
+    const {libraryKit}=await import("./library.js");const rows=await libraryKit(env);
+    const cards=rows.map(x=>`<section class="page"><p class="kind">${esc(x.kind.replace(/_/g," "))}</p><h1>${esc(x.title)}</h1><pre>${esc(x.body)}</pre></section>`).join("");
+    const html=`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Walk-in kit</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&family=Fraunces:wght@600;700&display=swap" rel="stylesheet"><style>*{box-sizing:border-box}body{margin:0;background:#DCE9E7;color:#294B42;font:16px/1.6 'DM Sans',sans-serif}.page{width:min(7.5in,calc(100% - 32px));min-height:9.5in;margin:24px auto;padding:.7in;background:#fff;border-top:12px solid #247C78;box-shadow:0 4px 18px #294b4220;break-after:page}h1{font:700 34px/1.15 Fraunces,Georgia,serif;margin:0 0 28px;color:#294B42}.kind{color:#247C78;text-transform:uppercase;letter-spacing:.08em;font-size:12px;font-weight:700}pre{white-space:pre-wrap;overflow-wrap:anywhere;font:inherit}.empty{padding:2rem;text-align:center}@page{size:Letter;margin:0}@media print{body{background:#fff}.page{margin:0;width:8.5in;min-height:11in;box-shadow:none;padding:.8in;border-top-width:14px}}</style></head><body><!--email_off-->${cards||'<p class="empty">No ready walk-in pieces yet.</p>'}<!--/email_off--></body></html>`;
+    return new Response(html,{headers:{"Content-Type":"text/html; charset=utf-8","Cache-Control":"no-store","X-Robots-Tag":"noindex, nofollow","X-Content-Type-Options":"nosniff","Referrer-Policy":"no-referrer","Content-Security-Policy":"default-src 'none'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; base-uri 'none'; frame-ancestors 'none'"}});
+  }
 
   if (sub?.startsWith("builder/")) {
     if (m[4]) return notFound();
