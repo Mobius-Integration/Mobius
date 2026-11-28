@@ -1,9 +1,9 @@
 <footer class="bg-gray-900 text-gray-300">
-  <div class="rainbow-bar" aria-hidden="true"></div>
+  <div class="local-rule" aria-hidden="true"></div>
   <div class="container mx-auto px-4 py-12">
     <div class="mb-10 grid gap-10 md:grid-cols-2 lg:grid-cols-4">
       <div>
-        <img src="/assets/img/logo.svg" alt="Mobius Integration" class="mb-3 h-10 w-auto" style="max-width:160px;">
+        <a href="/" class="mb-3 flex min-h-[44px] items-center" aria-label="Mobius Integration home"><img src="/assets/img/logo-mark-color.svg" alt="" width="60" height="36" class="h-9 w-auto" /><span class="brand-name ml-2.5 text-white"><b>mobius</b> <span>integration</span></span></a>
         <p class="text-sm leading-relaxed">{{ site.tagline }} in {{ site.region }}. We build and look after websites, booking and follow-up tools for local businesses, at fixed prices.</p>
       </div>
       <nav aria-label="Footer" class="grid gap-10 sm:grid-cols-2 md:col-span-2">
@@ -11,19 +11,19 @@
         <h2 class="mb-3 text-base font-semibold text-white">Explore</h2>
         <ul class="text-sm">
           {%- for item in site.nav %}
-          <li><a href="{{ item.href }}" class="inline-block py-1.5 hover:text-white hover:underline">{{ item.label }}</a></li>
+          <li><a href="{{ item.href }}" class="inline-block py-2 hover:text-white hover:underline">{{ item.label }}</a></li>
           {%- endfor %}
         </ul>
       </div>
       <div>
         <h2 class="mb-3 text-base font-semibold text-white">More</h2>
         <ul class="text-sm">
-          <li><a href="/faq/" class="inline-block py-1.5 hover:text-white hover:underline">FAQ</a></li>
-          <li><a href="/free-checkup/" class="inline-block py-1.5 hover:text-white hover:underline">Free Tech Checkup</a></li>
-          <li><a href="/accessibility/" class="inline-block py-1.5 hover:text-white hover:underline">Accessibility</a></li>
-          <li><a href="/partners/" class="inline-block py-1.5 hover:text-white hover:underline">Referral partners</a></li>
-          <li><a href="/privacy/" class="inline-block py-1.5 hover:text-white hover:underline">Privacy</a></li>
-          <li><a href="/terms/" class="inline-block py-1.5 hover:text-white hover:underline">Terms</a></li>
+          <li><a href="/faq/" class="inline-block py-2 hover:text-white hover:underline">FAQ</a></li>
+          <li><a href="/free-checkup/" class="inline-block py-2 hover:text-white hover:underline">Free website write-up</a></li>
+          <li><a href="/accessibility/" class="inline-block py-2 hover:text-white hover:underline">Accessibility</a></li>
+          <li><a href="/partners/" class="inline-block py-2 hover:text-white hover:underline">Referral partners</a></li>
+          <li><a href="/privacy/" class="inline-block py-2 hover:text-white hover:underline">Privacy</a></li>
+          <li><a href="/terms/" class="inline-block py-2 hover:text-white hover:underline">Terms</a></li>
         </ul>
       </div>
       </nav>
@@ -31,10 +31,10 @@
         <h2 class="mb-3 text-base font-semibold text-white">Get in touch</h2>
         <ul class="space-y-2 text-sm">
           {%- if site.email %}
-          <li><a href="mailto:{{ site.email }}" class="inline-block py-1.5 text-white underline hover:no-underline">{{ site.email }}</a></li>
+          <li><a href="mailto:{{ site.email }}" class="inline-block py-2 text-white underline hover:no-underline">{{ site.email }}</a></li>
           {%- endif %}
           {%- if site.phone %}
-          <li><a href="tel:{{ site.phoneHref }}" class="inline-block py-1.5 text-white underline hover:no-underline">{{ site.phone }}</a></li>
+          <li><a href="tel:{{ site.phoneHref }}" class="inline-block py-2 text-white underline hover:no-underline">{{ site.phone }}</a></li>
           {%- endif %}
           <li>Replies within {{ site.responseTime }}</li>
           <li>{{ site.callHours }}</li>

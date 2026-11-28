@@ -8,7 +8,7 @@ const url = (process.env.SITE_URL || PRODUCTION_URL).replace(/\/+$/, "");
 module.exports = {
   title: "Mobius Integration",
   tagline: "Your local business tech partner",
-  homeTitle: "Tampa Bay tech partner for local businesses", // the home page <title>; names the area people search for
+  homeTitle: "Website fixes and care for Tampa Bay local businesses", // the home page <title>; names the area people search for
   description:
     "Mobius Integration is a Tampa Bay tech partner for local businesses: websites, accessibility fixes, booking and follow-up automation, Google presence, and custom AI tools, in fixed-price packages.",
   url, // "" until a real URL is set; templates must omit canonical/absolute links when empty
@@ -36,5 +36,7 @@ module.exports = {
     { label: "Contact", href: "/contact/" }
   ],
   cta: { label: "Free Tech Checkup", href: "/free-checkup/" },
+  // The primary button on the home page and in the header: the same free write-up the first email offers.
+  writeupCta: { label: "Get my free website write-up", href: "/free-checkup/" },
   year: new Date().getFullYear()
 };

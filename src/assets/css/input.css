@@ -2,150 +2,30 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Self-hosted variable fonts (latin subset). No third-party font requests. */
-@font-face {
-  font-family: "Inter Variable";
-  font-style: normal;
-  font-display: swap;
-  font-weight: 100 900;
-  src: url("/assets/fonts/inter-latin-wght-normal.woff2") format("woff2-variations");
+@font-face{font-family:"Baloo 2";font-style:normal;font-display:swap;font-weight:500 800;src:url("/assets/fonts/baloo-2-latin-wght-normal.woff2") format("woff2")}
+@font-face{font-family:"DM Sans";font-style:normal;font-display:swap;font-weight:100 1000;src:url("/assets/fonts/dm-sans-latin-wght-normal.woff2") format("woff2")}
+:root{color-scheme:light;--ink:#1B1B3A;--muted:#4A4A66;--pink:#D6336C;--pink-shadow:#A3214F;--teal:#00A0A4;--teal-text:#007E82;--sun:#FFD447;--cream:#FFFBF0;--pink-tint:#FFE7F0;--teal-tint:#DDF7F7;--yellow-tint:#FFF4C2;--light-teal:#F1FBFB}
+@layer base{
+ html{scroll-behavior:smooth;scroll-padding-top:6rem} body{background:#fff;color:var(--ink);font-family:"DM Sans",sans-serif} h1,h2,h3{color:var(--ink);font-family:"Baloo 2",sans-serif;font-weight:700;line-height:1.12} strong,b{font-weight:700} main:focus{outline:none} :focus-visible{outline:3px solid var(--teal-text);outline-offset:3px;border-radius:4px}.on-dark :focus-visible{outline-color:#fff}@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 }
-@font-face {
-  font-family: "Plus Jakarta Sans Variable";
-  font-style: normal;
-  font-display: swap;
-  font-weight: 200 800;
-  src: url("/assets/fonts/plus-jakarta-sans-latin-wght-normal.woff2") format("woff2-variations");
+@layer components{
+ .section{@apply px-4 py-16 md:py-20}.wrap{@apply container mx-auto max-w-6xl}.wrap-narrow{@apply container mx-auto max-w-3xl}
+ .eyebrow{@apply inline-flex items-center gap-2 text-sm font-bold; color:var(--teal-text)}.eyebrow::before{content:"";width:10px;height:10px;border-radius:50%;background:var(--sun);box-shadow:0 0 0 3px #FFE98F}
+ .h-display{@apply text-4xl leading-none tracking-tight md:text-6xl;font-family:"Baloo 2",sans-serif;font-weight:800}.h-section{@apply text-3xl md:text-4xl;font-family:"Baloo 2",sans-serif;font-weight:800}.lede{@apply text-lg leading-8 md:text-xl;color:var(--muted)}
+ .link{@apply font-bold underline underline-offset-4 hover:underline;color:var(--teal-text)}.btn-primary{@apply inline-flex min-h-12 items-center justify-center rounded-full px-6 py-3 text-center font-bold text-white transition-colors; background:var(--pink);box-shadow:0 5px 0 var(--pink-shadow)}.btn-primary:hover{background:#c22c60}.btn-secondary{@apply inline-flex min-h-12 items-center justify-center rounded-xl border bg-white px-5 py-3 font-medium; border-color:#d7e1dc;color:var(--ink)}.btn-light{@apply inline-flex min-h-12 items-center justify-center rounded-xl bg-white px-5 py-3 font-medium;color:var(--ink)}
+ .card{@apply rounded-2xl bg-white p-6 md:p-8}.card-muted{@apply rounded-2xl p-6 md:p-8;background:var(--yellow-tint)}.band-dark{background:var(--ink);color:#fff}.local-rule{display:none}
+ .hero-local{background:linear-gradient(180deg,#FFF6D6 0%,#FFFDF4 75%,#fff 100%)}.hero-scene{min-height:520px}.band-gulf{background:var(--ink);color:#fff}.band-gulf h2,.band-gulf>div>p{color:#fff}.hero-object{display:block;width:min(100%,430px);height:auto}.field-label{@apply mb-1 block text-sm font-medium}.field-input{@apply w-full rounded-lg border bg-white px-4 py-3;color:var(--ink);border-color:#85859a}.field-help{@apply mt-1 text-sm;color:var(--muted)}.field-error{@apply mt-1 text-sm font-semibold text-red-700}.skip-link{@apply sr-only rounded-md bg-white px-4 py-3 font-medium focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[100]}
 }
+@layer utilities{.shadow-sm{box-shadow:0 1px 2px rgba(27,27,58,.08)}.shadow-lg{box-shadow:0 8px 24px rgba(27,27,58,.12)}}
 
-/* Shared component classes. Pages should use these instead of re-inventing
-   buttons, cards and headings, so the whole site stays consistent and
-   every text/background pair meets WCAG 2.1 AA contrast. */
-
-@layer base {
-  html {
-    scroll-behavior: smooth;
-    /* Keep anchored/focused content clear of the sticky header. */
-    scroll-padding-top: 6rem;
-  }
-
-  h1,
-  h2,
-  h3 {
-    font-family: theme("fontFamily.display");
-  }
-
-  /* The skip link moves focus to <main>; don't draw a ring around the whole page. */
-  main:focus {
-    outline: none;
-  }
-
-  /* Inline text links get a taller hit area (at least 24px) without shifting the layout.
-     Zero specificity, so any utility class still wins. */
-  :where(main) a:where(:not([class*="btn-"]):not([class*="block"]):not([class*="flex"]):not([class*="grid"])) {
-    padding-block: 0.25rem;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    html {
-      scroll-behavior: auto;
-    }
-    *,
-    *::before,
-    *::after {
-      animation-duration: 0.01ms !important;
-      transition-duration: 0.01ms !important;
-    }
-  }
-
-  :focus-visible {
-    outline: 3px solid #4338ca;
-    outline-offset: 3px;
-    border-radius: 4px;
-  }
-
-  .on-dark :focus-visible {
-    outline-color: #ffffff;
-  }
-}
-
-@layer components {
-  /* Layout */
-  .section {
-    @apply px-4 py-16 md:py-20;
-  }
-  .wrap {
-    @apply container mx-auto max-w-5xl;
-  }
-  .wrap-narrow {
-    @apply container mx-auto max-w-3xl;
-  }
-
-  /* Type */
-  .eyebrow {
-    @apply inline-block rounded-full bg-indigo-50 px-3 py-1 text-sm font-semibold text-indigo-800;
-  }
-  .h-display {
-    @apply text-4xl font-extrabold leading-tight tracking-tight text-gray-900 md:text-6xl;
-  }
-  .h-section {
-    @apply text-3xl font-bold text-gray-900 md:text-4xl;
-  }
-  .lede {
-    @apply text-lg text-gray-600 md:text-xl;
-  }
-  /* Gradient headline text. Use on large headings only. */
-  .text-brand-gradient {
-    @apply bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent;
-  }
-  .link {
-    @apply text-indigo-700 underline underline-offset-2 hover:text-indigo-900;
-  }
-
-  /* Buttons: all at least 44px tall */
-  .btn-primary {
-    @apply inline-flex min-h-[44px] items-center justify-center rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-3 text-center font-semibold text-white transition hover:opacity-90;
-  }
-  .btn-secondary {
-    @apply inline-flex min-h-[44px] items-center justify-center rounded-lg border-2 border-indigo-600 bg-white px-6 py-3 text-center font-semibold text-indigo-700 transition hover:bg-indigo-50;
-  }
-  /* For use on .band-dark */
-  .btn-light {
-    @apply inline-flex min-h-[44px] items-center justify-center rounded-lg bg-white px-6 py-3 text-center font-semibold text-indigo-700 transition hover:bg-indigo-50;
-  }
-
-  /* Surfaces */
-  .card {
-    @apply rounded-2xl border border-gray-200 bg-white p-6 md:p-8;
-  }
-  .card-muted {
-    @apply rounded-2xl border border-gray-200 bg-gray-50 p-6 md:p-8;
-  }
-  /* Dark closing band. Add class "on-dark" too so focus rings turn white. Use text-indigo-100 for body copy. */
-  .band-dark {
-    @apply bg-gradient-to-br from-indigo-700 to-purple-800 text-white;
-  }
-  .rainbow-bar {
-    height: 0.25rem;
-    background: linear-gradient(90deg, #a3e635, #22d3ee, #3b82f6, #9333ea, #ec4899);
-  }
-
-  /* Forms */
-  .field-label {
-    @apply mb-1 block text-sm font-semibold text-gray-800;
-  }
-  .field-input {
-    @apply w-full rounded-lg border border-gray-400 bg-white px-4 py-3 text-gray-900;
-  }
-  .field-help {
-    @apply mt-1 text-sm text-gray-600;
-  }
-  .field-error {
-    @apply mt-1 text-sm font-semibold text-red-700;
-  }
-
-  /* Visible-on-focus skip link */
-  .skip-link {
-    @apply sr-only rounded-lg bg-white px-4 py-3 font-semibold text-indigo-800 shadow-lg focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[100];
-  }
-}
+/* Beach Pop homepage details */
+.brand-name{font-family:"Baloo 2",sans-serif;font-size:22px;line-height:1;color:var(--ink)}.brand-name b{font-weight:800}.brand-name span{font-weight:500}
+footer .brand-name{color:#fff}
+.beach-header{border:0;background:#fff}.beach-header>div:last-child{max-width:1200px;margin:auto;padding:10px 32px}.beach-nav{color:var(--muted)}
+.home-hero{padding-top:48px;padding-bottom:40px}.home-hero-grid{display:grid;grid-template-columns:1.15fr .85fr;align-items:center;gap:24px;max-width:1072px;margin:auto}.home-hero h1 em{font-style:normal;background:linear-gradient(transparent 14%,var(--sun) 14%,var(--sun) 90%,transparent 90%);border-radius:.22em;padding:0 .14em;margin:0 -.04em;-webkit-box-decoration-break:clone;box-decoration-break:clone}.home-cta-row{display:flex;align-items:center;gap:22px;flex-wrap:wrap}.hero-visual{height:540px;position:relative;display:flex;align-items:center;justify-content:center}.hero-sun{position:absolute;width:min(34vw,400px);aspect-ratio:1;border-radius:50%;background:radial-gradient(circle at 38% 32%,#FFF1A6 0%,var(--sun) 60%,#FFC21F 100%)}.hero-art{position:relative;display:flex;align-items:center;justify-content:center;width:100%;height:100%}.hero-art>img{position:relative;width:min(100%,430px);filter:drop-shadow(0 12px 16px rgba(27,27,58,.16))}.stickers{position:absolute;inset:0;list-style:none;padding:0;margin:0;font-family:"Baloo 2",sans-serif;font-weight:700}.sticker{position:absolute;z-index:2;display:flex;align-items:center;gap:10px;padding:7px 15px 7px 8px;border-radius:999px;background:white;box-shadow:0 8px 18px rgba(27,27,58,.14);font-size:16px;line-height:1;white-space:nowrap}.sticker-icon{width:34px;height:34px;display:grid;place-items:center;border-radius:50%}.sticker-icon svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}.s1{left:-12px;top:77px;transform:rotate(-3deg)}.s2{right:78px;top:0;transform:rotate(2deg)}.s3{right:-8px;top:87px;transform:rotate(-2deg)}.s4{left:-42px;top:432px;transform:rotate(2deg)}.s5{right:4px;top:432px;transform:rotate(3deg)}.s6{left:208px;top:512px;transform:rotate(-2deg)}
+.tools-band{background:#fff;padding:22px 16px}.tools-title{text-align:center;font-family:"Baloo 2",sans-serif;font-size:19px;font-weight:700;margin:0 0 12px}.tools-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:14px;max-width:1072px;margin:auto}.tool{display:flex;align-items:center;justify-content:center;gap:8px;min-height:32px;color:rgba(27,27,58,.78);font-weight:700;font-size:14px;text-align:center}.tool img{height:22px;width:22px;max-width:28px;opacity:.78}.tools-note{text-align:center;font-size:12px;color:var(--muted);margin:10px 0 0}
+.tile-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:16px}.problem-tile{grid-column:span 2;border-radius:22px;padding:24px 26px}.problem-tile:nth-child(4){grid-column:2/span 2}.problem-tile:nth-child(5){grid-column:4/span 2}.problem-tile:nth-child(1),.problem-tile:nth-child(5){background:var(--pink-tint)}.problem-tile:nth-child(2),.problem-tile:nth-child(4){background:var(--teal-tint)}.problem-tile:nth-child(3){background:var(--yellow-tint)}.problem-tile h3{font-size:21px;line-height:1.15;margin:0 0 6px}.problem-tile p{color:var(--muted);margin:0}.steps-section{background:var(--cream)}.step-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:40px}.step-num{font:800 68px/.95 "Baloo 2",sans-serif;margin:0 0 8px}.step-grid li:nth-child(1) .step-num{color:var(--pink)}.step-grid li:nth-child(2) .step-num{color:var(--teal-text)}.step-grid li:nth-child(3) .step-num{color:#9A7000}.step-grid h3{font-size:22px;margin:0 0 8px}.step-grid p{color:var(--muted);margin:0}.proof-cards{display:grid;grid-template-columns:1fr 1fr;gap:24px}.proof-card{border-radius:22px;background:#fff;color:var(--ink);padding:28px}.proof-card h3{font-size:23px;line-height:1.15;margin:0 0 8px}.proof-card p{color:var(--muted);margin:0 0 12px}.proof-quote{background:var(--yellow-tint)}.proof-quote blockquote{color:var(--ink)}.price-section{background:var(--light-teal)}.price-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}.price-card{border:1px solid #D5EEEE;border-radius:22px;background:#fff;padding:24px}.price-card h3{font-size:19px;line-height:1.15;margin:0 0 10px}.price-start{font-size:13px;line-height:1;color:var(--teal-text);font-weight:700;margin:0 0 3px}.price-amount{font:800 36px/1 "Baloo 2",sans-serif;color:var(--ink);margin:0}.price-note{font-size:14px;color:var(--muted);margin:6px 0 12px}.price-desc{color:var(--muted);font-size:15px;margin:0}.final-band{background:var(--sun);text-align:center}.final-band p{color:#3A3A20}.final-band a:not(.btn-primary){color:var(--ink)}
+@media(max-width:767px){.home-hero{padding:36px 16px 28px}.home-hero-grid{display:block}.home-hero h1{font-size:43px;line-height:1.02}.home-hero .lede{font-size:17px;line-height:1.6}.hero-visual{height:auto;display:flex;flex-wrap:wrap;padding:20px 0 0;overflow:visible}.hero-sun{position:absolute;width:88%}.hero-visual{justify-content:center}.hero-art{width:min(70vw,290px);height:auto;aspect-ratio:1;margin:4px auto 20px;flex:0 0 auto}.hero-art .hero-sun{width:88%}.hero-art>img{width:100%;margin:0}.stickers{position:relative;inset:auto;width:100%;display:flex;flex-wrap:wrap;justify-content:center;gap:8px 8px}.sticker{position:static;transform:none!important;font-size:14px;padding:5px 10px 5px 5px;box-shadow:0 3px 9px rgba(27,27,58,.1)}.sticker-icon{width:28px;height:28px}.sticker-icon svg{width:16px;height:16px}.tools-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.tool{font-size:12px;flex-direction:column;gap:2px}.tile-grid{display:grid;grid-template-columns:1fr;gap:12px}.problem-tile,.problem-tile:nth-child(4),.problem-tile:nth-child(5){grid-column:auto}.problem-tile{padding:20px 22px}.step-grid{grid-template-columns:1fr;gap:28px}.proof-cards{grid-template-columns:1fr}.price-grid{grid-template-columns:1fr 1fr}.beach-header>div:last-child{padding:8px 16px}}
+@media(max-width:430px){.price-grid{grid-template-columns:1fr}.home-cta-row{gap:16px}.sticker{white-space:normal}.home-hero h1{font-size:40px}}
+.problem-scene{display:block;width:100%;height:120px;margin:0 0 12px;font-family:"DM Sans",sans-serif}
+@media(max-width:767px){.problem-scene{height:100px}}
