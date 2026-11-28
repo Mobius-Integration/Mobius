@@ -20,13 +20,10 @@ module.exports = {
         ],
         display: [
           '"Fraunces"',
-          "ui-sans-serif",
-          "system-ui",
-          "-apple-system",
-          "Segoe UI",
-          "Roboto",
-          "Arial",
-          "sans-serif"
+          "Georgia",
+          "Cambria",
+          '"Times New Roman"',
+          "serif"
         ]
       },
       colors: {

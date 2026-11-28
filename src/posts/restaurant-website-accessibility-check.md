@@ -67,7 +67,7 @@ Plenty of restaurants say "call us for large parties" or "call for special reque
 
 If your site has an accessibility statement, read it as a customer would. A statement that promises "full accessibility" when your menu is a photo does more harm than having none. An honest one says what you've done, what is still hard, and how to reach a person who can help.
 
-**Why it matters:** it sets honest expectations. An accurate statement helps guests know what to expect.
+**Why it matters:** it sets honest expectations. An empty promise loses a guest's trust.
 
 **Ask your web person:** "Is every sentence in our statement something we can back up today?"
 

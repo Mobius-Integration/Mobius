@@ -36,7 +36,7 @@ description: "Fixed prices for local business tech in Tampa Bay: website tune-up
       <article id="{{ p.id }}" class="card flex scroll-mt-24 flex-col{% if p.featured %} border-2 border-gulf-600 shadow-lg{% endif %}">
         {% if p.featured %}<p class="mb-3"><span class="eyebrow bg-gulf-700 text-white">Most popular</span></p>{% endif %}
         <h3 class="text-xl font-medium text-gray-900">{{ p.name }}</h3>
-        <p class="mt-3 text-4xl font-medium tracking-tight text-gray-900">{% if p.price == "Free" or p.price == "Custom quote" %}{{ p.price }}{% else %}Starting at {{ p.price | replace("From ", "") }}{% endif %}</p>
+        <p class="mt-3 text-4xl font-medium tracking-tight text-gray-900">{{ p.price }}</p>
         <p class="text-sm text-gray-700">{{ p.priceNote }}</p>
         <p class="mt-4 font-medium text-gray-900">{{ p.tagline }}</p>
         <p class="mt-2 text-sm text-gray-700"><span class="font-medium">Best for:</span> {{ p.bestFor }}</p>
@@ -66,7 +66,7 @@ description: "Fixed prices for local business tech in Tampa Bay: website tune-up
       <article id="{{ p.id }}" class="card flex scroll-mt-24 flex-col{% if p.featured %} border-2 border-gulf-600 shadow-lg{% endif %}">
         {% if p.featured %}<p class="mb-3"><span class="eyebrow bg-gulf-700 text-white">Most popular</span></p>{% endif %}
         <h3 class="text-xl font-medium text-gray-900">{{ p.name }}</h3>
-        <p class="mt-3 text-4xl font-medium tracking-tight text-gray-900">Starting at {{ p.price | replace("From ", "") }}</p>
+        <p class="mt-3 text-4xl font-medium tracking-tight text-gray-900">{{ p.price }}</p>
         <p class="text-sm text-gray-700">{{ p.priceNote }}</p>
         <p class="mt-4 font-medium text-gray-900">{{ p.tagline }}</p>
         <p class="mt-2 text-sm text-gray-700"><span class="font-medium">Best for:</span> {{ p.bestFor }}</p>
