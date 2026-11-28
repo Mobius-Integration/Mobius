@@ -262,7 +262,8 @@ async function sendNote(env, subject, lines, buttons) {
     const { discordSend, discordButtons } = await import("./discord.js");
     await discordSend(env, "replies", {
       content: `**${subject}**\n${lines.join("\n")}`.slice(0, 1900),
-      components: discordButtons(buttons.filter((b) => /^https:\/\//.test(b[0])).slice(0, 5).map(([url, label]) => ({ url, label: label.slice(0, 80) }))),
+      // Board-token links (the board itself, write-up PDFs) are bearer secrets: email only, never Discord.
+      components: discordButtons(buttons.filter((b) => /^https:\/\//.test(b[0]) && !/\/ops\/b\//.test(b[0])).slice(0, 5).map(([url, label]) => ({ url, label: label.slice(0, 80) }))),
     });
   } catch (e) {
     console.error("replykit: note to the founder failed:", e && e.message);
@@ -283,8 +284,10 @@ async function notifyDrafted(env, r, { intent, w, attached, clean, answer, res, 
   if (w && !w.ok) lines.push(`I couldn't make the write-up (${w.error}). The draft says it's coming shortly: tap Make write-up on their card on the board, then attach the PDF to your reply.`);
   if (w && w.ok && w.missingQuoted && w.missingQuoted.length) lines.push(`Heads up: my first email mentioned ${w.missingQuoted.map((f) => FAMILY_LABELS[f] || f).join(" and ")}, but it didn't show up on a fresh look, so the write-up leaves it out.`);
   if (res.to && r.from_addr && !String(res.to).toLowerCase().includes(String(r.from_addr).toLowerCase())) lines.push(`The draft is addressed to ${res.to} (the reply-to address on their email).`);
-  const buttons = [[`https://mail.google.com/mail/?authuser=${encodeURIComponent(env.FOUNDER_FROM || "")}#drafts/${encodeURIComponent(res.draft_id || "")}`, "Open Gmail draft", "primary"]];
+  // The draft is a reply inside the thread, so the thread link opens it (Gmail has no web link for an API draft id).
+  const buttons = [[gmailThread(env, r.thread_id), "Open the conversation in Gmail", "primary"]];
   if (w && w.ok && w.id) buttons.push([`${ORIGIN(env)}${await boardPath(env)}/writeup/${w.id}`, "Open the write-up (PDF)"]);
+  buttons.push([await boardUrl(env), "Open your prospect board"]);
 
   const subject = intent === "no" ? `${name} replied: not interested (a short thank-you is drafted)` : `${name} replied: your draft answer is waiting in Gmail`;
   await sendNote(env, subject, lines, buttons);
@@ -296,6 +299,6 @@ async function notifyPlain(env, r, why) {
   const lines = [`${name} replied:`, snippetOf(r) || "(no reply text)", ...(intent ? [intent] : []), why, "Answer from your Gmail. Follow-ups to them are cancelled."];
   const buttons = [];
   if (r.thread_id) buttons.push([gmailThread(env, r.thread_id), "Open the conversation in Gmail", "primary"]);
-
+  buttons.push([await boardUrl(env), "Open your prospect board"]);
   await sendNote(env, `Reply from ${name}`, lines, buttons);
 }

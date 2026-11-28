@@ -270,7 +270,7 @@ function isEmail(value) {
 }
 
 export function isBotTrap(body, now = Date.now()) {
-  if (clean(body.company_site, false) !== "") return true;
+  if (clean(body.mbx_hp, false) !== "") return true;
   const started = Number(clean(body.started_at, false));
   if (Number.isFinite(started) && started > 0) {
     const elapsed = now - started;
@@ -280,17 +280,26 @@ export function isBotTrap(body, now = Date.now()) {
   return false;
 }
 
-const PITCH_OFFERS = /\b(?:seo|rank(?:ing)?|google\s+search|search\s+results|backlinks|traffic|leads\s+for\s+you|marketing\s+services|web\s+design\s+services|we\s+help\s+businesses|i\s+can\s+help|proposal|quote)\b/i;
+// Sales pitches aimed at us. Only high-confidence signals: a real owner asking for help must never land here.
+// Pitches are still stored (spam: "pitch"); they just don't alert Mario.
+const OUR_SITE = String.raw`(?:https?:\/\/)?(?:www\.)?mobiusintegration\.com`;
+// The "list your site in Google" scams name our domain as the thing to register or index.
+const OUR_DOMAIN_SCAM = new RegExp(String.raw`\b(?:include|register|list|feature|add|submit|index)\s+` + OUR_SITE + String.raw`\b`, "i");
+// Nobody greets a domain name, and "your website mobiusintegration.com" is a seller talking about OUR site.
+const GREETING_DOMAIN = new RegExp(String.raw`^\s*(?:hi|hello|hey|dear|greetings)[\s,]+(?:team\s+)?` + OUR_SITE, "i");
+const YOUR_SITE_OURS = new RegExp(String.raw`your\s+(?:website|site)\s+` + OUR_SITE, "i");
+const SELLER_PHRASES = /\b(?:seo\s+(?:services|audit|team|expert|experts|company|agency)|backlinks?|guest\s+posts?|digital\s+marketing\s+(?:agency|services|company|team)|we\s+help\s+businesses|i\s+can\s+help\s+(?:you|your)|(?:noticed|found)\s+(?:some\s+)?(?:seo\s+)?(?:errors|issues|problems)\s+(?:on|with|in)\s+your\s+(?:website|site)|your\s+(?:website|site)\s+(?:has|have|is\s+missing)\s+(?:some\s+)?(?:seo\s+)?(?:errors|issues|problems))\b/i;
 const BIG_NONLOCAL_SITES = new Set(["bbc.com", "cnn.com", "nytimes.com", "wikipedia.org", "youtube.com", "facebook.com", "amazon.com"]);
 
 export function classifyPitch(lead) {
   const emailDomain = String(lead.email || "").split("@").pop().trim().toLowerCase();
-  if (emailDomain.includes("mobiusintegration") && emailDomain !== "mobiusintegration.com") return true;
-  if (emailDomain === "mobiusintegration.com") return true;
-
+  // Look-alikes (search-mobiusintegration.com) and our own domain: real prospects don't write from either.
+  if (emailDomain.includes("mobiusintegration")) return true;
+  // A prospect never gives OUR company name as their own business.
+  if (/mobius\s*integration/i.test(String(lead.business || lead.company || ""))) return true;
   const message = String(lead.message || "");
-  if ((/mobiusintegration\.com|your\s+(?:website|site)/i.test(message)) && PITCH_OFFERS.test(message)) return true;
-
+  if (OUR_DOMAIN_SCAM.test(message) || GREETING_DOMAIN.test(message) || YOUR_SITE_OURS.test(message)) return true;
+  if (SELLER_PHRASES.test(message)) return true;
   const site = String(lead.site_url || "").trim();
   if (site) {
     try {
