@@ -27,7 +27,7 @@ Write down who is responsible for that inbox and when they check it. If the hone
 
 ## Step 3: Look at what the customer receives
 
-Go back to the address you used to submit. Did anything arrive? A confirmation that says "We got your message, and here is when to expect a reply" is far better than silence. Silence makes a customer wonder whether the form worked, and many will simply try the next business on the list.
+Go back to the address you used to submit. Did anything arrive? A confirmation that says "We got your message, and here is when to expect a reply" is far better than silence. A clear confirmation helps a customer know their message arrived and when to expect a reply.
 
 If you did get something, read it as a customer. Does it say who it is from? Does it say when you'll reply? Does it make a promise you can actually keep?
 
@@ -35,13 +35,13 @@ If you did get something, read it as a customer. Does it say who it is from? Doe
 
 Your form works at 11 p.m. on a Sunday. Do you? Look at what you wrote down in Step 2. If an inquiry arrives at 9 p.m., when does a person first see it? Tomorrow morning? Monday afternoon?
 
-A customer looking for a table, an appointment or a quote at night is usually comparing a few businesses. The one that replies first, even with a short acknowledgment, often has the advantage. You don't need to answer at midnight. You need the customer to know they were heard and when to expect a real answer.
+A customer looking for a table, an appointment or a quote at night is usually comparing a few businesses. A short acknowledgment can say when to expect a real answer. You do not need to reply at midnight; you can set a clear expectation for your next business day.
 
 ## Step 5: Follow a booking all the way to the end
 
 If you take appointments or reservations, go further. Book one yourself. What confirmation arrives? Is there a reminder before the day? And what happens if you don't show up?
 
-Many owners discover that nothing happens at all. The slot stays empty, the customer is never contacted, and nobody offers another time. That is a simple thing to fix, and it often brings customers back who simply forgot.
+Sometimes a form submission is not followed by a reminder or another way to reschedule. A simple follow-up can make it easier for someone to choose a new time.
 
 ## The fixes, from least effort to most
 
@@ -50,7 +50,7 @@ Work down this list in order. Each step helps on its own, so you can stop wherev
 1. **Make sure the form reaches a person.** Send it to an address that is checked every working day, and have a named backup who covers when the owner is out. This costs nothing and fixes the worst problem.
 2. **Send an instant acknowledgment.** An automatic reply by email, and by text if you have permission, that says you got the message and when you'll respond. Keep it short and honest. Don't promise something you can't deliver.
 3. **Add online booking.** If the next step is always "pick a time," let the customer pick one right away instead of waiting for a back-and-forth. This is where a lot of inquiries turn into actual appointments.
-4. **Add reminders and a no-show follow-up.** A reminder the day before and a gentle "we missed you, want to rebook?" message after a no-show. These are small messages, but they recover time that would otherwise be lost.
+4. **Add reminders and a no-show follow-up.** A reminder the day before and a gentle "we missed you, want to rebook?" message after a no-show. These messages give customers a reminder and an easy way to choose a new time.
 
 A word on texting: customers need to agree to receive texts, and carriers have registration rules for businesses that send them. If you automate texts, make sure whoever sets it up handles that properly. And keep personal health or financial details out of text messages.
 

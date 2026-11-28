@@ -2,193 +2,128 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Self-hosted variable font (latin subset). No third-party font requests. */
+/* Pass 5 · Type: bundled OFL fonts, with no third-party font requests. */
 @font-face {
-  font-family: "Inter Variable";
+  font-family: "Fraunces";
   font-style: normal;
   font-display: swap;
   font-weight: 100 900;
-  src: url("/assets/fonts/inter-latin-wght-normal.woff2") format("woff2-variations");
+  src: url("/assets/fonts/fraunces-latin-wght-normal.woff2") format("woff2");
 }
 @font-face {
-  font-family: "Plus Jakarta Sans";
+  font-family: "DM Sans";
   font-style: normal;
   font-display: swap;
-  font-weight: 200 800;
-  src: url("/assets/fonts/plus-jakarta-sans-latin-wght-normal.woff2") format("woff2-variations");
+  font-weight: 100 1000;
+  src: url("/assets/fonts/dm-sans-latin-wght-normal.woff2") format("woff2");
 }
-/* Shared component classes. Pages should use these instead of re-inventing
-   buttons, cards and headings, so the whole site stays consistent and
-   every text/background pair meets WCAG 2.1 AA contrast. */
+
+/* Pass 2 · Color: tinted paper ramp, real Gulf Teal accent and Mangrove ink. */
+:root {
+  color-scheme: light;
+  --paper: #faf8f1;
+  --paper-raised: #fffefa;
+  --sky-haze: #dce9e7;
+  --mangrove: #294b42;
+  --gulf-teal: #247c78;
+  --bay-sand: #e8d7b7;
+  --hairline: rgba(41, 75, 66, 0.14);
+}
 
 @layer base {
   html {
     scroll-behavior: smooth;
-    /* Keep anchored/focused content clear of the sticky header. */
     scroll-padding-top: 6rem;
   }
-
   body {
-    background: #f5f0e7;
-    color: #182d34;
+    background: var(--paper);
+    color: var(--mangrove);
   }
-
-  h1,
-  h2,
-  h3 {
+  h1, h2, h3 {
+    color: var(--mangrove);
     font-family: theme("fontFamily.display");
+    font-weight: 500;
   }
-
-  strong,
-  b {
-    font-weight: 600;
-  }
-
-  /* The skip link moves focus to <main>; don't draw a ring around the whole page. */
-  main:focus {
-    outline: none;
-  }
-
-  /* Inline text links get a taller hit area (at least 24px) without shifting the layout.
-     Zero specificity, so any utility class still wins. */
+  strong, b { font-weight: 600; }
+  main:focus { outline: none; }
   :where(main) a:where(:not([class*="btn-"]):not([class*="block"]):not([class*="flex"]):not([class*="grid"])) {
     padding-block: 0.25rem;
   }
-
+  :focus-visible {
+    outline: 3px solid #1b625e;
+    outline-offset: 3px;
+    border-radius: 4px;
+  }
+  .on-dark :focus-visible { outline-color: #fffefa; }
   @media (prefers-reduced-motion: reduce) {
-    html {
-      scroll-behavior: auto;
-    }
-    *,
-    *::before,
-    *::after {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after {
       animation-duration: 0.01ms !important;
       transition-duration: 0.01ms !important;
     }
   }
-
-  :focus-visible {
-    outline: 3px solid #115951;
-    outline-offset: 3px;
-    border-radius: 4px;
-  }
-
-  .on-dark :focus-visible {
-    outline-color: #ffffff;
-  }
 }
 
 @layer components {
-  /* Layout */
-  .section {
-    @apply px-4 py-16 md:py-20;
-  }
-  .wrap {
-    @apply container mx-auto max-w-5xl;
-  }
-  .wrap-narrow {
-    @apply container mx-auto max-w-3xl;
-  }
+  /* Pass 1 · Spacing: shared 4px rhythm; section bands get generous room. */
+  .section { @apply px-4 py-16 md:py-20; }
+  .wrap { @apply container mx-auto max-w-6xl; }
+  .wrap-narrow { @apply container mx-auto max-w-3xl; }
 
-  /* Type */
+  /* Pass 5 · Type: Fraunces names the sections; DM Sans keeps reading easy. */
   .eyebrow {
-    @apply inline-block border-l-2 border-indigo-700 pl-3 text-sm font-medium text-gray-700;
+    @apply inline-flex items-center gap-3 text-sm font-medium text-gulf-800;
   }
-  .h-display {
-    @apply text-4xl font-semibold leading-tight tracking-tight text-gray-900 md:text-6xl;
+  .eyebrow::before {
+    content: "";
+    width: 24px;
+    height: 1px;
+    background: var(--bay-sand);
   }
-  .h-section {
-    @apply text-3xl font-medium text-gray-900 md:text-4xl;
-  }
-  .lede {
-    @apply text-lg text-gray-600 md:text-xl;
-  }
-  .link {
-    @apply font-medium text-indigo-800 underline decoration-indigo-400 underline-offset-4 hover:text-indigo-900;
-  }
+  .h-display { @apply text-4xl font-medium leading-tight tracking-tight text-gray-900 md:text-6xl; }
+  .h-section { @apply text-3xl font-medium text-gray-900 md:text-4xl; }
+  .lede { @apply text-lg leading-8 text-gray-700 md:text-xl; }
+  .link { @apply font-medium text-gulf-800 underline decoration-gulf-300 underline-offset-4 hover:text-gulf-900; }
 
-  /* Buttons: all at least 44px tall */
+  /* Pass 7 · Details: quiet squared controls, softer nested cards, visible focus. */
   .btn-primary {
-    @apply inline-flex min-h-[48px] items-center justify-center rounded-md bg-indigo-800 px-6 py-3 text-center font-medium text-white transition-colors hover:bg-indigo-900;
+    @apply inline-flex min-h-12 items-center justify-center rounded-lg bg-gulf-700 px-5 py-3 text-center font-medium text-white transition-colors hover:bg-gulf-800;
   }
   .btn-secondary {
-    @apply inline-flex min-h-[48px] items-center justify-center rounded-md border border-gray-300 bg-white px-6 py-3 text-center font-medium text-gray-900 transition-colors hover:bg-gray-50;
+    @apply inline-flex min-h-12 items-center justify-center rounded-lg border border-gray-300 bg-white px-5 py-3 font-medium text-gray-900 transition-colors hover:bg-gray-50;
   }
-  /* For use on .band-dark */
   .btn-light {
-    @apply inline-flex min-h-[48px] items-center justify-center rounded-md bg-white px-6 py-3 text-center font-medium text-gray-900 transition-colors hover:bg-gray-100;
+    @apply inline-flex min-h-12 items-center justify-center rounded-lg bg-white px-5 py-3 font-medium text-gray-900 transition-colors hover:bg-gray-100;
   }
+  .card { @apply rounded-2xl border border-gray-200 bg-white p-6 md:p-8; }
+  .card-muted { @apply rounded-2xl border border-gray-200 bg-gray-50 p-6 md:p-8; }
+  .band-dark { background: var(--mangrove); color: #fffefa; }
+  .local-rule { height: 4px; background: var(--bay-sand); }
 
-  /* Surfaces */
-  .card {
-    @apply rounded-xl border border-gray-200 bg-white p-6 md:p-8;
-  }
-  .card-muted {
-    @apply rounded-xl border border-gray-200 bg-gray-50 p-6 md:p-8;
-  }
-  /* Dark closing band. Add class "on-dark" too so focus rings turn white. Use text-indigo-100 for body copy. */
-  .band-dark {
-    @apply bg-gray-900 text-white;
-  }
-  .local-rule {
-    height: 4px;
-    background: #963c27;
-  }
-
+  /* Pass 8 · Visuals: sparse water contours and the custom hero object. */
   .hero-local {
-    background-color: #f5f0e7;
-    background-image: repeating-linear-gradient(135deg, transparent 0 18px, rgba(24,45,52,.035) 18px 19px, transparent 19px 38px);
+    background-color: var(--sky-haze);
+    background-image: repeating-linear-gradient(174deg, transparent 0 39px, rgba(41, 75, 66, 0.035) 40px, transparent 41px 80px);
   }
-  .band-gulf { background: #174a48; color: #fff; }
-  .band-gulf > .wrap > h2,
-  .band-gulf > .wrap > p { color: #fff; }
-  .step-marker { border-color: #963c27; color: #7c3022; }
-
-  .report-preview {
-    @apply relative rounded-xl border border-gray-300 bg-white p-5 shadow-lg md:p-6;
-    box-shadow: 8px 10px 0 #ead2c2, 0 12px 30px rgba(24, 45, 52, 0.12);
-    background-image: linear-gradient(90deg, transparent 0 19px, rgba(150,60,39,.08) 19px 20px, transparent 20px), linear-gradient(#fff, #fff);
+  .band-gulf { background: var(--mangrove); color: #fffefa; }
+  .band-gulf > .wrap > h2, .band-gulf > .wrap > p { color: #fffefa; }
+  .step-marker { border-color: var(--gulf-teal); color: #1b625e; }
+  .hero-scene { min-height: 440px; }
+  .hero-object {
+    display: block;
+    width: min(100%, 500px);
+    margin-inline: auto;
+    filter: drop-shadow(0 20px 18px rgba(0, 0, 0, 0.16));
   }
-  .report-page {
-    @apply rounded-lg border border-gray-200 bg-gray-50 p-4;
-  }
-  .report-line {
-    height: 8px;
-    border-radius: 2px;
-    background: #d2d2c9;
-  }
-  .report-line-strong {
-    height: 12px;
-    width: 62%;
-    border-radius: 2px;
-    background: #293d43;
-  }
-  .report-mark {
-    border-left: 2px solid #176a64;
-    padding-left: 12px;
-  }
-
   /* Forms */
-  .field-label {
-    @apply mb-1 block text-sm font-medium text-gray-800;
-  }
-  .field-input {
-    @apply w-full rounded-lg border border-gray-400 bg-white px-4 py-3 text-gray-900;
-  }
-  .field-help {
-    @apply mt-1 text-sm text-gray-600;
-  }
-  .field-error {
-    @apply mt-1 text-sm font-semibold text-red-700;
-  }
-
-  /* Visible-on-focus skip link */
-  .skip-link {
-    @apply sr-only rounded-md bg-white px-4 py-3 font-medium text-gray-900 focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[100];
-  }
+  .field-label { @apply mb-1 block text-sm font-medium text-gray-800; }
+  .field-input { @apply w-full rounded-lg border border-gray-400 bg-white px-4 py-3 text-gray-900; }
+  .field-help { @apply mt-1 text-sm text-gray-600; }
+  .field-error { @apply mt-1 text-sm font-semibold text-red-700; }
+  .skip-link { @apply sr-only rounded-md bg-white px-4 py-3 font-medium text-gray-900 focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[100]; }
 }
 
 @layer utilities {
-  .shadow-sm { box-shadow: 0 1px 2px rgba(24, 45, 52, 0.07); }
-  .shadow-lg { box-shadow: 0 8px 24px rgba(24, 45, 52, 0.08); }
+  .shadow-sm { box-shadow: 0 1px 2px rgba(41, 75, 66, 0.07); }
+  .shadow-lg { box-shadow: 0 8px 24px rgba(41, 75, 66, 0.08); }
 }

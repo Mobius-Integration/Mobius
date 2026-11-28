@@ -8,7 +8,7 @@ const oneTime = [
     name: "Free Tech Checkup",
     price: "Free",
     priceNote: "20-minute call + written report",
-    tagline: "Find out what's costing you customers before you spend a dollar.",
+    tagline: "See what is working and what could be improved before deciding what to do next.",
     bestFor: "Any local business that isn't sure where to start.",
     includes: [
       "Mobile and speed check of your website",
@@ -47,7 +47,7 @@ const oneTime = [
     name: "48-Hour Automation Sprint",
     price: "$997",
     priceNote: "one-time",
-    tagline: "Stop losing customers to slow replies and no-shows.",
+    tagline: "Set up timely replies and reminders, including follow-up after a missed appointment.",
     bestFor: "Appointment-based businesses: practices, salons, studios, home services.",
     includes: [
       "Instant auto-reply to new inquiries by text and email",
@@ -85,7 +85,7 @@ const oneTime = [
     price: "Custom quote",
     priceNote: "fixed price after a free scoping call",
     tagline: "When off-the-shelf software doesn't fit how you work.",
-    bestFor: "Teams losing hours to copy-paste, spreadsheets and disconnected systems.",
+    bestFor: "Teams spending time moving information between spreadsheets and disconnected systems.",
     includes: [
       "AI assistants trained on your own documents and FAQs",
       "Connections between your booking, POS, CRM and accounting tools",

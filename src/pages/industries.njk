@@ -33,7 +33,7 @@ description: "Mobius helps Tampa Bay restaurants, medical offices, salons, contr
         <h3 class="mt-5 text-sm font-medium text-gray-900">Typical first projects</h3>
         <ul class="mt-2 space-y-2 text-sm text-gray-800">
           {% for win in a.wins %}
-          <li class="flex items-start gap-2"><span aria-hidden="true" class="font-medium text-indigo-700">&#10003;</span><span>{{ win }}</span></li>
+          <li class="flex items-start gap-2">{% include "partials/check-icon.njk" %}<span>{{ win }}</span></li>
           {% endfor %}
         </ul>
       </article>

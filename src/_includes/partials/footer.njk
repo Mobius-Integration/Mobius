@@ -11,19 +11,19 @@
         <h2 class="mb-3 text-base font-semibold text-white">Explore</h2>
         <ul class="text-sm">
           {%- for item in site.nav %}
-          <li><a href="{{ item.href }}" class="inline-block py-1.5 hover:text-white hover:underline">{{ item.label }}</a></li>
+          <li><a href="{{ item.href }}" class="inline-block py-2 hover:text-white hover:underline">{{ item.label }}</a></li>
           {%- endfor %}
         </ul>
       </div>
       <div>
         <h2 class="mb-3 text-base font-semibold text-white">More</h2>
         <ul class="text-sm">
-          <li><a href="/faq/" class="inline-block py-1.5 hover:text-white hover:underline">FAQ</a></li>
-          <li><a href="/free-checkup/" class="inline-block py-1.5 hover:text-white hover:underline">Free website write-up</a></li>
-          <li><a href="/accessibility/" class="inline-block py-1.5 hover:text-white hover:underline">Accessibility</a></li>
-          <li><a href="/partners/" class="inline-block py-1.5 hover:text-white hover:underline">Referral partners</a></li>
-          <li><a href="/privacy/" class="inline-block py-1.5 hover:text-white hover:underline">Privacy</a></li>
-          <li><a href="/terms/" class="inline-block py-1.5 hover:text-white hover:underline">Terms</a></li>
+          <li><a href="/faq/" class="inline-block py-2 hover:text-white hover:underline">FAQ</a></li>
+          <li><a href="/free-checkup/" class="inline-block py-2 hover:text-white hover:underline">Free website write-up</a></li>
+          <li><a href="/accessibility/" class="inline-block py-2 hover:text-white hover:underline">Accessibility</a></li>
+          <li><a href="/partners/" class="inline-block py-2 hover:text-white hover:underline">Referral partners</a></li>
+          <li><a href="/privacy/" class="inline-block py-2 hover:text-white hover:underline">Privacy</a></li>
+          <li><a href="/terms/" class="inline-block py-2 hover:text-white hover:underline">Terms</a></li>
         </ul>
       </div>
       </nav>
@@ -31,10 +31,10 @@
         <h2 class="mb-3 text-base font-semibold text-white">Get in touch</h2>
         <ul class="space-y-2 text-sm">
           {%- if site.email %}
-          <li><a href="mailto:{{ site.email }}" class="inline-block py-1.5 text-white underline hover:no-underline">{{ site.email }}</a></li>
+          <li><a href="mailto:{{ site.email }}" class="inline-block py-2 text-white underline hover:no-underline">{{ site.email }}</a></li>
           {%- endif %}
           {%- if site.phone %}
-          <li><a href="tel:{{ site.phoneHref }}" class="inline-block py-1.5 text-white underline hover:no-underline">{{ site.phone }}</a></li>
+          <li><a href="tel:{{ site.phoneHref }}" class="inline-block py-2 text-white underline hover:no-underline">{{ site.phone }}</a></li>
           {%- endif %}
           <li>Replies within {{ site.responseTime }}</li>
           <li>{{ site.callHours }}</li>

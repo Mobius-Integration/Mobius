@@ -12,7 +12,7 @@
   .lead-nojs-error:not(:target) { display: none; }
 </style>
 <div id="{{ fp }}-form-wrap">
-  {% if formHeading %}<h2 class="mb-6 text-2xl font-bold text-gray-900">{{ formHeading }}</h2>{% endif %}
+  {% if formHeading %}<h2 class="mb-6 text-2xl font-semibold text-gray-900">{{ formHeading }}</h2>{% endif %}
 
   <div id="{{ fp }}-form-error" class="lead-nojs-error mb-6 rounded-lg border-2 border-red-700 bg-red-50 p-4 text-red-900" role="alert">
     <p class="font-semibold">Error: we couldn't send your message.</p>
@@ -95,7 +95,7 @@
   </form>
 
   <div id="{{ fp }}-success" class="rounded-2xl border-2 border-green-700 bg-green-50 p-6 text-green-900" tabindex="-1" data-success hidden>
-    <p class="text-xl font-bold">{% if fp == "free-checkup" %}Thanks. We got your request.{% else %}Thanks. We got your message.{% endif %}</p>
+    <p class="text-xl font-semibold">{% if fp == "free-checkup" %}Thanks. We got your request.{% else %}Thanks. We got your message.{% endif %}</p>
     <p class="mt-2">{% if fp == "free-checkup" %}We'll reply within {{ site.responseTime }} to confirm, and your free write-up will come by email.{% else %}We'll reply within {{ site.responseTime }} to say hello and, if you asked for a call, to find a time.{% endif %}</p>
     <p class="mt-4"><a class="link" href="/">Back to the home page</a></p>
   </div>

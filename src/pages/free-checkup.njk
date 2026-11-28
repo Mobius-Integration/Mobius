@@ -26,14 +26,14 @@ description: Get a free short write-up of your website from a Tampa Bay tech par
       <ul class="mt-6 space-y-3">
         {% set writeupItems = [
           "Screenshots of what we see on your website, on a phone and on a computer",
-          "The problems most likely to be costing you customers, in plain English",
+          "Website issues that can make it harder for people to read, contact, or book with you, in plain English",
           "Whether people can easily book or contact you",
           "Whether people using a screen reader or a keyboard can use your site",
           "Which fixes matter most, and which ones you can do yourself"
         ] %}
         {% for item in writeupItems %}
         <li class="flex gap-3">
-          <span aria-hidden="true" class="font-medium text-indigo-700">&#10003;</span>
+          {% include "partials/check-icon.njk" %}
           <span>{{ item }}</span>
         </li>
         {% endfor %}
@@ -58,7 +58,7 @@ description: Get a free short write-up of your website from a Tampa Bay tech par
 <section class="section hero-local">
   <div class="wrap-narrow">
     <h2 class="h-section">What happens next</h2>
-    <ol class="mt-8 list-decimal space-y-4 pl-6 text-lg marker:font-medium marker:text-indigo-700">
+    <ol class="mt-8 list-decimal space-y-4 pl-6 text-lg marker:font-medium marker:text-gulf-700">
       <li><strong>You send the form.</strong> It's short, and you can skip anything marked optional.</li>
       <li><strong>We reply within {{ site.responseTime }}</strong> to confirm we have it.</li>
       <li><strong>You get your write-up by email.</strong> It's in plain English, with screenshots of what we saw.</li>
@@ -76,7 +76,7 @@ description: Get a free short write-up of your website from a Tampa Bay tech par
     <ul class="mt-6 space-y-3">
       {% for item in checkup.includes %}
       <li class="flex gap-3">
-        <span aria-hidden="true" class="font-medium text-indigo-700">&#10003;</span>
+        {% include "partials/check-icon.njk" %}
         <span>{{ item }}</span>
       </li>
       {% endfor %}

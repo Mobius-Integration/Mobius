@@ -8,38 +8,22 @@ description: Mobius Integration fixes small business websites in Tampa Bay and k
 {# Every price on this page comes from src/_data/packages.js. The button text and link come from site.writeupCta (src/_data/site.js). #}
 
 <!-- 1. Hero -->
-<section class="section hero-local md:py-24">
-  <div class="wrap grid items-center gap-12 md:grid-cols-2 md:gap-16">
+<section class="section hero-local hero-scene md:py-20">
+  <div class="wrap grid items-center gap-8 md:grid-cols-[1.05fr_0.95fr] md:gap-12">
     <div>
-      <p class="eyebrow mb-6">Based in {{ site.region }}</p>
+      <p class="eyebrow mb-6">A local partner for {{ site.region }}</p>
       <h1 class="h-display mb-6 max-w-2xl">We fix your website and keep it working. Local, and easy to reach.</h1>
-      <p class="lede mb-4 max-w-xl">If your site is hard to use on a phone, slow, or scaring people off, it's probably costing you customers. We fix it, keep it up to date, and keep an eye on it, so you can get back to running your business.</p>
-      <p class="mb-8 max-w-xl text-lg text-gray-800">Got an email from us? You are in the right place. It was a real person writing to you, and the offer in it is the one below.</p>
+      <p class="lede mb-4 max-w-xl">If a website is hard to read on a phone, difficult to navigate, or missing a clear way to get in touch, we can find the issue and show you where it appears.</p>
+      <p class="mb-8 max-w-xl text-lg leading-7 text-gray-800">Got an email from us? You are in the right place. A real person wrote it, and the offer is the one below.</p>
       <div class="flex flex-col items-start gap-3">
         <a href="{{ site.writeupCta.href }}" class="btn-primary px-6 text-lg">Get my free website write-up</a>
-        <p class="text-gray-700">We look at your website and send you screenshots of what we see. No charge. No pressure.</p>
+        <p class="max-w-md text-gray-700">We’ll send screenshots and a short explanation of what we found. No charge, no pressure.</p>
       </div>
     </div>
-    <aside class="report-preview" aria-label="Illustrative website write-up preview">
-      <div class="mb-4 flex items-center justify-between border-b border-gray-200 pb-4">
-        <span class="text-sm font-medium text-gray-900">Website write-up</span>
-        <span class="text-sm text-gray-600">Phone and computer</span>
-      </div>
-      <div class="grid grid-cols-[0.8fr_1.2fr] gap-4">
-        <div class="report-page space-y-3" aria-hidden="true">
-          <div class="report-line-strong"></div>
-          <div class="report-line w-4/5"></div>
-          <div class="mt-5 h-16 rounded-md border border-gray-300 bg-white"></div>
-          <div class="report-line w-3/4"></div>
-          <div class="report-line w-1/2"></div>
-        </div>
-        <div class="space-y-5 py-2">
-          <p class="report-mark text-sm leading-6 text-gray-800">Screenshots show what a customer sees on your site.</p>
-          <p class="report-mark text-sm leading-6 text-gray-800">The write-up points out what we found, in plain English.</p>
-        </div>
-      </div>
-      <p class="mt-4 text-xs text-gray-600">Illustrative preview</p>
-    </aside>
+    <figure class="relative flex items-center justify-center py-4 md:py-0">
+      <img src="/assets/img/mobius-object.svg" alt="A dimensional Mobius loop, shaded in Gulf Teal and Mangrove with a warm Bay Sand highlight" width="350" height="220" class="hero-object" fetchpriority="high" />
+      <figcaption class="absolute bottom-0 right-4 text-sm text-gray-700 md:bottom-8">One continuous loop, one local partner</figcaption>
+    </figure>
   </div>
 </section>
 
@@ -47,22 +31,22 @@ description: Mobius Integration fixes small business websites in Tampa Bay and k
 <section class="section bg-white" aria-labelledby="problems-heading">
   <div class="wrap-narrow">
     <h2 id="problems-heading" class="h-section mb-3 text-center">Sound familiar?</h2>
-    <p class="lede mx-auto mb-10 max-w-2xl text-center">These are the problems we look for on local business websites, and what each one can cost you.</p>
+    <p class="lede mx-auto mb-10 max-w-2xl text-center">A few things we check when we look at a local business website.</p>
     <ul class="space-y-4">
       <li class="card flex gap-4 p-5 md:p-6">
-        <p class="text-gray-700"><strong class="block text-lg text-gray-900">Your site is tiny on phones.</strong> Customers have to pinch and zoom to read it, so they back out and call someone else.</p>
+        <p class="text-gray-700"><strong class="block text-lg text-gray-900">Text is hard to read on a phone.</strong> We check how the page responds to a small screen and whether its text stays readable.</p>
       </li>
       <li class="card flex gap-4 p-5 md:p-6">
-        <p class="text-gray-700"><strong class="block text-lg text-gray-900">Chrome says &ldquo;Not secure.&rdquo;</strong> Visitors see a warning next to your name, and some leave before they read a word.</p>
+        <p class="text-gray-700"><strong class="block text-lg text-gray-900">Chrome says &ldquo;Not secure.&rdquo;</strong> That label appears beside the site address in the browser.</p>
       </li>
       <li class="card flex gap-4 p-5 md:p-6">
-        <p class="text-gray-700"><strong class="block text-lg text-gray-900">There is no way to book online.</strong> A customer who wants an appointment at 9 p.m. has to wait until morning, and some will book with someone else.</p>
+        <p class="text-gray-700"><strong class="block text-lg text-gray-900">The next step is hard to find.</strong> We check whether visitors can quickly see how to book, call, or send a message.</p>
       </li>
       <li class="card flex gap-4 p-5 md:p-6">
-        <p class="text-gray-700"><strong class="block text-lg text-gray-900">It is slow to load.</strong> On a phone, people don't wait. A slow page loses some of them.</p>
+        <p class="text-gray-700"><strong class="block text-lg text-gray-900">Pages take time to load.</strong> We look for what is slowing the page down and where it happens.</p>
       </li>
       <li class="card flex gap-4 p-5 md:p-6">
-        <p class="text-gray-700"><strong class="block text-lg text-gray-900">It is hard for people using screen readers.</strong> That can keep blind and low-vision customers from reading your site or booking.</p>
+        <p class="text-gray-700"><strong class="block text-lg text-gray-900">Some controls are hard to use with a keyboard or screen reader.</strong> We check whether links, forms, and page sections can be understood and used.</p>
       </li>
     </ul>
     <div class="mt-10 text-center">
@@ -79,17 +63,17 @@ description: Mobius Integration fixes small business websites in Tampa Bay and k
     <p class="lede mx-auto mb-10 max-w-2xl text-center">Three steps. You can stop after any of them.</p>
     <ol class="grid gap-8 md:grid-cols-3">
       <li>
-        <span class="mb-4 flex h-10 w-10 items-center justify-center rounded-md border border-indigo-700 text-base font-medium text-indigo-800" aria-hidden="true">1</span>
+        <span class="mb-4 flex h-10 w-10 items-center justify-center rounded-md border border-gulf-700 text-base font-medium text-gulf-800" aria-hidden="true">1</span>
         <h3 class="mb-2 text-lg font-medium text-gray-900"><span class="sr-only">Step 1: </span>A free write-up</h3>
         <p class="text-gray-700">We look at your website and send you a short write-up with screenshots of what we see. It is free, and it is yours to keep whether or not you ever hire us.</p>
       </li>
       <li>
-        <span class="mb-4 flex h-10 w-10 items-center justify-center rounded-md border border-indigo-700 text-base font-medium text-indigo-800" aria-hidden="true">2</span>
+        <span class="mb-4 flex h-10 w-10 items-center justify-center rounded-md border border-gulf-700 text-base font-medium text-gulf-800" aria-hidden="true">2</span>
         <h3 class="mb-2 text-lg font-medium text-gray-900"><span class="sr-only">Step 2: </span>A quick fix, if you want one</h3>
         <p class="text-gray-700">Pick what you want fixed. We tell you the price in writing first, and most fixes are a one-time job.</p>
       </li>
       <li>
-        <span class="mb-4 flex h-10 w-10 items-center justify-center rounded-md border border-indigo-700 text-base font-medium text-indigo-800" aria-hidden="true">3</span>
+        <span class="mb-4 flex h-10 w-10 items-center justify-center rounded-md border border-gulf-700 text-base font-medium text-gulf-800" aria-hidden="true">3</span>
         <h3 class="mb-2 text-lg font-medium text-gray-900"><span class="sr-only">Step 3: </span>Monthly care, only if you want it</h3>
         <p class="text-gray-700">If you would like us to keep your site updated and watched, there is a monthly plan. It is month-to-month, with no long-term contract.</p>
       </li>
@@ -123,8 +107,18 @@ description: Mobius Integration fixes small business websites in Tampa Bay and k
   </div>
 </section>
 
+<!-- About Mobius Integration: approved copy, verbatim. -->
+<section class="section bg-white" aria-labelledby="about-mobius-heading">
+  <div class="wrap-narrow">
+    <p class="eyebrow mb-5">About Mobius Integration</p>
+    <h2 id="about-mobius-heading" class="h-section mb-5">Technology that helps local business move forward.</h2>
+    <p class="text-lg leading-8 text-gray-700">Mobius Integration is Mario Barillas and Eduardo Molina's local tech partner for Tampa Bay businesses. We fix website and technology problems that make it harder for customers to trust you, get in touch, or take the next step. Start with a free short write-up: we'll show you what we found and where it appears, with screenshots, so you can decide what to do next.</p>
+    <p class="mt-6"><a href="{{ site.writeupCta.href }}" class="btn-primary">Get my free website write-up</a></p>
+  </div>
+</section>
+
 <!-- 5. Prices -->
-<section class="section bg-white" aria-labelledby="packages-heading">
+<section class="section bg-gray-50" aria-labelledby="packages-heading">
   <div class="wrap">
     <h2 id="packages-heading" class="h-section mb-3 text-center">What it costs, starting at</h2>
     <p class="lede mx-auto mb-10 max-w-2xl text-center">Most fixes are a one-time job. The monthly plan is optional. Every price is in writing before any work starts.</p>
@@ -134,7 +128,7 @@ description: Mobius Integration fixes small business websites in Tampa Bay and k
       {% if package.id in showIds %}
       <li class="card flex flex-col p-6 md:p-6">
         <h3 class="mb-2 text-lg font-medium text-gray-900">{{ package.name }}</h3>
-        <p class="text-3xl font-medium tabular-nums text-gray-900">{% if package.id == "tuneup" or package.id == "launch" %}Starting at {{ package.price | replace("From ", "") }}{% else %}{{ package.price }}{% endif %}</p>
+        <p class="text-3xl font-medium tabular-nums text-gray-900">Starting at {{ package.price | replace("From ", "") }}</p>
         <p class="mb-4 text-sm text-gray-700">{{ package.priceNote }}</p>
         <p class="flex-1 text-gray-700">{{ package.tagline }}</p>
       </li>
@@ -146,7 +140,7 @@ description: Mobius Integration fixes small business websites in Tampa Bay and k
 </section>
 
 <!-- 6. Who we help (short; the full list lives on /industries/) -->
-<section class="section bg-gray-50" aria-labelledby="serve-heading">
+<section class="section bg-white" aria-labelledby="serve-heading">
   <div class="wrap-narrow text-center">
     <h2 id="serve-heading" class="h-section mb-4">Who we help</h2>
     <p class="lede">Owners of local businesses across {{ site.areas | join(", ") }} and the rest of {{ site.region }}: salons, contractors, dental offices, accounting and law offices, shops and more.</p>
@@ -155,13 +149,13 @@ description: Mobius Integration fixes small business websites in Tampa Bay and k
 </section>
 
 <!-- 7. Closing band -->
-<section class="section band-dark on-dark text-center">
+<section class="section bg-gray-50 text-center">
   <div class="wrap-narrow">
-    <h2 class="mb-4 text-3xl font-medium text-white md:text-4xl">See what we see on your website</h2>
-    <p class="mx-auto mb-8 max-w-xl text-lg text-gray-100">
+    <h2 class="mb-4 text-3xl font-medium text-gray-900 md:text-4xl">See what we see on your website</h2>
+    <p class="mx-auto mb-8 max-w-xl text-lg text-gray-700">
       Send us your website address and we will email you a short write-up with screenshots. There is no charge, nothing to sign, and we reply within {{ site.responseTime }}.
     </p>
     <a href="{{ site.writeupCta.href }}" class="btn-light">Get my free website write-up</a>
-    <p class="mt-6 text-gray-100">Would you rather ask a question first? <a href="/contact/" class="font-medium text-white underline underline-offset-2">Send us a message</a>.</p>
+    <p class="mt-6 text-gray-700">Would you rather ask a question first? <a href="/contact/" class="font-medium text-gulf-800 underline underline-offset-2">Send us a message</a>.</p>
   </div>
 </section>

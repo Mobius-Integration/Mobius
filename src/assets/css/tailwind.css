@@ -124,7 +124,7 @@
   /* 2 */
   border-style: solid;
   /* 2 */
-  border-color: #d2d2c9;
+  border-color: #d7e1dc;
   /* 2 */
 }
 
@@ -154,7 +154,7 @@ html,
   -o-tab-size: 4;
      tab-size: 4;
   /* 3 */
-  font-family: "Inter Variable", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif;
+  font-family: "DM Sans", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif;
   /* 4 */
   font-feature-settings: normal;
   /* 5 */
@@ -489,7 +489,7 @@ textarea {
 input::-moz-placeholder, textarea::-moz-placeholder {
   opacity: 1;
   /* 1 */
-  color: #969b94;
+  color: #82988f;
   /* 2 */
 }
 
@@ -497,7 +497,7 @@ input::placeholder,
 textarea::placeholder {
   opacity: 1;
   /* 1 */
-  color: #969b94;
+  color: #82988f;
   /* 2 */
 }
 
@@ -556,37 +556,40 @@ video {
 
 html {
   scroll-behavior: smooth;
-  /* Keep anchored/focused content clear of the sticky header. */
   scroll-padding-top: 6rem;
 }
 
 body {
-  background: #f5f0e7;
-  color: #182d34;
+  background: var(--paper);
+  color: var(--mangrove);
 }
 
-h1,
-  h2,
-  h3 {
-  font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+h1, h2, h3 {
+  color: var(--mangrove);
+  font-family: "Fraunces", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  font-weight: 500;
 }
 
-strong,
-  b {
+strong, b {
   font-weight: 600;
 }
-
-/* The skip link moves focus to <main>; don't draw a ring around the whole page. */
 
 main:focus {
   outline: none;
 }
 
-/* Inline text links get a taller hit area (at least 24px) without shifting the layout.
-     Zero specificity, so any utility class still wins. */
-
 :where(main) a:where(:not([class*="btn-"]):not([class*="block"]):not([class*="flex"]):not([class*="grid"])) {
   padding-block: 0.25rem;
+}
+
+:focus-visible {
+  outline: 3px solid #1b625e;
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+.on-dark :focus-visible {
+  outline-color: #fffefa;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -594,22 +597,10 @@ main:focus {
     scroll-behavior: auto;
   }
 
-  *,
-    *::before,
-    *::after {
+  *, *::before, *::after {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
-}
-
-:focus-visible {
-  outline: 3px solid #115951;
-  outline-offset: 3px;
-  border-radius: 4px;
-}
-
-.on-dark :focus-visible {
-  outline-color: #ffffff;
 }
 
 .container {
@@ -1398,12 +1389,7 @@ main:focus {
   margin-bottom: 0;
 }
 
-.prose-indigo {
-  --tw-prose-links: #4f46e5;
-  --tw-prose-invert-links: #6366f1;
-}
-
-/* Layout */
+/* Pass 1 · Spacing: shared 4px rhythm; section bands get generous room. */
 
 .section {
   padding-left: 1rem;
@@ -1456,7 +1442,7 @@ main:focus {
 .\!wrap {
   margin-left: auto;
   margin-right: auto;
-  max-width: 64rem;
+  max-width: 72rem;
 }
 
 .wrap {
@@ -1496,7 +1482,7 @@ main:focus {
 .wrap {
   margin-left: auto;
   margin-right: auto;
-  max-width: 64rem;
+  max-width: 72rem;
 }
 
 .wrap-narrow {
@@ -1539,29 +1525,34 @@ main:focus {
   max-width: 48rem;
 }
 
-/* Type */
+/* Pass 5 · Type: Fraunces names the sections; DM Sans keeps reading easy. */
 
 .eyebrow {
-  display: inline-block;
-  border-left-width: 2px;
-  --tw-border-opacity: 1;
-  border-color: rgb(124 48 34 / var(--tw-border-opacity, 1));
-  padding-left: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
   font-size: 0.875rem;
   line-height: 1.25rem;
   font-weight: 500;
   --tw-text-opacity: 1;
-  color: rgb(64 82 87 / var(--tw-text-opacity, 1));
+  color: rgb(24 93 89 / var(--tw-text-opacity, 1));
+}
+
+.eyebrow::before {
+  content: "";
+  width: 24px;
+  height: 1px;
+  background: var(--bay-sand);
 }
 
 .h-display {
   font-size: 2.25rem;
   line-height: 2.5rem;
-  font-weight: 600;
+  font-weight: 500;
   line-height: 1.25;
   letter-spacing: -0.025em;
   --tw-text-opacity: 1;
-  color: rgb(24 45 52 / var(--tw-text-opacity, 1));
+  color: rgb(41 75 66 / var(--tw-text-opacity, 1));
 }
 
 @media (min-width: 768px) {
@@ -1576,7 +1567,7 @@ main:focus {
   line-height: 2.25rem;
   font-weight: 500;
   --tw-text-opacity: 1;
-  color: rgb(24 45 52 / var(--tw-text-opacity, 1));
+  color: rgb(41 75 66 / var(--tw-text-opacity, 1));
 }
 
 @media (min-width: 768px) {
@@ -1588,9 +1579,9 @@ main:focus {
 
 .lede {
   font-size: 1.125rem;
-  line-height: 1.75rem;
+  line-height: 2rem;
   --tw-text-opacity: 1;
-  color: rgb(86 102 106 / var(--tw-text-opacity, 1));
+  color: rgb(67 90 81 / var(--tw-text-opacity, 1));
 }
 
 @media (min-width: 768px) {
@@ -1603,29 +1594,29 @@ main:focus {
 .link {
   font-weight: 500;
   --tw-text-opacity: 1;
-  color: rgb(101 41 31 / var(--tw-text-opacity, 1));
+  color: rgb(24 93 89 / var(--tw-text-opacity, 1));
   text-decoration-line: underline;
-  text-decoration-color: #b66a49;
+  text-decoration-color: #75b4ad;
   text-underline-offset: 4px;
 }
 
 .link:hover {
   --tw-text-opacity: 1;
-  color: rgb(81 35 28 / var(--tw-text-opacity, 1));
+  color: rgb(20 76 73 / var(--tw-text-opacity, 1));
 }
 
-/* Buttons: all at least 44px tall */
+/* Pass 7 · Details: quiet squared controls, softer nested cards, visible focus. */
 
 .btn-primary {
   display: inline-flex;
-  min-height: 48px;
+  min-height: 3rem;
   align-items: center;
   justify-content: center;
-  border-radius: 0.375rem;
+  border-radius: 0.5rem;
   --tw-bg-opacity: 1;
-  background-color: rgb(101 41 31 / var(--tw-bg-opacity, 1));
-  padding-left: 1.5rem;
-  padding-right: 1.5rem;
+  background-color: rgb(28 105 101 / var(--tw-bg-opacity, 1));
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
   padding-top: 0.75rem;
   padding-bottom: 0.75rem;
   text-align: center;
@@ -1639,28 +1630,27 @@ main:focus {
 
 .btn-primary:hover {
   --tw-bg-opacity: 1;
-  background-color: rgb(81 35 28 / var(--tw-bg-opacity, 1));
+  background-color: rgb(24 93 89 / var(--tw-bg-opacity, 1));
 }
 
 .btn-secondary {
   display: inline-flex;
-  min-height: 48px;
+  min-height: 3rem;
   align-items: center;
   justify-content: center;
-  border-radius: 0.375rem;
+  border-radius: 0.5rem;
   border-width: 1px;
   --tw-border-opacity: 1;
-  border-color: rgb(184 185 176 / var(--tw-border-opacity, 1));
+  border-color: rgb(189 207 201 / var(--tw-border-opacity, 1));
   --tw-bg-opacity: 1;
   background-color: rgb(255 255 255 / var(--tw-bg-opacity, 1));
-  padding-left: 1.5rem;
-  padding-right: 1.5rem;
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
   padding-top: 0.75rem;
   padding-bottom: 0.75rem;
-  text-align: center;
   font-weight: 500;
   --tw-text-opacity: 1;
-  color: rgb(24 45 52 / var(--tw-text-opacity, 1));
+  color: rgb(41 75 66 / var(--tw-text-opacity, 1));
   transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   transition-duration: 150ms;
@@ -1668,27 +1658,24 @@ main:focus {
 
 .btn-secondary:hover {
   --tw-bg-opacity: 1;
-  background-color: rgb(244 243 237 / var(--tw-bg-opacity, 1));
+  background-color: rgb(220 233 231 / var(--tw-bg-opacity, 1));
 }
-
-/* For use on .band-dark */
 
 .btn-light {
   display: inline-flex;
-  min-height: 48px;
+  min-height: 3rem;
   align-items: center;
   justify-content: center;
-  border-radius: 0.375rem;
+  border-radius: 0.5rem;
   --tw-bg-opacity: 1;
   background-color: rgb(255 255 255 / var(--tw-bg-opacity, 1));
-  padding-left: 1.5rem;
-  padding-right: 1.5rem;
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
   padding-top: 0.75rem;
   padding-bottom: 0.75rem;
-  text-align: center;
   font-weight: 500;
   --tw-text-opacity: 1;
-  color: rgb(24 45 52 / var(--tw-text-opacity, 1));
+  color: rgb(41 75 66 / var(--tw-text-opacity, 1));
   transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   transition-duration: 150ms;
@@ -1696,16 +1683,14 @@ main:focus {
 
 .btn-light:hover {
   --tw-bg-opacity: 1;
-  background-color: rgb(232 231 223 / var(--tw-bg-opacity, 1));
+  background-color: rgb(243 241 233 / var(--tw-bg-opacity, 1));
 }
 
-/* Surfaces */
-
 .card {
-  border-radius: 0.75rem;
+  border-radius: 1rem;
   border-width: 1px;
   --tw-border-opacity: 1;
-  border-color: rgb(210 210 201 / var(--tw-border-opacity, 1));
+  border-color: rgb(215 225 220 / var(--tw-border-opacity, 1));
   --tw-bg-opacity: 1;
   background-color: rgb(255 255 255 / var(--tw-bg-opacity, 1));
   padding: 1.5rem;
@@ -1718,12 +1703,12 @@ main:focus {
 }
 
 .card-muted {
-  border-radius: 0.75rem;
+  border-radius: 1rem;
   border-width: 1px;
   --tw-border-opacity: 1;
-  border-color: rgb(210 210 201 / var(--tw-border-opacity, 1));
+  border-color: rgb(215 225 220 / var(--tw-border-opacity, 1));
   --tw-bg-opacity: 1;
-  background-color: rgb(244 243 237 / var(--tw-bg-opacity, 1));
+  background-color: rgb(220 233 231 / var(--tw-bg-opacity, 1));
   padding: 1.5rem;
 }
 
@@ -1733,92 +1718,45 @@ main:focus {
   }
 }
 
-/* Dark closing band. Add class "on-dark" too so focus rings turn white. Use text-indigo-100 for body copy. */
-
 .band-dark {
-  --tw-bg-opacity: 1;
-  background-color: rgb(24 45 52 / var(--tw-bg-opacity, 1));
-  --tw-text-opacity: 1;
-  color: rgb(255 255 255 / var(--tw-text-opacity, 1));
+  background: var(--mangrove);
+  color: #fffefa;
 }
 
 .local-rule {
   height: 4px;
-  background: #963c27;
+  background: var(--bay-sand);
 }
 
+/* Pass 8 · Visuals: sparse water contours and the custom hero object. */
+
 .hero-local {
-  background-color: #f5f0e7;
-  background-image: repeating-linear-gradient(135deg, transparent 0 18px, rgba(24,45,52,.035) 18px 19px, transparent 19px 38px);
+  background-color: var(--sky-haze);
+  background-image: repeating-linear-gradient(174deg, transparent 0 39px, rgba(41, 75, 66, 0.035) 40px, transparent 41px 80px);
 }
 
 .band-gulf {
-  background: #174a48;
-  color: #fff;
+  background: var(--mangrove);
+  color: #fffefa;
 }
 
-.band-gulf > .wrap > h2,
-  .band-gulf > .wrap > p {
-  color: #fff;
+.band-gulf > .wrap > h2, .band-gulf > .wrap > p {
+  color: #fffefa;
 }
 
-.band-gulf > .\!wrap > h2,
-  .band-gulf > .\!wrap > p {
-  color: #fff !important;
+.band-gulf > .\!wrap > h2, .band-gulf > .\!wrap > p {
+  color: #fffefa !important;
 }
 
-.report-preview {
-  position: relative;
-  border-radius: 0.75rem;
-  border-width: 1px;
-  --tw-border-opacity: 1;
-  border-color: rgb(184 185 176 / var(--tw-border-opacity, 1));
-  --tw-bg-opacity: 1;
-  background-color: rgb(255 255 255 / var(--tw-bg-opacity, 1));
-  padding: 1.25rem;
-  --tw-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-  --tw-shadow-colored: 0 10px 15px -3px var(--tw-shadow-color), 0 4px 6px -4px var(--tw-shadow-color);
-  box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
-  box-shadow: 0 8px 24px rgba(24, 45, 52, 0.08);
+.hero-scene {
+  min-height: 440px;
 }
 
-@media (min-width: 768px) {
-  .report-preview {
-    padding: 1.5rem;
-  }
-}
-
-.report-preview {
-  box-shadow: 8px 10px 0 #ead2c2, 0 12px 30px rgba(24, 45, 52, 0.12);
-  background-image: linear-gradient(90deg, transparent 0 19px, rgba(150,60,39,.08) 19px 20px, transparent 20px), linear-gradient(#fff, #fff);
-}
-
-.report-page {
-  border-radius: 0.5rem;
-  border-width: 1px;
-  --tw-border-opacity: 1;
-  border-color: rgb(210 210 201 / var(--tw-border-opacity, 1));
-  --tw-bg-opacity: 1;
-  background-color: rgb(244 243 237 / var(--tw-bg-opacity, 1));
-  padding: 1rem;
-}
-
-.report-line {
-  height: 8px;
-  border-radius: 2px;
-  background: #d2d2c9;
-}
-
-.report-line-strong {
-  height: 12px;
-  width: 62%;
-  border-radius: 2px;
-  background: #293d43;
-}
-
-.report-mark {
-  border-left: 2px solid #176a64;
-  padding-left: 12px;
+.hero-object {
+  display: block;
+  width: min(100%, 500px);
+  margin-inline: auto;
+  filter: drop-shadow(0 20px 18px rgba(0, 0, 0, 0.16));
 }
 
 /* Forms */
@@ -1830,7 +1768,7 @@ main:focus {
   line-height: 1.25rem;
   font-weight: 500;
   --tw-text-opacity: 1;
-  color: rgb(41 61 67 / var(--tw-text-opacity, 1));
+  color: rgb(52 79 70 / var(--tw-text-opacity, 1));
 }
 
 .field-input {
@@ -1838,7 +1776,7 @@ main:focus {
   border-radius: 0.5rem;
   border-width: 1px;
   --tw-border-opacity: 1;
-  border-color: rgb(150 155 148 / var(--tw-border-opacity, 1));
+  border-color: rgb(130 152 143 / var(--tw-border-opacity, 1));
   --tw-bg-opacity: 1;
   background-color: rgb(255 255 255 / var(--tw-bg-opacity, 1));
   padding-left: 1rem;
@@ -1846,7 +1784,7 @@ main:focus {
   padding-top: 0.75rem;
   padding-bottom: 0.75rem;
   --tw-text-opacity: 1;
-  color: rgb(24 45 52 / var(--tw-text-opacity, 1));
+  color: rgb(41 75 66 / var(--tw-text-opacity, 1));
 }
 
 .field-help {
@@ -1854,7 +1792,7 @@ main:focus {
   font-size: 0.875rem;
   line-height: 1.25rem;
   --tw-text-opacity: 1;
-  color: rgb(86 102 106 / var(--tw-text-opacity, 1));
+  color: rgb(83 106 96 / var(--tw-text-opacity, 1));
 }
 
 .field-error {
@@ -1865,8 +1803,6 @@ main:focus {
   --tw-text-opacity: 1;
   color: rgb(185 28 28 / var(--tw-text-opacity, 1));
 }
-
-/* Visible-on-focus skip link */
 
 .skip-link {
   position: absolute;
@@ -1887,7 +1823,7 @@ main:focus {
   padding-bottom: 0.75rem;
   font-weight: 500;
   --tw-text-opacity: 1;
-  color: rgb(24 45 52 / var(--tw-text-opacity, 1));
+  color: rgb(41 75 66 / var(--tw-text-opacity, 1));
 }
 
 .skip-link:focus {
@@ -1925,8 +1861,24 @@ main:focus {
   position: fixed;
 }
 
+.absolute {
+  position: absolute;
+}
+
+.relative {
+  position: relative;
+}
+
 .sticky {
   position: sticky;
+}
+
+.bottom-0 {
+  bottom: 0px;
+}
+
+.right-4 {
+  right: 1rem;
 }
 
 .top-0 {
@@ -1956,6 +1908,10 @@ main:focus {
 
 .mb-4 {
   margin-bottom: 1rem;
+}
+
+.mb-5 {
+  margin-bottom: 1.25rem;
 }
 
 .mb-6 {
@@ -2042,12 +1998,12 @@ main:focus {
   height: 2.5rem;
 }
 
-.h-16 {
-  height: 4rem;
+.h-11 {
+  height: 2.75rem;
 }
 
-.h-6 {
-  height: 1.5rem;
+.h-4 {
+  height: 1rem;
 }
 
 .h-9 {
@@ -2058,28 +2014,20 @@ main:focus {
   min-height: 44px;
 }
 
-.w-1\/2 {
-  width: 50%;
-}
-
 .w-10 {
   width: 2.5rem;
 }
 
-.w-3\/4 {
-  width: 75%;
-}
-
-.w-4\/5 {
-  width: 80%;
-}
-
-.w-6 {
-  width: 1.5rem;
+.w-4 {
+  width: 1rem;
 }
 
 .w-9 {
   width: 2.25rem;
+}
+
+.w-auto {
+  width: auto;
 }
 
 .w-full {
@@ -2100,6 +2048,10 @@ main:focus {
 
 .max-w-3xl {
   max-width: 48rem;
+}
+
+.max-w-md {
+  max-width: 28rem;
 }
 
 .max-w-xl {
@@ -2138,10 +2090,6 @@ main:focus {
   list-style-type: none;
 }
 
-.grid-cols-\[0\.8fr_1\.2fr\] {
-  grid-template-columns: 0.8fr 1.2fr;
-}
-
 .flex-col {
   flex-direction: column;
 }
@@ -2172,10 +2120,6 @@ main:focus {
 
 .gap-10 {
   gap: 2.5rem;
-}
-
-.gap-12 {
-  gap: 3rem;
 }
 
 .gap-2 {
@@ -2241,10 +2185,6 @@ main:focus {
   overflow-x: auto;
 }
 
-.rounded {
-  border-radius: 0.25rem;
-}
-
 .rounded-2xl {
   border-radius: 1rem;
 }
@@ -2287,22 +2227,17 @@ main:focus {
 
 .border-gray-200 {
   --tw-border-opacity: 1;
-  border-color: rgb(210 210 201 / var(--tw-border-opacity, 1));
-}
-
-.border-gray-300 {
-  --tw-border-opacity: 1;
-  border-color: rgb(184 185 176 / var(--tw-border-opacity, 1));
+  border-color: rgb(215 225 220 / var(--tw-border-opacity, 1));
 }
 
 .border-gray-700 {
   --tw-border-opacity: 1;
-  border-color: rgb(64 82 87 / var(--tw-border-opacity, 1));
+  border-color: rgb(67 90 81 / var(--tw-border-opacity, 1));
 }
 
 .border-gray-900 {
   --tw-border-opacity: 1;
-  border-color: rgb(24 45 52 / var(--tw-border-opacity, 1));
+  border-color: rgb(41 75 66 / var(--tw-border-opacity, 1));
 }
 
 .border-green-700 {
@@ -2310,14 +2245,14 @@ main:focus {
   border-color: rgb(21 128 61 / var(--tw-border-opacity, 1));
 }
 
-.border-indigo-600 {
+.border-gulf-600 {
   --tw-border-opacity: 1;
-  border-color: rgb(150 60 39 / var(--tw-border-opacity, 1));
+  border-color: rgb(31 113 109 / var(--tw-border-opacity, 1));
 }
 
-.border-indigo-700 {
+.border-gulf-700 {
   --tw-border-opacity: 1;
-  border-color: rgb(124 48 34 / var(--tw-border-opacity, 1));
+  border-color: rgb(28 105 101 / var(--tw-border-opacity, 1));
 }
 
 .border-red-700 {
@@ -2327,12 +2262,12 @@ main:focus {
 
 .bg-gray-50 {
   --tw-bg-opacity: 1;
-  background-color: rgb(244 243 237 / var(--tw-bg-opacity, 1));
+  background-color: rgb(220 233 231 / var(--tw-bg-opacity, 1));
 }
 
 .bg-gray-900 {
   --tw-bg-opacity: 1;
-  background-color: rgb(24 45 52 / var(--tw-bg-opacity, 1));
+  background-color: rgb(41 75 66 / var(--tw-bg-opacity, 1));
 }
 
 .bg-green-50 {
@@ -2340,19 +2275,19 @@ main:focus {
   background-color: rgb(240 253 244 / var(--tw-bg-opacity, 1));
 }
 
-.bg-indigo-50 {
+.bg-gulf-700 {
   --tw-bg-opacity: 1;
-  background-color: rgb(245 233 225 / var(--tw-bg-opacity, 1));
-}
-
-.bg-indigo-700 {
-  --tw-bg-opacity: 1;
-  background-color: rgb(124 48 34 / var(--tw-bg-opacity, 1));
+  background-color: rgb(28 105 101 / var(--tw-bg-opacity, 1));
 }
 
 .bg-red-50 {
   --tw-bg-opacity: 1;
   background-color: rgb(254 242 242 / var(--tw-bg-opacity, 1));
+}
+
+.bg-sand-50 {
+  --tw-bg-opacity: 1;
+  background-color: rgb(245 236 219 / var(--tw-bg-opacity, 1));
 }
 
 .bg-white {
@@ -2396,11 +2331,6 @@ main:focus {
   padding-right: 1.5rem;
 }
 
-.py-1\.5 {
-  padding-top: 0.375rem;
-  padding-bottom: 0.375rem;
-}
-
 .py-12 {
   padding-top: 3rem;
   padding-bottom: 3rem;
@@ -2416,12 +2346,13 @@ main:focus {
   padding-bottom: 0.75rem;
 }
 
-.pb-16 {
-  padding-bottom: 4rem;
+.py-4 {
+  padding-top: 1rem;
+  padding-bottom: 1rem;
 }
 
-.pb-4 {
-  padding-bottom: 1rem;
+.pb-16 {
+  padding-bottom: 4rem;
 }
 
 .pb-8 {
@@ -2503,19 +2434,6 @@ main:focus {
   line-height: 1.75rem;
 }
 
-.text-xs {
-  font-size: 0.75rem;
-  line-height: 1rem;
-}
-
-.font-bold {
-  font-weight: 700;
-}
-
-.font-extrabold {
-  font-weight: 800;
-}
-
 .font-medium {
   font-weight: 500;
 }
@@ -2533,8 +2451,12 @@ main:focus {
   font-variant-numeric: var(--tw-ordinal) var(--tw-slashed-zero) var(--tw-numeric-figure) var(--tw-numeric-spacing) var(--tw-numeric-fraction);
 }
 
-.leading-6 {
-  line-height: 1.5rem;
+.leading-7 {
+  line-height: 1.75rem;
+}
+
+.leading-8 {
+  line-height: 2rem;
 }
 
 .leading-relaxed {
@@ -2551,32 +2473,32 @@ main:focus {
 
 .text-gray-100 {
   --tw-text-opacity: 1;
-  color: rgb(232 231 223 / var(--tw-text-opacity, 1));
+  color: rgb(243 241 233 / var(--tw-text-opacity, 1));
 }
 
 .text-gray-300 {
   --tw-text-opacity: 1;
-  color: rgb(184 185 176 / var(--tw-text-opacity, 1));
+  color: rgb(189 207 201 / var(--tw-text-opacity, 1));
 }
 
 .text-gray-600 {
   --tw-text-opacity: 1;
-  color: rgb(86 102 106 / var(--tw-text-opacity, 1));
+  color: rgb(83 106 96 / var(--tw-text-opacity, 1));
 }
 
 .text-gray-700 {
   --tw-text-opacity: 1;
-  color: rgb(64 82 87 / var(--tw-text-opacity, 1));
+  color: rgb(67 90 81 / var(--tw-text-opacity, 1));
 }
 
 .text-gray-800 {
   --tw-text-opacity: 1;
-  color: rgb(41 61 67 / var(--tw-text-opacity, 1));
+  color: rgb(52 79 70 / var(--tw-text-opacity, 1));
 }
 
 .text-gray-900 {
   --tw-text-opacity: 1;
-  color: rgb(24 45 52 / var(--tw-text-opacity, 1));
+  color: rgb(41 75 66 / var(--tw-text-opacity, 1));
 }
 
 .text-green-900 {
@@ -2584,24 +2506,24 @@ main:focus {
   color: rgb(20 83 45 / var(--tw-text-opacity, 1));
 }
 
-.text-indigo-100 {
+.text-gulf-700 {
   --tw-text-opacity: 1;
-  color: rgb(234 210 194 / var(--tw-text-opacity, 1));
+  color: rgb(28 105 101 / var(--tw-text-opacity, 1));
 }
 
-.text-indigo-700 {
+.text-gulf-800 {
   --tw-text-opacity: 1;
-  color: rgb(124 48 34 / var(--tw-text-opacity, 1));
-}
-
-.text-indigo-800 {
-  --tw-text-opacity: 1;
-  color: rgb(101 41 31 / var(--tw-text-opacity, 1));
+  color: rgb(24 93 89 / var(--tw-text-opacity, 1));
 }
 
 .text-red-900 {
   --tw-text-opacity: 1;
   color: rgb(127 29 29 / var(--tw-text-opacity, 1));
+}
+
+.text-sand-100 {
+  --tw-text-opacity: 1;
+  color: rgb(232 215 183 / var(--tw-text-opacity, 1));
 }
 
 .text-white {
@@ -2641,13 +2563,13 @@ main:focus {
 }
 
 .shadow-lg {
-  box-shadow: 0 8px 24px rgba(24, 45, 52, 0.08);
+  box-shadow: 0 8px 24px rgba(41, 75, 66, 0.08);
 }
 
-/* Self-hosted variable font (latin subset). No third-party font requests. */
+/* Pass 5 · Type: bundled OFL fonts, with no third-party font requests. */
 
 @font-face {
-  font-family: "Inter Variable";
+  font-family: "Fraunces";
 
   font-style: normal;
 
@@ -2655,57 +2577,66 @@ main:focus {
 
   font-weight: 100 900;
 
-  src: url("/assets/fonts/inter-latin-wght-normal.woff2") format("woff2-variations");
+  src: url("/assets/fonts/fraunces-latin-wght-normal.woff2") format("woff2");
 }
 
 @font-face {
-  font-family: "Plus Jakarta Sans";
+  font-family: "DM Sans";
 
   font-style: normal;
 
   font-display: swap;
 
-  font-weight: 200 800;
+  font-weight: 100 1000;
 
-  src: url("/assets/fonts/plus-jakarta-sans-latin-wght-normal.woff2") format("woff2-variations");
+  src: url("/assets/fonts/dm-sans-latin-wght-normal.woff2") format("woff2");
 }
 
-/* Shared component classes. Pages should use these instead of re-inventing
-   buttons, cards and headings, so the whole site stays consistent and
-   every text/background pair meets WCAG 2.1 AA contrast. */
+/* Pass 2 · Color: tinted paper ramp, real Gulf Teal accent and Mangrove ink. */
 
-.marker\:font-bold *::marker {
-  font-weight: 700;
+:root {
+  color-scheme: light;
+  --paper: #faf8f1;
+  --paper-raised: #fffefa;
+  --sky-haze: #dce9e7;
+  --mangrove: #294b42;
+  --gulf-teal: #247c78;
+  --bay-sand: #e8d7b7;
+  --hairline: rgba(41, 75, 66, 0.14);
 }
 
 .marker\:font-medium *::marker {
   font-weight: 500;
 }
 
-.marker\:text-indigo-700 *::marker {
-  color: rgb(124 48 34 );
+.marker\:font-semibold *::marker {
+  font-weight: 600;
 }
 
-.marker\:font-bold::marker {
-  font-weight: 700;
+.marker\:text-gulf-700 *::marker {
+  color: rgb(28 105 101 );
 }
 
 .marker\:font-medium::marker {
   font-weight: 500;
 }
 
-.marker\:text-indigo-700::marker {
-  color: rgb(124 48 34 );
+.marker\:font-semibold::marker {
+  font-weight: 600;
 }
 
-.hover\:text-indigo-700:hover {
-  --tw-text-opacity: 1;
-  color: rgb(124 48 34 / var(--tw-text-opacity, 1));
+.marker\:text-gulf-700::marker {
+  color: rgb(28 105 101 );
 }
 
-.hover\:text-indigo-800:hover {
+.hover\:text-gulf-700:hover {
   --tw-text-opacity: 1;
-  color: rgb(101 41 31 / var(--tw-text-opacity, 1));
+  color: rgb(28 105 101 / var(--tw-text-opacity, 1));
+}
+
+.hover\:text-gulf-800:hover {
+  --tw-text-opacity: 1;
+  color: rgb(24 93 89 / var(--tw-text-opacity, 1));
 }
 
 .hover\:text-white:hover {
@@ -2731,21 +2662,21 @@ main:focus {
 
 .prose-headings\:text-gray-900 :is(:where(h1, h2, h3, h4, h5, h6, th):not(:where([class~="not-prose"],[class~="not-prose"] *))) {
   --tw-text-opacity: 1;
-  color: rgb(24 45 52 / var(--tw-text-opacity, 1));
+  color: rgb(41 75 66 / var(--tw-text-opacity, 1));
 }
 
 .prose-p\:text-gray-800 :is(:where(p):not(:where([class~="not-prose"],[class~="not-prose"] *))) {
   --tw-text-opacity: 1;
-  color: rgb(41 61 67 / var(--tw-text-opacity, 1));
+  color: rgb(52 79 70 / var(--tw-text-opacity, 1));
 }
 
 .prose-a\:font-medium :is(:where(a):not(:where([class~="not-prose"],[class~="not-prose"] *))) {
   font-weight: 500;
 }
 
-.prose-a\:text-indigo-700 :is(:where(a):not(:where([class~="not-prose"],[class~="not-prose"] *))) {
+.prose-a\:text-gulf-700 :is(:where(a):not(:where([class~="not-prose"],[class~="not-prose"] *))) {
   --tw-text-opacity: 1;
-  color: rgb(124 48 34 / var(--tw-text-opacity, 1));
+  color: rgb(28 105 101 / var(--tw-text-opacity, 1));
 }
 
 .prose-a\:underline :is(:where(a):not(:where([class~="not-prose"],[class~="not-prose"] *))) {
@@ -2756,14 +2687,14 @@ main:focus {
   text-underline-offset: 2px;
 }
 
-.hover\:prose-a\:text-indigo-900 :is(:where(a):not(:where([class~="not-prose"],[class~="not-prose"] *))):hover {
+.hover\:prose-a\:text-gulf-900 :is(:where(a):not(:where([class~="not-prose"],[class~="not-prose"] *))):hover {
   --tw-text-opacity: 1;
-  color: rgb(81 35 28 / var(--tw-text-opacity, 1));
+  color: rgb(20 76 73 / var(--tw-text-opacity, 1));
 }
 
 .prose-li\:text-gray-800 :is(:where(li):not(:where([class~="not-prose"],[class~="not-prose"] *))) {
   --tw-text-opacity: 1;
-  color: rgb(41 61 67 / var(--tw-text-opacity, 1));
+  color: rgb(52 79 70 / var(--tw-text-opacity, 1));
 }
 
 @media (min-width: 640px) {
@@ -2781,6 +2712,10 @@ main:focus {
 }
 
 @media (min-width: 768px) {
+  .md\:bottom-8 {
+    bottom: 2rem;
+  }
+
   .md\:col-span-2 {
     grid-column: span 2 / span 2;
   }
@@ -2801,21 +2736,26 @@ main:focus {
     grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 
-  .md\:gap-12 {
-    gap: 3rem;
+  .md\:grid-cols-\[1\.05fr_0\.95fr\] {
+    grid-template-columns: 1.05fr 0.95fr;
   }
 
-  .md\:gap-16 {
-    gap: 4rem;
+  .md\:gap-12 {
+    gap: 3rem;
   }
 
   .md\:p-6 {
     padding: 1.5rem;
   }
 
-  .md\:py-24 {
-    padding-top: 6rem;
-    padding-bottom: 6rem;
+  .md\:py-0 {
+    padding-top: 0px;
+    padding-bottom: 0px;
+  }
+
+  .md\:py-20 {
+    padding-top: 5rem;
+    padding-bottom: 5rem;
   }
 
   .md\:pb-10 {

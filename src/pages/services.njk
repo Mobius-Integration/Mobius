@@ -24,7 +24,7 @@ description: "One accountable team for your local business's website, accessibil
         <p class="mt-3 text-gray-700">{{ s.summary }}</p>
         <ul class="mt-4 space-y-2 text-sm text-gray-800">
           {% for b in s.bullets %}
-          <li class="flex items-start gap-2"><span aria-hidden="true" class="font-medium text-indigo-700">&#10003;</span><span>{{ b }}</span></li>
+          <li class="flex items-start gap-2">{% include "partials/check-icon.njk" %}<span>{{ b }}</span></li>
           {% endfor %}
         </ul>
         {% for p in packages.all %}{% if p.id == s.package %}
@@ -41,19 +41,19 @@ description: "One accountable team for your local business's website, accessibil
     <h2 id="how-we-work-heading" class="h-section mb-6">How we work with you</h2>
     <ol class="space-y-5 text-gray-800">
       <li class="flex items-start gap-4">
-        <span aria-hidden="true" class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-700 font-medium text-white">1</span>
+        <span aria-hidden="true" class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gulf-700 font-medium text-white">1</span>
         <p><strong class="text-gray-900">Free checkup.</strong> A 20-minute call and a written scan of your website, booking flow and Google listing.</p>
       </li>
       <li class="flex items-start gap-4">
-        <span aria-hidden="true" class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-700 font-medium text-white">2</span>
+        <span aria-hidden="true" class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gulf-700 font-medium text-white">2</span>
         <p><strong class="text-gray-900">Fixed-price plan.</strong> You get a plain-English plan with a price in writing. Nothing starts until you say yes.</p>
       </li>
       <li class="flex items-start gap-4">
-        <span aria-hidden="true" class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-700 font-medium text-white">3</span>
+        <span aria-hidden="true" class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gulf-700 font-medium text-white">3</span>
         <p><strong class="text-gray-900">We build it.</strong> We do the work, test it the way your customers will use it, and show you how it runs.</p>
       </li>
       <li class="flex items-start gap-4">
-        <span aria-hidden="true" class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-700 font-medium text-white">4</span>
+        <span aria-hidden="true" class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gulf-700 font-medium text-white">4</span>
         <p><strong class="text-gray-900">Ongoing partner.</strong> If you want us to keep an eye on things, a monthly plan covers checkups, changes and questions. It is month-to-month.</p>
       </li>
     </ol>
