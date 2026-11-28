@@ -1906,8 +1906,8 @@ main:focus {
   margin-bottom: 2rem;
 }
 
-.ml-2 {
-  margin-left: 0.5rem;
+.ml-2\.5 {
+  margin-left: 0.625rem;
 }
 
 .mt-1 {
@@ -1984,10 +1984,6 @@ main:focus {
 
 .h-10 {
   height: 2.5rem;
-}
-
-.h-11 {
-  height: 2.75rem;
 }
 
 .h-4 {
@@ -2387,10 +2383,6 @@ main:focus {
   text-align: right;
 }
 
-.font-display {
-  font-family: "Fraunces", Georgia, Cambria, "Times New Roman", serif;
-}
-
 .text-2xl {
   font-size: 1.5rem;
   line-height: 2rem;
@@ -2426,6 +2418,14 @@ main:focus {
   line-height: 1.75rem;
 }
 
+.font-bold {
+  font-weight: 700;
+}
+
+.font-light {
+  font-weight: 300;
+}
+
 .font-medium {
   font-weight: 500;
 }
@@ -2449,6 +2449,10 @@ main:focus {
 
 .leading-8 {
   line-height: 2rem;
+}
+
+.leading-none {
+  line-height: 1;
 }
 
 .leading-relaxed {
