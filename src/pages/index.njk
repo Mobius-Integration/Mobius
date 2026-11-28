@@ -5,157 +5,75 @@ permalink: /
 description: Mobius Integration fixes small business websites in Tampa Bay and keeps them updated and watched, by a local person you can reach. Start with a free short write-up of your site.
 ---
 
-{# Every price on this page comes from src/_data/packages.js. The button text and link come from site.writeupCta (src/_data/site.js). #}
-
-<!-- 1. Hero -->
-<section class="section hero-local hero-scene md:py-20">
-  <div class="wrap grid items-center gap-8 md:grid-cols-[1.05fr_0.95fr] md:gap-12">
+<section class="hero-local home-hero">
+  <div class="home-hero-grid">
     <div>
-      <p class="eyebrow mb-6">Based in {{ site.region }}</p>
-      <h1 class="h-display mb-6 max-w-2xl">We fix your website and keep it working. Local, and easy to reach.</h1>
-      <p class="lede mb-4 max-w-xl">If your site is hard to use on a phone, slow, or scaring people off, it's probably costing you customers. We fix it, keep it up to date, and keep an eye on it, so you can get back to running your business.</p>
-      <p class="mb-8 max-w-xl text-lg leading-7 text-gray-800">Got an email from us? You are in the right place. It was a real person writing to you, and the offer in it is the one below.</p>
-      <div class="flex flex-col items-start gap-3">
-        <a href="{{ site.writeupCta.href }}" class="btn-primary px-6 text-lg">Get my free website write-up</a>
-        <p class="max-w-md text-gray-700">We look at your website and send you screenshots of what we see. No charge. No pressure.</p>
-      </div>
+      <p class="eyebrow mb-5">Based in {{ site.region }}</p>
+      <h1 class="h-display mb-6">We fix your website and <em>keep it working.</em> Local, and easy to reach.</h1>
+      <p class="lede mb-6">If your site is hard to use on a phone, slow, or scaring people off, it's probably costing you customers. We fix it, keep it up to date, and keep an eye on it, so you can get back to running your business.</p>
+      <p class="mb-6 text-lg leading-7 text-gray-800">Got an email from us? You are in the right place. It was a real person writing to you, and the offer in it is the one below.</p>
+      <div class="home-cta-row"><a href="{{ site.writeupCta.href }}" class="btn-primary text-lg">Get my free website write-up</a><a class="link" href="/pricing/">See what it costs</a></div>
+      <p class="mt-4 text-sm text-gray-700">We look at your website and send you screenshots of what we see. No charge. No pressure.</p>
     </div>
-    <figure class="flex flex-col items-center justify-center gap-3 py-4 md:py-0">
-      <img src="/assets/img/mobius-object.svg" alt="A dimensional Mobius loop, shaded in Gulf Teal and Mangrove with a warm Bay Sand highlight" width="350" height="220" class="hero-object" fetchpriority="high" />
-      <figcaption class="text-center text-sm text-gray-700">One continuous loop, one local partner</figcaption>
-    </figure>
-  </div>
-</section>
-
-<!-- 2. Sound familiar -->
-<section class="section bg-white" aria-labelledby="problems-heading">
-  <div class="wrap-narrow">
-    <h2 id="problems-heading" class="h-section mb-3 text-center">Sound familiar?</h2>
-    <p class="lede mx-auto mb-10 max-w-2xl text-center">These are the problems we look for on local business websites, and what each one can cost you.</p>
-    <ul class="space-y-4">
-      <li class="card flex gap-4 p-5 md:p-6">
-        <p class="text-gray-700"><strong class="block text-lg text-gray-900">Your site is tiny on phones.</strong> Customers have to pinch and zoom to read it, so they back out and call someone else.</p>
-      </li>
-      <li class="card flex gap-4 p-5 md:p-6">
-        <p class="text-gray-700"><strong class="block text-lg text-gray-900">Chrome says &ldquo;Not secure.&rdquo;</strong> Visitors see a warning next to your name, and some leave before they read a word.</p>
-      </li>
-      <li class="card flex gap-4 p-5 md:p-6">
-        <p class="text-gray-700"><strong class="block text-lg text-gray-900">There is no way to book online.</strong> A customer who wants an appointment at 9 p.m. has to wait until morning, and some will book with someone else.</p>
-      </li>
-      <li class="card flex gap-4 p-5 md:p-6">
-        <p class="text-gray-700"><strong class="block text-lg text-gray-900">It is slow to load.</strong> On a phone, people don't wait. A slow page loses some of them.</p>
-      </li>
-      <li class="card flex gap-4 p-5 md:p-6">
-        <p class="text-gray-700"><strong class="block text-lg text-gray-900">It is hard for people using screen readers.</strong> That can keep blind and low-vision customers from reading your site or booking.</p>
-      </li>
-    </ul>
-    <div class="mt-10 text-center">
-      <p class="mb-4 text-lg text-gray-800">See one of these on your own site? We will show you.</p>
-      <a href="{{ site.writeupCta.href }}" class="btn-primary">Get my free website write-up</a>
+    <div class="hero-visual" aria-label="Website features">
+      <div class="hero-sun" aria-hidden="true"></div>
+      <img src="/assets/img/logo-mark-color.svg" alt="" width="346" height="210" fetchpriority="high" />
+      <ul class="stickers" aria-label="What we fix">
+        <li class="sticker s1"><span class="sticker-icon" style="background:#D6336C;color:white"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18h2"/></svg></span>Works on phones</li>
+        <li class="sticker s2"><span class="sticker-icon" style="background:#00A0A4;color:white"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg></span>Online booking</li>
+        <li class="sticker s3"><span class="sticker-icon" style="background:#FFD447;color:#1B1B3A"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m13 2.5-8 11h6l-1 8 8-11h-6l1-8Z"/></svg></span>Loads fast</li>
+        <li class="sticker s4"><span class="sticker-icon" style="background:#00A0A4;color:white"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10.5" width="14" height="10" rx="2.5"/><path d="M8.5 10.5v-3a3.5 3.5 0 0 1 7 0v3"/></svg></span>No “Not secure” warning</li>
+        <li class="sticker s5"><span class="sticker-icon" style="background:#D6336C;color:white"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 12a8 8 0 0 1-11.7 7.1L4 20.5l1.3-4.4A8 8 0 1 1 20.5 12Z"/></svg></span>Text reminders</li>
+        <li class="sticker s6"><span class="sticker-icon" style="background:#FFD447;color:#1B1B3A"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="4.6" r="1.8"/><path d="M5 8.6h14M12 8.6V14M8.8 21l3.2-7 3.2 7"/></svg></span>Works for every visitor</li>
+      </ul>
     </div>
   </div>
 </section>
 
-<!-- 3. How it works -->
-<section class="section bg-gray-50" aria-labelledby="how-heading">
-  <div class="wrap">
-    <h2 id="how-heading" class="h-section mb-3 text-center">How it works</h2>
-    <p class="lede mx-auto mb-10 max-w-2xl text-center">Three steps. You can stop after any of them.</p>
-    <ol class="grid gap-8 md:grid-cols-3">
-      <li>
-        <span class="mb-4 flex h-10 w-10 items-center justify-center rounded-md border border-gulf-700 text-base font-medium text-gulf-800" aria-hidden="true">1</span>
-        <h3 class="mb-2 text-lg font-medium text-gray-900"><span class="sr-only">Step 1: </span>A free write-up</h3>
-        <p class="text-gray-700">We look at your website and send you a short write-up with screenshots of what we see. It is free, and it is yours to keep whether or not you ever hire us.</p>
-      </li>
-      <li>
-        <span class="mb-4 flex h-10 w-10 items-center justify-center rounded-md border border-gulf-700 text-base font-medium text-gulf-800" aria-hidden="true">2</span>
-        <h3 class="mb-2 text-lg font-medium text-gray-900"><span class="sr-only">Step 2: </span>A quick fix, if you want one</h3>
-        <p class="text-gray-700">Pick what you want fixed. We tell you the price in writing first, and most fixes are a one-time job.</p>
-      </li>
-      <li>
-        <span class="mb-4 flex h-10 w-10 items-center justify-center rounded-md border border-gulf-700 text-base font-medium text-gulf-800" aria-hidden="true">3</span>
-        <h3 class="mb-2 text-lg font-medium text-gray-900"><span class="sr-only">Step 3: </span>Monthly care, only if you want it</h3>
-        <p class="text-gray-700">If you would like us to keep your site updated and watched, there is a monthly plan. It is month-to-month, with no long-term contract.</p>
-      </li>
-    </ol>
-  </div>
+<section class="tools-band" aria-labelledby="tools-heading">
+  <h2 id="tools-heading" class="tools-title">Works with the tools you already use</h2>
+  <ul class="tools-grid" aria-label="Tools we work with">
+    {% set tools = [
+      { name: "WordPress", icon: "wordpress" }, { name: "Wix", icon: "wix" },
+      { name: "Squarespace", icon: "squarespace" }, { name: "Shopify", icon: "shopify" },
+      { name: "Google Business Profile" }, { name: "Square", icon: "square" },
+      { name: "Calendly", icon: "calendly" }, { name: "Mailchimp", icon: "mailchimp" },
+      { name: "Google Workspace" }, { name: "Microsoft 365" }, { name: "Zapier", icon: "zapier" },
+      { name: "QuickBooks", icon: "quickbooks" }
+    ] %}
+    {% for tool in tools %}<li class="tool">{% if tool.icon %}<img src="/assets/img/tools/{{ tool.icon }}.svg" alt="" aria-hidden="true" width="22" height="22">{% endif %}<span>{{ tool.name }}</span></li>{% endfor %}
+  </ul>
+  <p class="tools-note">Product names and logos belong to their owners.</p>
 </section>
 
-<!-- 4. Local, real, and new -->
-<section class="section band-gulf on-dark" aria-labelledby="proof-heading">
-  <div class="wrap">
-    <h2 id="proof-heading" class="h-section mb-3 text-center">Local, real, and straight with you</h2>
-    <p class="lede mx-auto mb-10 max-w-2xl text-center">We are a new {{ site.region }} firm, so we will not pretend to have a long client list. Here is what we can show you instead.</p>
-    <div class="grid items-start gap-6 md:grid-cols-2">
+<section class="section bg-white" aria-labelledby="problems-heading"><div class="wrap-narrow">
+  <h2 id="problems-heading" class="h-section mb-3 text-center">Sound familiar?</h2>
+  <p class="lede mx-auto mb-10 max-w-2xl text-center">These are the problems we look for on local business websites, and what each one can cost you.</p>
+  <ul class="tile-grid">
+    <li class="problem-tile"><h3>Your site is tiny on phones.</h3><p>Customers have to pinch and zoom to read it, so they back out and call someone else.</p></li>
+    <li class="problem-tile"><h3>Chrome says “Not secure.”</h3><p>Visitors see a warning next to your name, and some leave before they read a word.</p></li>
+    <li class="problem-tile"><h3>There is no way to book online.</h3><p>A customer who wants an appointment at 9 p.m. has to wait until morning, and some will book with someone else.</p></li>
+    <li class="problem-tile"><h3>It is slow to load.</h3><p>On a phone, people don't wait. A slow page loses some of them.</p></li>
+    <li class="problem-tile"><h3>It is hard for people using screen readers.</h3><p>That can keep blind and low-vision customers from reading your site or booking.</p></li>
+  </ul>
+  <div class="mt-8 text-center"><p class="mb-4 text-lg text-gray-800">See one of these on your own site? We will show you.</p><a href="{{ site.writeupCta.href }}" class="btn-primary">Get my free website write-up</a></div>
+</div></section>
 
-      <div class="card flex flex-col text-gray-900">
-        <h3 class="mb-2 text-xl font-medium text-gray-900">We looked at {{ site.region }} websites, and published what we found</h3>
-        <p class="mb-4 text-gray-700">We took one quick, read-only look at the home page of 6,587 local business websites and shared the totals. No business is named. Most of the gaps were quick fixes.</p>
-        <p><a href="/blog/tampa-bay-small-business-websites-2026/" class="link font-medium">Read the {{ site.region }} website report</a></p>
-      </div>
+<section class="section steps-section" aria-labelledby="how-heading"><div class="wrap">
+  <h2 id="how-heading" class="h-section mb-3 text-center">How it works</h2><p class="lede mx-auto mb-10 max-w-2xl text-center">Three steps. You can stop after any of them.</p>
+  <ol class="step-grid list-none p-0"><li><p class="step-num" aria-hidden="true">1</p><h3><span class="sr-only">Step 1: </span>A free write-up</h3><p>We look at your website and send you a short write-up with screenshots of what we see. It is free, and it is yours to keep whether or not you ever hire us.</p></li><li><p class="step-num" aria-hidden="true">2</p><h3><span class="sr-only">Step 2: </span>A quick fix, if you want one</h3><p>Pick what you want fixed. We tell you the price in writing first, and most fixes are a one-time job.</p></li><li><p class="step-num" aria-hidden="true">3</p><h3><span class="sr-only">Step 3: </span>Monthly care, only if you want it</h3><p>If you would like us to keep your site updated and watched, there is a monthly plan. It is month-to-month, with no long-term contract.</p></li></ol>
+</div></section>
 
-      <figure class="card-muted text-gray-900">
-        {# TODO(Mario): add a real photo of yourself here if you want one (save it in src/assets/img/, give it a real alt, and keep it small). No stock or AI photos. #}
-        <blockquote class="space-y-3 text-gray-800">
-          <p>I started Mobius Integration to help {{ site.region }} business owners with the website problems that never make it to the top of the to-do list.</p>
-          <p>We are new, and I would rather say so than pretend otherwise. If you got my email, the free write-up is exactly what it sounded like: we look at your site and send you screenshots of what we see. There is no charge and nothing to sign. If you would like to talk it over afterward, you can reach me directly.</p>
-        </blockquote>
-        <figcaption class="mt-4 font-medium text-gray-900">Mario Barillas<span class="block font-normal text-gray-700">Founder, Mobius Integration, with co-founder Eduardo Molina</span></figcaption>
-      </figure>
+<!-- Approved about copy, placed before prices. -->
+<section class="section bg-white" aria-labelledby="about-mobius-heading"><div class="wrap-narrow"><p class="eyebrow mb-5">About Mobius Integration</p><h2 id="about-mobius-heading" class="h-section mb-5">Technology that helps local business move forward.</h2><p class="text-lg leading-8 text-gray-700">Mobius Integration is Mario Barillas and Eduardo Molina's local tech partner for Tampa Bay businesses. We fix website and technology problems that make it harder for customers to trust you, get in touch, or take the next step. Start with a free short write-up: we'll show you what we found and where it appears, with screenshots, so you can decide what to do next.</p><p class="mt-6"><a href="{{ site.writeupCta.href }}" class="btn-primary">Get my free website write-up</a></p></div></section>
 
-    </div>
-  </div>
-</section>
+<section class="section band-gulf on-dark" aria-labelledby="proof-heading"><div class="wrap"><h2 id="proof-heading" class="h-section mb-3 text-center">Local, real, and straight with you</h2><p class="lede mx-auto mb-10 max-w-2xl text-center">We are a new {{ site.region }} firm, so we will not pretend to have a long client list. Here is what we can show you instead.</p><div class="proof-cards">
+  <div class="proof-card"><h3>We looked at {{ site.region }} websites, and published what we found</h3><p>We took one quick, read-only look at the home page of 6,587 local business websites and shared the totals. No business is named. Most of the gaps were quick fixes.</p><a href="/blog/tampa-bay-small-business-websites-2026/" class="link">Read the {{ site.region }} website report</a></div>
+  <figure class="proof-card proof-quote"><blockquote class="space-y-3"><p>I started Mobius Integration to help {{ site.region }} business owners with the website problems that never make it to the top of the to-do list.</p><p>We are new, and I would rather say so than pretend otherwise. If you got my email, the free write-up is exactly what it sounded like: we look at your site and send you screenshots of what we see. There is no charge and nothing to sign. If you would like to talk it over afterward, you can reach me directly.</p></blockquote><figcaption class="mt-4 font-bold">Mario Barillas<span class="block font-normal text-gray-700">Founder, Mobius Integration, with co-founder Eduardo Molina</span></figcaption></figure>
+</div></div></section>
 
-<!-- About Mobius Integration: approved copy, verbatim. -->
-<section class="section bg-white" aria-labelledby="about-mobius-heading">
-  <div class="wrap-narrow">
-    <p class="eyebrow mb-5">About Mobius Integration</p>
-    <h2 id="about-mobius-heading" class="h-section mb-5">Technology that helps local business move forward.</h2>
-    <p class="text-lg leading-8 text-gray-700">Mobius Integration is Mario Barillas and Eduardo Molina's local tech partner for Tampa Bay businesses. We fix website and technology problems that make it harder for customers to trust you, get in touch, or take the next step. Start with a free short write-up: we'll show you what we found and where it appears, with screenshots, so you can decide what to do next.</p>
-    <p class="mt-6"><a href="{{ site.writeupCta.href }}" class="btn-primary">Get my free website write-up</a></p>
-  </div>
-</section>
+<section class="section price-section" aria-labelledby="packages-heading"><div class="wrap"><h2 id="packages-heading" class="h-section mb-3 text-center">What it costs, starting at</h2><p class="lede mx-auto mb-10 max-w-2xl text-center">Most fixes are a one-time job. The monthly plan is optional. Every price is in writing before any work starts.</p>{% set showIds = ["tuneup", "sprint", "launch", "partner"] %}<ul class="price-grid list-none p-0">{% for package in packages.all %}{% if package.id in showIds %}<li class="price-card"><h3>{{ package.name }}</h3>{% if package.id == "tuneup" or package.id == "launch" %}<p class="price-start">Starting at</p>{% endif %}<p class="price-amount">{{ package.price | replace("From ", "") }}</p><p class="price-note">{{ package.priceNote }}</p><p class="price-desc">{{ package.tagline }}</p></li>{% endif %}{% endfor %}</ul><p class="mt-8 text-center"><a href="/pricing/" class="link">See every package and what each one includes</a></p></div></section>
 
-<!-- 5. Prices -->
-<section class="section bg-gray-50" aria-labelledby="packages-heading">
-  <div class="wrap">
-    <h2 id="packages-heading" class="h-section mb-3 text-center">What it costs, starting at</h2>
-    <p class="lede mx-auto mb-10 max-w-2xl text-center">Most fixes are a one-time job. The monthly plan is optional. Every price is in writing before any work starts.</p>
-    {% set showIds = ["tuneup", "sprint", "launch", "partner"] %}
-    <ul class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-      {% for package in packages.all %}
-      {% if package.id in showIds %}
-      <li class="card flex flex-col p-6 md:p-6">
-        <h3 class="mb-2 text-lg font-medium text-gray-900">{{ package.name }}</h3>
-        <p class="text-3xl font-medium tabular-nums text-gray-900">{% if package.id == "tuneup" or package.id == "launch" %}Starting at {{ package.price | replace("From ", "") }}{% else %}{{ package.price }}{% endif %}</p>
-        <p class="mb-4 text-sm text-gray-700">{{ package.priceNote }}</p>
-        <p class="flex-1 text-gray-700">{{ package.tagline }}</p>
-      </li>
-      {% endif %}
-      {% endfor %}
-    </ul>
-    <p class="mt-8 text-center"><a href="/pricing/" class="link font-medium">See every package and what each one includes</a></p>
-  </div>
-</section>
+<section class="section bg-white" aria-labelledby="serve-heading"><div class="wrap-narrow text-center"><h2 id="serve-heading" class="h-section mb-4">Who we help</h2><p class="lede">Owners of local businesses across {{ site.areas | join(", ") }} and the rest of {{ site.region }}: salons, contractors, dental offices, accounting and law offices, shops and more.</p><p class="mt-6"><a href="/industries/" class="link">See how we help each type of business</a></p></div></section>
 
-<!-- 6. Who we help (short; the full list lives on /industries/) -->
-<section class="section bg-white" aria-labelledby="serve-heading">
-  <div class="wrap-narrow text-center">
-    <h2 id="serve-heading" class="h-section mb-4">Who we help</h2>
-    <p class="lede">Owners of local businesses across {{ site.areas | join(", ") }} and the rest of {{ site.region }}: salons, contractors, dental offices, accounting and law offices, shops and more.</p>
-    <p class="mt-6"><a href="/industries/" class="link font-medium">See how we help each type of business</a></p>
-  </div>
-</section>
-
-<!-- 7. Closing band -->
-<section class="section bg-gray-50 text-center">
-  <div class="wrap-narrow">
-    <h2 class="mb-4 text-3xl font-medium text-gray-900 md:text-4xl">See what we see on your website</h2>
-    <p class="mx-auto mb-8 max-w-xl text-lg text-gray-700">
-      Send us your website address and we will email you a short write-up with screenshots. There is no charge, nothing to sign, and we reply within {{ site.responseTime }}.
-    </p>
-    <a href="{{ site.writeupCta.href }}" class="btn-primary px-6 text-lg">Get my free website write-up</a>
-    <p class="mt-6 text-gray-700">Would you rather ask a question first? <a href="/contact/" class="font-medium text-gulf-800 underline underline-offset-2">Send us a message</a>.</p>
-  </div>
-</section>
+<section class="section final-band"><div class="wrap-narrow"><h2 class="h-section mb-4">See what we see on your website</h2><p class="mx-auto mb-8 max-w-xl text-lg">Send us your website address and we will email you a short write-up with screenshots. There is no charge, nothing to sign, and we reply within {{ site.responseTime }}.</p><a href="{{ site.writeupCta.href }}" class="btn-primary text-lg">Get my free website write-up</a><p class="mt-6">Would you rather ask a question first? <a href="/contact/" class="font-bold underline">Send us a message</a>.</p></div></section>
