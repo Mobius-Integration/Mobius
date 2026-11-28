@@ -15,7 +15,7 @@ export const GROWTH_JOBS = [
  "Pick the next business type to prospect after the current list and give 3 concrete reasons from what Mobius fixes (security warnings, online booking, speed)."
 ];
 export const STUDIO_JOBS = [
- "Logo direction: describe 3 distinct logo concepts in words (mark, wordmark style, how the palette is used), and put one image prompt per concept in texture_prompts.",
+ "Icon set: 6 simple line icons drawn as inline SVG in mockup_html (website tune-up, accessibility, security warning fixed, online booking, automation, ongoing tech partner), 2px strokes in Mangrove with one Gulf Teal detail each, shown on Sky Haze tiles with labels. The logo is decided; never propose new logo concepts.",
  "Type pairing: pick a heading and a body font from Google Fonts with roles, sizes and why they fit a local, warm, competent brand.",
  "Voice: take one real line from the current outreach and rewrite it 3 ways (warmer, shorter, more local), and say which fits the brand and why.",
  "Texture set: 2 texture concepts tied to Tampa Bay (water, mangrove, sand, sky) with where each is used; put 2 image prompts in texture_prompts.",
@@ -24,7 +24,7 @@ export const STUDIO_JOBS = [
  "Social post template: one square layout for tips posts, with palette, type and where the logo sits."
 ];
 export const jobsFor = (run) => { const n = Math.abs(Number(run) || 0); return { growth: GROWTH_JOBS[n % GROWTH_JOBS.length], studio: STUDIO_JOBS[n % STUDIO_JOBS.length] }; };
-const VISUAL = "mockup_html: a self-contained HTML fragment (inline <style> only, no scripts, no external images; Google Fonts via @import is fine) laid out 1200px wide that SHOWS your piece as a finished visual, rendered to an image for #gallery. Use the approved palette (Gulf Teal #247C78, Mangrove #294B42, Bay Sand #E8D7B7, Sky Haze #DCE9E7) and real text, never lorem ipsum, invented phone numbers or addresses. Make it look designed: generous spacing, clear hierarchy, labeled swatches or sections.";
+const VISUAL = "mockup_html: a self-contained HTML fragment (inline <style> only, no scripts, no external images; Google Fonts via @import is fine) laid out 1200px wide that SHOWS your piece as a finished visual, rendered to an image for #gallery. Use the approved palette (Gulf Teal #247C78, Mangrove #294B42, Bay Sand #E8D7B7, Sky Haze #DCE9E7) with Fraunces headings and DM Sans body (Google Fonts @import) and real text, never lorem ipsum, invented phone numbers or addresses. Make it look designed: generous spacing, clear hierarchy, labeled swatches or sections.";
 // A one-off focus (meta office_focus, JSON {growth,studio}) replaces the rotation for the next standup only.
 async function jobsForRun(env,run){const r=await env.DB.prepare("SELECT value FROM meta WHERE key=?").bind("office_focus:"+run).first();if(r?.value){try{const f=JSON.parse(r.value);return {...jobsFor(run),...f};}catch{}}return jobsFor(run);}
 // The real first email going out now, cut at the signature so the footer (mailing address) never reaches a model.
@@ -43,6 +43,7 @@ const SYSTEM_FACTS = [
   "- About 10,800 local businesses with checked websites are waiting, so the list isn't the bottleneck; replies are.",
   "- Packages: Website & Accessibility Tune-Up from $497, 48-Hour Automation Sprint $997, Website Launch from $1,497, Tech Partner $297/month.",
   "- Mario approved the brand palette on Nov 27: Gulf Teal #247C78, Mangrove #294B42, Bay Sand #E8D7B7, Sky Haze #DCE9E7. It is final; never propose approving it again.",
+  "- Brand decisions (Nov 28): the logo stays Mario's existing Möbius strip (never propose new logo concepts); fonts approved: Fraunces for headings, DM Sans for body. The website is being rebuilt with this kit on a review branch.",
   "- data.live_email is the real first email going out now (the body above the signature). Quote it whenever a job asks for a real line.",
   "- Other things in motion: walk-ins with a printed kit (Davis Islands and Ybor, Dec 5), referral partners (law and accounting firms), a published Tampa Bay website report. The website redesign waits for the brand kit.",
 ].join("\n");
