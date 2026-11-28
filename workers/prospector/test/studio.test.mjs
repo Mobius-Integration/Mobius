@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { contrastRatio, generateTexture, handleStudioInteraction, paletteEmbed, parseStudioReply, pollStudio, postTurn, replyAI, resolveStudioOption } from "../src/studio.js";
 
 test("Studio JSON replies validate fields and bound button options", () => {
-  const valid = { reply: "A warm start.", options: Array.from({ length: 5 }, (_, i) => ({ label: `Option ${i}` })), palette: [{ name: "Gulf", hex: "#167C80", use: "Accent" }], textures: [], brief_updates: {} };
+  const valid = { reply: "A warm start.", mockup_html: "", options: Array.from({ length: 5 }, (_, i) => ({ label: `Option ${i}` })), palette: [{ name: "Gulf", hex: "#167C80", use: "Accent" }], textures: [], brief_updates: {} };
   assert.equal(parseStudioReply(JSON.stringify(valid)).options.length, 4);
   assert.equal(parseStudioReply("not json"), null);
   assert.equal(parseStudioReply(JSON.stringify({ ...valid, palette: [{ name: "bad", hex: "teal", use: "x" }] })), null);
@@ -27,7 +27,7 @@ test("every Studio answer carries a Think deeper button", async (t) => {
   const env={DISCORD_APP_ID:"app",DISCORD_BOT_TOKEN:"YXBw.x.y",DB:{prepare(){return{bind(){return this;},async run(){return{meta:{changes:1}};}};}}};
   const original=globalThis.fetch;let posted;t.after(()=>{globalThis.fetch=original;});
   globalThis.fetch=async(_url,opts)=>{posted=JSON.parse(opts.body);return Response.json({id:"sent"});};
-  await postTurn(env,{reply:"A warm direction.",options:[],palette:[],textures:[],brief_updates:{}},"studio");
+  await postTurn(env,{reply:"A warm direction.",mockup_html:"",options:[],palette:[],textures:[],brief_updates:{}},"studio");
   assert.ok(posted.components.some(row=>row.components.some(button=>button.custom_id==="studio:deep"&&button.label==="Think deeper")));
 });
 
@@ -65,7 +65,7 @@ test("Studio poll sends after cursor, ignores bots and non-admins, and batches a
     },
   };
   const aiInputs=[];
-  const env={DB:db,DISCORD_APP_ID:"app",DISCORD_BOT_TOKEN:"YXBw.x.y",AI:{async run(_model,{messages}){aiInputs.push(messages);return {response:JSON.stringify({reply:"What should it feel like?",options:[],palette:[],textures:[],brief_updates:{}})};}}};
+  const env={DB:db,DISCORD_APP_ID:"app",DISCORD_BOT_TOKEN:"YXBw.x.y",AI:{async run(_model,{messages}){aiInputs.push(messages);return {response:JSON.stringify({reply:"What should it feel like?",mockup_html:"",options:[],palette:[],textures:[],brief_updates:{}})};}}};
   const original=globalThis.fetch; const requests=[];
   t.after(()=>{globalThis.fetch=original;});
   globalThis.fetch=async(url,opts={})=>{const u=new URL(url);requests.push([u,opts]);if(u.pathname.endsWith("/messages")&&opts.method!=="POST")return Response.json([{id:"10000000000000004",type:0,author:{id:"admin"},content:"second"},{id:"10000000000000003",type:0,author:{id:"bot",bot:true},content:"ignore bot"},{id:"10000000000000002",type:0,author:{id:"other"},content:"ignore person"},{id:"10000000000000001",type:0,author:{id:"admin"},content:"first"}]);if(u.pathname.endsWith("/messages"))return Response.json({id:"sent"});return new Response(null,{status:204});};

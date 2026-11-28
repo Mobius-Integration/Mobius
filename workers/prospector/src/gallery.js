@@ -2,9 +2,25 @@
 // and posted there with a link back to their standup; generated images (logo concepts, textures) too.
 import puppeteer from "@cloudflare/puppeteer";
 import { botKey, discordConfig } from "./discord.js";
+import LOGO_SVG from "../../../src/assets/img/logo.svg";
 
 const FONT_HOSTS = ["https://fonts.googleapis.com/", "https://fonts.gstatic.com/"];
 export const MOCKUP_MAX = 14000;
+
+export function substituteMobiusMarks(html) {
+  const svg = LOGO_SVG.replace(/<defs>[\s\S]*?<\/defs>/i, "")
+    .replace(/fill="url\(#paint0_linear_[^)]+\)"/g, 'fill="var(--mark-outer,#247C78)"')
+    .replace(/fill="url\(#paint1_linear_[^)]+\)"/g, 'fill="var(--mark-inner,#294B42)"')
+    .replace(/fill="url\(#paint[0-9]+_radial_[^)]+\)"/g, 'fill="var(--mark-node,#294B42)"')
+    .replace(/<path[^>]*fill="black"[^>]*\/>/gi, "")
+    .replace(/viewBox="[^"]*"/, 'viewBox="1.3 1.4 346.3 209.7"');
+  return String(html || "").replace(/<mobius-mark\b([^>]*)\/>|<mobius-mark\b([^>]*)>[\s\S]*?<\/mobius-mark>/gi, (_all, self = "", paired = "") => {
+    const attrs = self || paired;
+    const style = attrs.match(/\bstyle\s*=\s*(["'])(.*?)\1/i)?.[2];
+    const klass = attrs.match(/\bclass\s*=\s*(["'])(.*?)\1/i)?.[2];
+    return svg.replace(/<svg\b/, `<svg${klass ? ` class="${klass}"` : ""}${style ? ` style="${style}"` : ""}`);
+  });
+}
 
 // Mockup HTML is model-written, so it is rendered with scripts off and no network except Google Fonts.
 export function allowRequest(url) {
@@ -13,7 +29,7 @@ export function allowRequest(url) {
 }
 
 export function wrapMockup(html) {
-  const body = String(html || "").slice(0, MOCKUP_MAX).replace(/<script[\s\S]*?<\/script>/gi, "").replace(/<script[^>]*>/gi, "");
+  const body = substituteMobiusMarks(String(html || "").slice(0, MOCKUP_MAX)).replace(/<script[\s\S]*?<\/script>/gi, "").replace(/<script[^>]*>/gi, "");
   return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data:"><style>html,body{margin:0;background:#fff}body{width:1200px;font-family:Inter,system-ui,sans-serif}</style></head><body>${body}</body></html>`;
 }
 

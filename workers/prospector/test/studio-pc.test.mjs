@@ -9,14 +9,14 @@ import { buildPrompt, handleTurn, schema } from "../scripts/studio-pc.mjs";
 test("Studio PC builds a complete prompt and matching JSON schema", () => {
   const prompt=buildPrompt({system:"rules",brief:{name:"Mobius"},history:[{author:"bot:studio",content:"Hello"}],input:"Palette?"});
   assert.match(prompt,/rules/); assert.match(prompt,/Brand brief/); assert.match(prompt,/Studio: Hello/); assert.match(prompt,/Palette\?/);
-  assert.deepEqual(schema.required,["reply","options","palette","textures","brief_updates_json"]);
+  assert.deepEqual(schema.required,["reply","mockup_html","options","palette","textures","brief_updates_json"]);
 });
 
 test("Studio PC sends valid Codex output to done", async () => {
   const root=await mkdtemp(join(tmpdir(),"studio-pc-test-"));
   try {
     const posted=[];
-    const result={reply:"A reply",options:[],palette:[],textures:[],brief_updates:{}};
+    const result={reply:"A reply",mockup_html:"",options:[],palette:[],textures:[],brief_updates:{}};
     const spawn=(cmd,args)=>{assert.equal(cmd,"codex");assert.equal(args[args.length-1],"-");const child=new EventEmitter();child.stderr=new EventEmitter();child.stdin={end(){const out=args[args.indexOf("-o")+1];writeFile(out,JSON.stringify(result)).then(()=>child.emit("close",0));}};child.kill=()=>{};return child;};
     const response=await handleTurn({id:14,deep:true,system:"system",brief:{},history:[],input:"Go"},{spawn,baseUrl:"https://board.test",fetchImpl:async(url,opts)=>{posted.push([url,JSON.parse(opts.body)]);return new Response("{}",{status:200});}});
     assert.equal(response.ok,true);assert.equal(response.id,14);assert.equal(posted[0][0],"https://board.test/studio/done");assert.equal(posted[0][1].result.reply,"A reply");
@@ -57,8 +57,8 @@ test("Studio PC schema is strict-mode valid and maps back to the Worker's shape"
   // Every object in the schema is closed and requires all of its properties (OpenAI strict mode).
   const walk = (s) => { if (s && s.type === "object") { assert.equal(s.additionalProperties, false); assert.deepEqual([...s.required].sort(), Object.keys(s.properties).sort()); Object.values(s.properties).forEach(walk); } if (s && s.items) walk(s.items); };
   walk(schema);
-  const r = toStudioResult({ reply: "Hi", options: [], palette: [], textures: [], brief_updates_json: "{\"personality\":[\"warm\"]}" });
+  const r = toStudioResult({ reply: "Hi", mockup_html: "", options: [], palette: [], textures: [], brief_updates_json: "{\"personality\":[\"warm\"]}" });
   assert.deepEqual(r.brief_updates, { personality: ["warm"] });
   assert.equal("brief_updates_json" in r, false);
-  assert.deepEqual(toStudioResult({ reply: "x", options: [], palette: [], textures: [], brief_updates_json: "not json" }).brief_updates, {});
+  assert.deepEqual(toStudioResult({ reply: "x", mockup_html: "", options: [], palette: [], textures: [], brief_updates_json: "not json" }).brief_updates, {});
 });

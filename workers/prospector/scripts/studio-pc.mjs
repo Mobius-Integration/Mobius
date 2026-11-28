@@ -10,13 +10,14 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const closed = (properties) => ({ type: "object", additionalProperties: false, required: Object.keys(properties), properties });
 export const schema = closed({
   reply: { type: "string" },
+  mockup_html: { type: "string", description: "HTML visual preview, empty when none is needed; maximum 14000 characters." },
   options: { type: "array", items: closed({ label: { type: "string" } }) },
   palette: { type: "array", items: closed({ name: { type: "string" }, hex: { type: "string", pattern: "^#[0-9a-fA-F]{6}$" }, use: { type: "string" } }) },
   textures: { type: "array", items: closed({ name: { type: "string" }, prompt: { type: "string" } }) },
   brief_updates_json: { type: "string", description: "A JSON object, as a string, with only the brand-brief fields that changed; \"{}\" when nothing changed." },
 });
 export function buildPrompt(turn) {
-  return `${turn.system}\n\nBrand brief:\n${JSON.stringify(turn.brief)}\n\nConversation history:\n${(turn.history || []).map(m => `${m.author === "bot:studio" ? "Studio" : "Mario"}: ${m.content}`).join("\n")}\n\nNew input:\n${turn.input}\n\nReturn only the required JSON object. Put brief updates in brief_updates_json as a JSON-encoded string ("{}" if none).`;
+  return `${turn.system}\n\nWhen Mario asks to see, compare or choose anything visual (fonts, logo, colours, layouts, textures in use), or you offer visual options as buttons, mockup_html MUST show them side by side, labelled exactly like the buttons, at 1200px wide. Use real fonts through Google Fonts @import, the real name Mobius Integration, and only Gulf Teal #247C78, Mangrove #294B42, Bay Sand #E8D7B7, Sky Haze #DCE9E7. Never say a sample is shown unless mockup_html contains it. Logo variations must use <mobius-mark style="..." class="..."/> for Mario's real strip; never draw a new logo shape.\n\nBrand brief:\n${JSON.stringify(turn.brief)}\n\nConversation history:\n${(turn.history || []).map(m => `${m.author === "bot:studio" ? "Studio" : "Mario"}: ${m.content}`).join("\n")}\n\nNew input:\n${turn.input}\n\nReturn only the required JSON object. Put brief updates in brief_updates_json as a JSON-encoded string ("{}" if none).`;
 }
 // Turns Codex's schema output back into the shape the Worker validates.
 export function toStudioResult(raw) {
@@ -54,7 +55,7 @@ export async function handleTurn(turn,{spawn=nodeSpawn,fetchImpl=fetch,baseUrl})
       if(!response.ok)throw new Error("Office completion rejected");
       return {ok:true,id:turn.id,ms:Date.now()-start};
     }
-    if (!result || typeof result.reply!=="string" || !Array.isArray(result.options)||!Array.isArray(result.palette)||!Array.isArray(result.textures)||!result.brief_updates||typeof result.brief_updates!=="object"||Array.isArray(result.brief_updates)) throw new Error("Invalid Codex JSON");
+    if (!result || typeof result.reply!=="string" || typeof result.mockup_html!=="string" || !Array.isArray(result.options)||!Array.isArray(result.palette)||!Array.isArray(result.textures)||!result.brief_updates||typeof result.brief_updates!=="object"||Array.isArray(result.brief_updates)) throw new Error("Invalid Codex JSON");
     const response=await fetchImpl(`${baseUrl}/studio/done`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({id:turn.id,result})});
     if(!response.ok) throw new Error("Studio completion rejected");
     return {ok:true,id:turn.id,ms:Date.now()-start};

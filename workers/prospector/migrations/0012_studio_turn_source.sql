@@ -1,0 +1,1 @@
+ALTER TABLE studio_turns ADD COLUMN source_seq INTEGER NOT NULL DEFAULT 0;
