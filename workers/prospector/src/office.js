@@ -1,5 +1,6 @@
 import { discordApi } from "./discord.js";
 import { autoSummary } from "./outbox.js";
+import { etToUtc, addDays, sqlTime } from "./outbox-rules.js";
 import { readBrief, modelText } from "./studio.js";
 import { galleryMockup, postGallery, MOCKUP_MAX } from "./gallery.js";
 
@@ -80,6 +81,39 @@ export function officeSlot(date=new Date()){
  const d=new Intl.DateTimeFormat("en-CA",{timeZone:"America/New_York",year:"numeric",month:"2-digit",day:"2-digit"}).format(date);
  return `${d} ${String(hour).padStart(2,"0")}`;
 }
+export function eveningSummaryText({made=[],proposals=[],builder=[],held=[],replies=[],outreach={}}={}) {
+ const lines=[];
+ if(made.length) lines.push(`Made today: ${made.length} #gallery post${made.length===1?"":"s"}`, ...made.slice(0,6).map(x=>`${String(x.caption||"Gallery post").split("\n")[0].replace(/\*\*/g,"").slice(0,100)} — https://discord.com/channels/${x.guild}/${x.channel_id}/${x.message_id}`));
+ if(proposals.length||builder.length||held.length||replies.length){lines.push("Needs your tap:");for(const p of proposals)lines.push(`Proposal: ${p.title} https://discord.com/channels/${p.guild}/${p.channel_id}/${p.thread_id}`);for(const x of builder)lines.push(`Builder review: ${x.title}`);for(const x of held)lines.push(`Held email: ${x}`);for(const x of replies)lines.push(`Reply draft: ${x}`);}
+ const counts=[`first emails ${outreach.first||0}`,`follow-ups ${outreach.follow||0}`,`replies ${outreach.replies||0}`,`bounces ${outreach.bounces||0}`];
+ if(counts.some((x,i)=>Number(Object.values(outreach)[i])>0))lines.push(`Outreach today: ${counts.join(" · ")}`);
+ return (lines.length?lines.join("\n"):"Nothing new today.").slice(0,1899);
+}
+const nyDay=(d)=>new Intl.DateTimeFormat("en-CA",{timeZone:"America/New_York",year:"numeric",month:"2-digit",day:"2-digit"}).format(d);
+export async function postEveningSummary(env,now=new Date()) {
+ const parts=new Intl.DateTimeFormat("en-US",{timeZone:"America/New_York",hour:"numeric",minute:"numeric",hour12:false}).formatToParts(now),v=Object.fromEntries(parts.map(x=>[x.type,x.value]));
+ if(Number(v.hour)%24!==21||Number(v.minute)!==30)return false;
+ const day=nyDay(now),key="office_evening_summary_day",sent=await env.DB.prepare("SELECT value FROM meta WHERE key=?").bind(key).first();if(sent?.value===day)return false;
+ const c=await cfg(env);if(!c.channels?.hq)return false;
+ const [gallery,proposals,builder,held,replies]=await Promise.all([
+  env.DB.prepare("SELECT channel_id,message_id,caption FROM gallery_posts WHERE created_at>=? AND created_at<? ORDER BY id DESC").bind(sqlTime(etToUtc(day,0,0)),sqlTime(etToUtc(addDays(day,1),0,0))).all(),
+  env.DB.prepare("SELECT title,thread_id FROM office_proposals WHERE state='proposed'").all(),
+  env.DB.prepare("SELECT title FROM office_proposals WHERE build_state='ready_for_review'").all(),
+  env.DB.prepare("SELECT COALESCE(draft_subject,prospects.domain) AS label FROM outreach JOIN prospects ON prospects.id=outreach.prospect_id WHERE auto_state='held'").all(),
+  env.DB.prepare("SELECT COALESCE(subject,'Reply') AS label FROM replies WHERE state='drafted'").all()
+ ]);
+ const guild=c.guild_id||c.guild||"@me", links=gallery.results||[], props=(proposals.results||[]).map(p=>({...p,guild,channel_id:c.channels.tasks}));
+ const from=sqlTime(etToUtc(day,0,0)),to=sqlTime(etToUtc(addDays(day,1),0,0));
+ const [first,touch,reply,bounce]=await Promise.all([
+  env.DB.prepare("SELECT COUNT(*) AS n FROM outreach WHERE sent_via='auto' AND sent_at>=? AND sent_at<?").bind(from,to).first(),
+  env.DB.prepare("SELECT COUNT(*) AS n FROM touches WHERE state='sent' AND sent_at>=? AND sent_at<?").bind(from,to).first(),
+  env.DB.prepare("SELECT COUNT(*) AS n FROM replies WHERE received_at>=? AND received_at<?").bind(from,to).first(),
+  env.DB.prepare("SELECT COUNT(*) AS n FROM outreach WHERE bounced_at IS NOT NULL AND bounced_at>=? AND bounced_at<?").bind(from,to).first()
+ ]);
+ const text=eveningSummaryText({made:links.map(x=>({...x,guild})),proposals:props,builder:builder.results||[],held:(held.results||[]).map(x=>x.label),replies:(replies.results||[]).map(x=>x.label),outreach:{first:first?.n||0,follow:touch?.n||0,replies:reply?.n||0,bounces:bounce?.n||0}});
+ const {discordSend}=await import("./discord.js");await discordSend(env,"hq",{content:text});
+ await env.DB.prepare("INSERT INTO meta(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(key,day).run();return true;
+}
 async function cfg(env){const r=await env.DB.prepare("SELECT value FROM meta WHERE key='discord'").first();try{return JSON.parse(r?.value||"{}")}catch{return {};}}
 async function notebook(env,role){await env.DB.prepare("INSERT OR IGNORE INTO office_agents(role,notebook) VALUES (?, '')").bind(role).run(); const r=await env.DB.prepare("SELECT notebook FROM office_agents WHERE role=?").bind(role).first();return bounded(r?.notebook);}
 async function snapshot(env){
@@ -144,7 +178,7 @@ export async function officeTurnResult(env,row,raw,backup=false){
  const gcfg=await cfg(env),job=(await jobsForRun(env,run))[row.role]||"";
  if(parsed.mockup_html&&row.step==="work"){const ok=await galleryMockup(env,{role:row.role,job,html:parsed.mockup_html,threadId:rr.thread_id,guild:gcfg.guild});if(ok)await postAgent(env,rr.thread_id,row.role,"Visual posted in #gallery.");}
  if(parsed.texture_prompts?.length&&env.AI)await generateTextures(env,rr.thread_id,parsed.texture_prompts,{guild:gcfg.guild,role:row.role});
- if(fullStep==="chief:wrap"){await proposals(env,run,rr.thread_id,parsed.proposals||[]);if(parsed.thread_title){try{const t=await discordApi(env,`/channels/${rr.thread_id}`);const base=String(t?.name||"Standup").replace(/ \(test run\)$/,"");const name=`${base} · ${escapeMentions(parsed.thread_title)}`.slice(0,100);await discordApi(env,`/channels/${rr.thread_id}`,"PATCH",{name});}catch(e){console.error("prospector: thread rename failed:",e?.message||"unknown error");}}await env.DB.prepare("UPDATE office_runs SET state='done',summary=?,done_at=datetime('now') WHERE id=?").bind(bounded(parsed.summary),run).run();return true;}
+ if(fullStep==="chief:wrap"){await proposals(env,run,rr.thread_id,parsed.proposals||[]);try{const t=await discordApi(env,`/channels/${rr.thread_id}`);const base=String(t?.name||"Standup").replace(/ \(test run\)$/ ,"");const name=`${base} · ${escapeMentions(parsed.thread_title||"Standup complete")}`.slice(0,100);await discordApi(env,`/channels/${rr.thread_id}`,"PATCH",{name,archived:true});}catch(e){console.error("prospector: thread close failed:",e?.message||"unknown error");}await env.DB.prepare("UPDATE office_runs SET state='done',summary=?,done_at=datetime('now') WHERE id=?").bind(bounded(parsed.summary),run).run();return true;}
  await queueStep(env,run,index+1);return true;
 }
 export async function handleOfficeInteraction(body,env){const id=String(body.data?.custom_id||""),m=/^office:proposal:(approve|reject):(\d+)$/.exec(id);if(!m)return null;const [,action,pid]=m,c=await cfg(env),user=String(body.member?.user?.id||body.user?.id||"");if(!c.admins?.includes(user))return {type:4,data:{content:"Not allowed.",flags:64}};const proposal=await env.DB.prepare("SELECT thread_id,state FROM office_proposals WHERE id=?").bind(Number(pid)).first();if(!proposal)return {type:4,data:{content:"Proposal not found.",flags:64}};const forum=await discordApi(env,`/channels/${c.channels.tasks}`),tagName=action==="approve"?"approved":"done",tag=forum.available_tags?.find(t=>t.name===tagName);const thread=await discordApi(env,`/channels/${proposal.thread_id}`);await discordApi(env,`/channels/${proposal.thread_id}`,"PATCH",{applied_tags:[...(thread.applied_tags||[]).filter(x=>!(forum.available_tags||[]).some(t=>t.id===x)),tag.id]});await discordApi(env,`/channels/${proposal.thread_id}/messages`,"POST",{content:`${action==="approve"?"Approved":"Rejected"} by <@${user}>.`,components:[],allowed_mentions:{parse:[]}});await env.DB.prepare("UPDATE office_proposals SET state=?,build_state=CASE WHEN ?='approve' THEN 'queued' ELSE build_state END,build_updated_at=CASE WHEN ?='approve' THEN datetime('now') ELSE build_updated_at END WHERE id=?").bind(action==="approve"?"approved":"rejected",action,action,Number(pid)).run();return {type:6};}
@@ -154,6 +188,7 @@ export async function handleOfficeControl(id,env){
  const r=await startOfficeRun(env,{manual:true});return r.ok?{type:7,data:{content:"Standup started.",components:[]}}:{type:4,data:{content:`Couldn't start a standup: ${r.reason}.`,flags:64}};
 }
 export async function pollOffice(env){
+ try { await postEveningSummary(env); } catch (e) { console.error("prospector: evening summary failed:",e?.message||"unknown error"); }
  const stale=await env.DB.prepare("SELECT id,thread_id FROM office_runs WHERE state='active' AND created_at < datetime('now','-45 minutes')").all();
  for(const r of stale.results||[]){await env.DB.prepare("UPDATE office_runs SET state='failed',summary='Standup stalled and was closed.',done_at=datetime('now') WHERE id=?").bind(r.id).run();await env.DB.prepare("UPDATE studio_turns SET state='fallback',note='run closed' WHERE kind='office' AND run_id=? AND state IN ('pending','claimed')").bind(r.id).run();try{await postAgent(env,r.thread_id,"chief","This standup stalled and was closed. The next one starts on schedule.");}catch{}}
  const slot=officeSlot();if(slot)await startOfficeRun(env);const active=await env.DB.prepare("SELECT id,thread_id FROM office_runs WHERE state='active'").first();if(!active)return;const c=await cfg(env);const msgs=await discordApi(env,`/channels/${active.thread_id}/messages?limit=50`);const latest=(msgs||[]).filter(m=>!m.author?.bot&&c.admins?.includes(String(m.author?.id))).sort((a,b)=>BigInt(a.id)>BigInt(b.id)?-1:1)[0];if(latest){const old=await env.DB.prepare("SELECT value FROM meta WHERE key='office_last_mario'").first();if(old?.value!==latest.id){await env.DB.prepare("INSERT INTO meta(key,value) VALUES('office_last_mario',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(latest.id).run();const say=String(latest.content||"").slice(0,1500);const pending=await env.DB.prepare("SELECT id,prompt FROM studio_turns WHERE kind='office' AND run_id=? AND state='pending' ORDER BY id LIMIT 1").bind(active.id).first();if(pending){await env.DB.prepare("UPDATE studio_turns SET prompt=? WHERE id=?").bind(`Mario said (top priority; address directly): ${say}\n\n${pending.prompt}`,pending.id).run();}else await env.DB.prepare("INSERT INTO meta(key,value) VALUES('office_mario_pending',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(say).run();}}

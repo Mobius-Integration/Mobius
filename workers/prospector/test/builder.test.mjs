@@ -16,7 +16,7 @@ test("0011 migration columns support queued claim and updates with real SQLite",
  assert.equal(await updateBuilderTask(env,{id:1,state:"done",kind:"decision",note:"Use the existing brand palette."}),true);
  assert.equal(await updateBuilderTask(env,{id:1,state:"done",kind:"weird",note:"No"}),false);
  assert.equal(await updateBuilderTask(env,{id:1,state:"done",kind:"content",note:"x".repeat(1501)}),false);
- assert.equal(calls.length,2);assert.ok(calls.every(c=>c.body.allowed_mentions.parse.length===0));
+ assert.equal(calls.length,1);assert.ok(calls.every(c=>c.body.allowed_mentions.parse.length===0));
  const brief=JSON.parse(DB.raw.prepare("SELECT brief FROM studio_brief WHERE id=1").get().brief);assert.equal(brief.decisions.at(-1).text,"Use the existing brand palette.");
 });
 
@@ -49,4 +49,13 @@ test("a 'classifying' update doesn't count as a finished decision or touch the b
   assert.equal(raw.prepare("SELECT build_state FROM office_proposals WHERE id=1").get().build_state, "classifying");
   assert.equal(raw.prepare("SELECT brief FROM studio_brief WHERE id=1").get().brief, before);
   assert.equal(posts.some((u) => u.includes("/channels/900/")), false, "no #builds post for classifying");
+});
+
+test("#builds only gets ready_for_review and failed updates",async()=>{
+ const {DatabaseSync}=await import("node:sqlite"),{readdirSync,readFileSync}=await import("node:fs");const raw=new DatabaseSync(":memory:");for(const f of readdirSync(new URL("../migrations/",import.meta.url)).sort())raw.exec(readFileSync(new URL(`../migrations/${f}`,import.meta.url),"utf8"));
+ const DB={prepare(sql){let a=[];const s=raw.prepare(sql);return{bind(...v){a=v;return this},async first(){return s.get(...a)||null},async run(){const r=s.run(...a);return{meta:{changes:Number(r.changes)}}}}}};
+ raw.prepare("INSERT INTO meta(key,value) VALUES('discord',?)").run(JSON.stringify({channels:{builds:"800"}}));raw.prepare("INSERT INTO office_runs(slot,state) VALUES('x','done')").run();raw.prepare("INSERT INTO office_proposals(run_id,title,why,owner,thread_id) VALUES(1,'T','W','Mario','700')").run();
+ const calls=[];globalThis.fetch=async(url)=>{calls.push(String(url));return new Response("{}")};const {updateBuilderTask}=await import("../src/builder.js"),env={DB,DISCORD_APP_ID:"app",DISCORD_BOT_TOKEN:"YXBw.x.y"};
+ for(const state of ["classifying","building","done","ready_for_review","failed"])assert.equal(await updateBuilderTask(env,{id:1,state,kind:"content",note:"Status update."}),true);
+ assert.equal(calls.filter(u=>u.includes("/channels/800/messages")).length,2);assert.equal(calls.filter(u=>u.includes("/channels/700/messages")).length,5);raw.close();
 });

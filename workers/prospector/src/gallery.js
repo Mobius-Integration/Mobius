@@ -56,7 +56,11 @@ export async function postGallery(env, content, files) {
   form.append("payload_json", JSON.stringify({ content: String(content).slice(0, 1900), allowed_mentions: { parse: [] } }));
   files.forEach((f, i) => form.append(`files[${i}]`, new Blob([f.bytes], { type: f.type }), f.name));
   const r = await fetch(`https://discord.com/api/v10/channels/${channel}/messages`, { method: "POST", headers: { Authorization: `Bot ${key}` }, body: form });
-  return r.ok;
+  if (!r.ok) return false;
+  const message = await r.json();
+  try { await env.DB.prepare("INSERT INTO gallery_posts(channel_id,message_id,caption,created_at) VALUES(?,?,?,datetime('now'))").bind(channel, String(message.id), String(content).slice(0,1900)).run(); }
+  catch (e) { console.error("prospector: gallery post record failed:", e?.message || "unknown error"); }
+  return message;
 }
 
 const withTimeout = (p, ms) => Promise.race([p, new Promise((_, no) => setTimeout(() => no(new Error("render timeout")), ms))]);

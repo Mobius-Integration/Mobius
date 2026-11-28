@@ -23,7 +23,7 @@ function makeDb() {
 function setup() {
   const DB = makeDb();
   DB.raw.prepare("INSERT INTO meta (key, value) VALUES ('discord', ?)").run(JSON.stringify({
-    admins: ["1"], channels: { office: "100", tasks: "200", "brand-studio": "300" }, webhooks: { office: { id: "9", token: "tok" } },
+    admins: ["1"], channels: { office: "100", tasks: "200", hq:"400", "brand-studio": "300" }, webhooks: { office: { id: "9", token: "tok" } },
   }));
   const calls = [];
   globalThis.fetch = async (url, init = {}) => {
@@ -119,4 +119,18 @@ test("wrap posts plain proposals (If you approve / Why / Effort) and names the t
   assert.match(content, /\*\*Effort:\*\* small: one email template/);
   const rename = calls.find((c) => c.url.endsWith("/channels/600") && c.method === "PATCH");
   assert.equal(JSON.parse(rename.body).name, "Standup · Sat Nov 28 · 9 PM · Follow-up test + palette");
+  assert.equal(JSON.parse(rename.body).archived, true);
+});
+
+test("evening summary has populated sections, omits empty sections, and stays concise", async()=>{
+ const {eveningSummaryText}=await import("../src/office.js");
+ const text=eveningSummaryText({made:[{guild:"g",channel_id:"c",message_id:"m",caption:"A useful mockup"}],proposals:[{title:"Approve",guild:"g",channel_id:"t",thread_id:"p"}],outreach:{first:2,follow:0,replies:1,bounces:0}});
+ assert.match(text,/Made today: 1 #gallery post/);assert.match(text,/A useful mockup — https:\/\/discord.com\/channels\/g\/c\/m/);assert.match(text,/Needs your tap:\nProposal: Approve/);assert.match(text,/Outreach today: first emails 2 · follow-ups 0 · replies 1 · bounces 0/);
+ assert.equal(eveningSummaryText(),"Nothing new today.");assert.ok(text.length<1900);
+});
+
+test("evening summary posts at 9:30 PM New York once per day",async()=>{
+ const {env,DB,calls}=setup();const {postEveningSummary}=await import("../src/office.js");const now=new Date("2026-11-28T02:30:00Z");
+ assert.equal(await postEveningSummary(env,new Date("2026-11-28T02:29:00Z")),false);assert.equal(await postEveningSummary(env,now),true);assert.equal(await postEveningSummary(env,now),false);
+ assert.equal(calls.filter(c=>c.url.endsWith("/channels/400/messages")).length,1);
 });

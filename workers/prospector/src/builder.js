@@ -36,7 +36,7 @@ export async function updateBuilderTask(env, body) {
   const cfgValue=await cfg(env), message=`🛠️ Builder · ${state} · ${body.kind}\n**${task.title}**\n${body.note}`;
   await post(env,task.thread_id,message);
   // #builds gets the milestones (building, ready for review, done, failed), not the "classifying" chatter.
-  if(cfgValue.channels?.builds&&state!=="classifying") await post(env,cfgValue.channels.builds,message);
+  if(cfgValue.channels?.builds&&["ready_for_review","failed"].includes(state)) await post(env,cfgValue.channels.builds,message);
   // A finished visual is rendered and posted to #gallery, linked back to the task thread.
   if(state==="done"&&body.mockup_html&&body.mockup_html.trim()){const ok=await galleryMockup(env,{role:"builder",job:task.title,html:body.mockup_html,threadId:task.thread_id,guild:cfgValue.guild,label:"From the task"});if(ok){try{await post(env,task.thread_id,"Visual posted in #gallery.");}catch{}}}
   return true;
