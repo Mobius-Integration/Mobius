@@ -2506,6 +2506,10 @@ main:focus{
   font-weight:500
 }
 
+footer .brand-name{
+  color:#fff
+}
+
 .beach-header{
   border:0;
   background:#fff
