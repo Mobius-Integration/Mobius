@@ -46,13 +46,13 @@ export async function postGallery(env, content, files) {
 const withTimeout = (p, ms) => Promise.race([p, new Promise((_, no) => setTimeout(() => no(new Error("render timeout")), ms))]);
 
 // Renders one agent's mockup and posts it. Never throws: a failed visual must not stop the standup.
-export async function galleryMockup(env, { role, job, html, threadId, guild }) {
+export async function galleryMockup(env, { role, job, html, threadId, guild, label = "From the standup" }) {
   try {
     if (!String(html || "").trim()) return false;
     const png = await withTimeout(renderMockup(env, html), 30000);
     if (!png?.length) return false;
-    const who = role === "studio" ? "Studio" : role === "growth" ? "Growth" : "Chief";
-    const link = guild && threadId ? `\nFrom the standup: https://discord.com/channels/${guild}/${threadId}` : "";
+    const who = { studio: "Studio", growth: "Growth", builder: "Builder" }[role] || "Office";
+    const link = guild && threadId ? `\n${label}: https://discord.com/channels/${guild}/${threadId}` : "";
     return await postGallery(env, `**${who}** · ${String(job || "").split(/[.:]/)[0].slice(0, 120)}${link}`, [{ bytes: png, type: "image/png", name: `${role}-mockup.png` }]);
   } catch (e) { console.error("prospector: gallery mockup failed:", e?.message || "unknown error"); return false; }
 }

@@ -1,5 +1,6 @@
 import { botKey } from "./discord.js";
 import { readBrief } from "./studio.js";
+import { galleryMockup, MOCKUP_MAX } from "./gallery.js";
 
 const STATES = new Set(["classifying", "building", "ready_for_review", "done", "failed"]);
 const KINDS = new Set(["decision", "content", "code"]);
@@ -10,7 +11,10 @@ export async function nextBuilderTask(env) {
   if (!candidate) return null;
   const claimed = await env.DB.prepare("UPDATE office_proposals SET build_state='claimed',build_updated_at=datetime('now') WHERE id=? AND build_state='queued'").bind(candidate.id).run();
   if (!Number(claimed.meta?.changes || 0)) return null;
-  return await env.DB.prepare("SELECT id,title,why,owner,thread_id FROM office_proposals WHERE id=?").bind(candidate.id).first();
+  const task = await env.DB.prepare("SELECT id,title,why,owner,thread_id FROM office_proposals WHERE id=?").bind(candidate.id).first();
+  // Brand context so visual tasks use the approved palette and fonts instead of guessing.
+  let brief = ""; try { brief = JSON.stringify(await readBrief(env)).slice(0, 3000); } catch {}
+  return task ? { ...task, context: { brand_brief: brief, palette: "Approved: Gulf Teal #247C78, Mangrove #294B42, Bay Sand #E8D7B7, Sky Haze #DCE9E7" } } : null;
 }
 async function post(env, channel, content) {
   const token = await botKey(env); if (!token) throw new Error("Discord bot is not configured.");
@@ -18,7 +22,7 @@ async function post(env, channel, content) {
   if (!r.ok) throw new Error(`Discord post failed (${r.status}).`);
 }
 export async function updateBuilderTask(env, body) {
-  if (!body || Object.keys(body).some(k=>!(["id","state","kind","note","branch"].includes(k))) || !Number.isSafeInteger(body.id) || body.id < 1 || !STATES.has(body.state) || !KINDS.has(body.kind) || !validText(body.note,1500,true) || (body.branch !== undefined && (!validText(body.branch,120,true) || !/^[A-Za-z0-9._/-]+$/.test(body.branch)))) return false;
+  if (!body || Object.keys(body).some(k=>!(["id","state","kind","note","branch","mockup_html"].includes(k))) || !Number.isSafeInteger(body.id) || body.id < 1 || !STATES.has(body.state) || !KINDS.has(body.kind) || !validText(body.note,1500,true) || (body.mockup_html !== undefined && !validText(body.mockup_html, MOCKUP_MAX)) || (body.branch !== undefined && (!validText(body.branch,120,true) || !/^[A-Za-z0-9._/-]+$/.test(body.branch)))) return false;
   // The PC reports "classifying" before it knows the kind, so only a finished decision counts as one.
   const state=body.state;
   const task = await env.DB.prepare("SELECT title,thread_id FROM office_proposals WHERE id=?").bind(body.id).first(); if (!task) return false;
@@ -33,5 +37,7 @@ export async function updateBuilderTask(env, body) {
   await post(env,task.thread_id,message);
   // #builds gets the milestones (building, ready for review, done, failed), not the "classifying" chatter.
   if(cfgValue.channels?.builds&&state!=="classifying") await post(env,cfgValue.channels.builds,message);
+  // A finished visual is rendered and posted to #gallery, linked back to the task thread.
+  if(state==="done"&&body.mockup_html&&body.mockup_html.trim()){const ok=await galleryMockup(env,{role:"builder",job:task.title,html:body.mockup_html,threadId:task.thread_id,guild:cfgValue.guild,label:"From the task"});if(ok){try{await post(env,task.thread_id,"Visual posted in #gallery.");}catch{}}}
   return true;
 }

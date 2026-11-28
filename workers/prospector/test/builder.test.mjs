@@ -22,12 +22,12 @@ test("0011 migration columns support queued claim and updates with real SQLite",
 
 test("Builder PC classifies and dispatches decision, content and code tasks; existing worktree fails cleanly",async()=>{
  const {dispatchTask,dailyCap,dailyCount}=await import("../scripts/builder-pc.mjs");assert.equal(dailyCap(undefined),3);assert.equal(dailyCap("2"),2);assert.equal(dailyCap("99"),20);assert.equal(dailyCount("2026-11-25T08:00 task 1 done\n2026-11-25T09:00 task 2 failed\n2026-11-24T23:00 task 3 done","2026-11-25"),2);const root=mkdtempSync(join(tmpdir(),"builder-pc-test-"));
- try{for(const kind of ["decision","content","code"]){const sends=[];const result={kind,summary:"Summary",content:"Draft text",brief:"Implement the approved change."};
+ try{for(const kind of ["decision","content","code"]){const sends=[];const result={kind,summary:"Summary",finished_piece:"Hi Maria, here is the finished draft text.",mockup_html:"",brief:"Implement the approved change."};
   const spawn=(cmd,args)=>{const child=new EventEmitter();child.stdout=new EventEmitter();child.stderr=new EventEmitter();child.stdin={end(){if(cmd==="codex"){const out=args[args.indexOf("-o")+1];writeFileSync(out,JSON.stringify(result));}queueMicrotask(()=>child.emit("close",0));}};return child;};
   const outcome=await dispatchTask({id:9,title:"Approved"},{baseUrl:"https://board",fetchImpl:async(url,init)=>{sends.push({url,body:JSON.parse(init.body)});return new Response("{}")},spawn,workRoot:join(root,kind,"work"),briefRoot:join(root,kind,"briefs"),workDir:root});
   assert.equal(outcome.kind,kind);assert.equal(outcome.state,kind==="code"?"ready_for_review":"done");assert.ok(sends.some(x=>x.body.state===outcome.state));
  }
- const existing=join(root,"existing","task-10");mkdirSync(existing,{recursive:true});const sends=[];const spawn=(cmd,args)=>{const c=new EventEmitter();c.stdout=new EventEmitter();c.stderr=new EventEmitter();c.stdin={end(){if(cmd==="codex")writeFileSync(args[args.indexOf("-o")+1],JSON.stringify({kind:"code",summary:"s",content:"",brief:"brief"}));queueMicrotask(()=>c.emit("close",0));}};return c;};
+ const existing=join(root,"existing","task-10");mkdirSync(existing,{recursive:true});const sends=[];const spawn=(cmd,args)=>{const c=new EventEmitter();c.stdout=new EventEmitter();c.stderr=new EventEmitter();c.stdin={end(){if(cmd==="codex")writeFileSync(args[args.indexOf("-o")+1],JSON.stringify({kind:"code",summary:"s",finished_piece:"",mockup_html:"",brief:"brief"}));queueMicrotask(()=>c.emit("close",0));}};return c;};
  const failed=await dispatchTask({id:10,title:"Existing"},{baseUrl:"https://board",fetchImpl:async(u,i)=>{sends.push(JSON.parse(i.body));return new Response("{}")},spawn,workRoot:join(root,"existing"),briefRoot:join(root,"briefs"),workDir:root});assert.equal(failed.reason,"Worktree already exists");assert.equal(sends.at(-1).state,"failed");
  }finally{rmSync(root,{recursive:true,force:true});}
 });
