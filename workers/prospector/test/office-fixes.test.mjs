@@ -124,8 +124,8 @@ test("wrap posts plain proposals (If you approve / Why / Effort) and names the t
 
 test("evening summary has populated sections, omits empty sections, and stays concise", async()=>{
  const {eveningSummaryText}=await import("../src/office.js");
- const text=eveningSummaryText({made:[{guild:"g",channel_id:"c",message_id:"m",caption:"A useful mockup"}],proposals:[{title:"Approve",guild:"g",channel_id:"t",thread_id:"p"}],outreach:{first:2,follow:0,replies:1,bounces:0}});
- assert.match(text,/Made today: 1 #gallery post/);assert.match(text,/A useful mockup — https:\/\/discord.com\/channels\/g\/c\/m/);assert.match(text,/Needs your tap:\nProposal: Approve/);assert.match(text,/Outreach today: first emails 2 · follow-ups 0 · replies 1 · bounces 0/);
+ const text=eveningSummaryText({made:[{guild:"g",channel_id:"c",message_id:"m",caption:"A useful mockup"}],proposals:[{title:"Approve",guild:"g",channel_id:"t",thread_id:"p"}],outreach:{first:2,follow:0,clicks:1,replies:1,bounces:0}});
+ assert.match(text,/Made today: 1 #gallery post/);assert.match(text,/A useful mockup — https:\/\/discord.com\/channels\/g\/c\/m/);assert.match(text,/Needs your tap:\nProposal: Approve/);assert.match(text,/Outreach today: first emails 2 · follow-ups 0 · human clicks 1 · replies 1 · bounces 0/);
  assert.equal(eveningSummaryText(),"Nothing new today.");assert.ok(text.length<1900);
 });
 

@@ -16,6 +16,7 @@ browser = { binding = "BROWSER" }
 # "/ops" itself is the board's permanent address; "/ops/*" doesn't match it, so it has its own route.
 routes = [
   { pattern = "mobiusintegration.com/discord/interactions", zone_name = "mobiusintegration.com" },
+  { pattern = "mobiusintegration.com/r/*", zone_name = "mobiusintegration.com" },
   { pattern = "mobiusintegration.com/ops", zone_name = "mobiusintegration.com" },
   { pattern = "mobiusintegration.com/ops/*", zone_name = "mobiusintegration.com" },
 ]

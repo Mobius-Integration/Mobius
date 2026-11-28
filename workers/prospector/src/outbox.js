@@ -20,7 +20,7 @@ import { checkSite } from "../../shared/site-check.js";
 import { callAgent, validAgentUrl } from "./agent.js";
 import { PROSPECTOR_UA, findContact, emailBase, mxOk, hostOf, rootOf } from "./contacts.js";
 import { partnerGroup, lawishName } from "./partners.js";
-import { findingsFor, prepareOne, parseJson, PICK_COLUMNS, NOT_PARKED, footerText, esc, typeLabel } from "./digest.js";
+import { findingsFor, prepareOne, parseJson, PICK_COLUMNS, NOT_PARKED, footerText, esc, typeLabel, TEXT_SIGNATURE } from "./digest.js";
 import { markProspect, matchSentCopy, whenLabel } from "./marks.js";
 import { recordReply, processReplies } from "./replykit.js";
 import { verifyInBrowser } from "./writeup.js";
@@ -42,6 +42,25 @@ export const VARIANT_SUBJECT = {
 };
 
 const int = (v, dflt, min, max) => Math.min(max, Math.max(min, Number.isFinite(parseInt(v, 10)) ? parseInt(v, 10) : dflt));
+const LINK_ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789";
+export async function codeForOutreach(db, row) {
+  if (row.link_code) return row.link_code;
+  for (let tries = 0; tries < 8; tries++) {
+    const bytes = new Uint8Array(6); crypto.getRandomValues(bytes);
+    const code = [...bytes].map((n) => LINK_ALPHABET[n % LINK_ALPHABET.length]).join("");
+    try {
+      const result = await db.prepare("UPDATE outreach SET link_code=? WHERE id=? AND link_code IS NULL").bind(code, row.oid).run();
+      if (result.meta?.changes) return code;
+      const saved = await db.prepare("SELECT link_code FROM outreach WHERE id=?").bind(row.oid).first();
+      if (saved?.link_code) return saved.link_code;
+    } catch { /* retry a rare unique-code collision */ }
+  }
+  throw new Error("could not create an outreach link code");
+}
+export function linkedBody(body, code) {
+  const withLink = TEXT_SIGNATURE.replace("mobiusintegration.com", `mobiusintegration.com/r/${code}`);
+  return String(body).replace(TEXT_SIGNATURE, withLink);
+}
 
 // ---------------------------------------------------------------------------
 // State (kept in the meta table)
@@ -455,7 +474,8 @@ async function sendInitial(env, st, row, now) {
   }
   let res;
   try {
-    res = await callAgent(agentCfg(st), "send", { to: row.to, subject: row.draft_subject, body: row.draft_body, kind: "initial" });
+    const code = await codeForOutreach(db, row);
+    res = await callAgent(agentCfg(st), "send", { to: row.to, subject: row.draft_subject, body: linkedBody(row.draft_body, code), kind: "initial" });
   } catch (e) {
     await recordFailure(env, row, "initial", e && e.message);
     return false;
@@ -487,7 +507,8 @@ async function sendTouch(env, st, row, now) {
       if (v.ran && v.missing.length) extra = null;
     }
   }
-  const body = `${followupBody({ n: row.n, kind: row.track === "partner" ? "partner" : "client", name: row.name, extra })}\n\n${footerText(env)}`;
+  const code = await codeForOutreach(db, row);
+  const body = linkedBody(`${followupBody({ n: row.n, kind: row.track === "partner" ? "partner" : "client", name: row.name, extra })}\n\n${footerText(env)}`, code);
   let res;
   try {
     res = await callAgent(agentCfg(st), "send", { to: row.to, subject: row.draft_subject, body, kind: "followup", followUp: true, threadId: row.thread_ref || null });
@@ -560,7 +581,7 @@ export async function outboxTick(env, { now = new Date() } = {}) {
   const nowS = sqlTime(now);
   // Follow-ups first: they're already late for people we told we would.
   const touches = await db.prepare(
-    `SELECT t.id AS tid, t.n, o.id AS oid, o.prospect_id, o.draft_subject, o.quoted, o.thread_ref, COALESCE(o.sent_to, o.contact_email) AS "to",
+    `SELECT t.id AS tid, t.n, o.id AS oid, o.prospect_id, o.link_code, o.draft_subject, o.quoted, o.thread_ref, COALESCE(o.sent_to, o.contact_email) AS "to",
             p.domain, p.website, p.name, p.category, p.track, p.kind
        FROM touches t JOIN outreach o ON o.id = t.outreach_id JOIN prospects p ON p.id = t.prospect_id
       WHERE t.state = 'queued' AND t.due_at <= ? AND p.status = 'sent' AND o.replied_at IS NULL AND o.bounced_at IS NULL AND o.no_followups = 0
@@ -572,7 +593,7 @@ export async function outboxTick(env, { now = new Date() } = {}) {
   }
   if (sent.length >= max) return { ...sent[0], all: sent };
   const initials = await db.prepare(
-    `SELECT o.id AS oid, o.prospect_id, o.draft_subject, o.draft_body, o.quoted, o.attempts, o.contact_email AS "to",
+    `SELECT o.id AS oid, o.prospect_id, o.link_code, o.draft_subject, o.draft_body, o.quoted, o.attempts, o.contact_email AS "to",
             p.domain, p.website, p.name, p.category, p.track, p.kind
        FROM outreach o JOIN prospects p ON p.id = o.prospect_id
       WHERE o.auto_state = 'queued' AND o.send_at <= ? AND p.status = 'digested'
@@ -596,7 +617,7 @@ export async function postOutreachSummary(env, now = new Date()) {
   const nextDay = nextSendDay(p.ymd);
   const nextFrom = sqlTime(etToUtc(nextDay, 0));
   const nextTo = sqlTime(etToUtc(addDays(nextDay, 1), 0));
-  const [initial, follows, reply, bounce, queued, nextTouches, queuedFollowups] = await Promise.all([
+  const [initial, follows, reply, bounce, queued, nextTouches, queuedFollowups, clicked] = await Promise.all([
     db.prepare("SELECT p.name,p.id FROM outreach o JOIN prospects p ON p.id=o.prospect_id WHERE o.sent_via='auto' AND o.sent_at>=? AND o.sent_at<?").bind(from,to).all(),
     db.prepare("SELECT p.name,p.id,t.n FROM touches t JOIN outreach o ON o.id=t.outreach_id JOIN prospects p ON p.id=t.prospect_id WHERE t.state='sent' AND t.sent_at>=? AND t.sent_at<?").bind(from,to).all(),
     db.prepare("SELECT COUNT(*) AS n FROM replies WHERE received_at>=? AND received_at<?").bind(from,to).first(),
@@ -604,13 +625,15 @@ export async function postOutreachSummary(env, now = new Date()) {
     db.prepare("SELECT COUNT(*) AS n FROM outreach WHERE auto_state='queued' AND send_at>=? AND send_at<?").bind(nextFrom,nextTo).first(),
     db.prepare("SELECT COUNT(*) AS n FROM touches WHERE state='queued' AND due_at>=? AND due_at<?").bind(nextFrom,nextTo).first(),
     db.prepare("SELECT DISTINCT p.name,p.id FROM touches t JOIN prospects p ON p.id=t.prospect_id WHERE t.state='queued' AND p.status='sent' AND due_at>=? AND due_at<? AND EXISTS (SELECT 1 FROM outreach o WHERE o.prospect_id=p.id AND o.no_followups=0 AND o.replied_at IS NULL AND o.bounced_at IS NULL)").bind(nextFrom,nextTo).all(),
+    db.prepare("SELECT DISTINCT p.name FROM clicks k JOIN prospects p ON p.id=k.prospect_id WHERE k.likely_bot=0 AND k.clicked_at>=? AND k.clicked_at<? ORDER BY p.name").bind(from,to).all(),
   ]);
   const sentA = initial.results || [], sentF = follows.results || [];
-  if (!sentA.length && !sentF.length) { await metaSet(db,key,"checked"); return false; }
+  const clickNames=(clicked.results||[]).map(r=>r.name);
+  if (!sentA.length && !sentF.length && !clickNames.length) { await metaSet(db,key,"checked"); return false; }
   const names = [...sentA.map(r=>`${r.name}: first email`), ...sentF.map(r=>`${r.name}: follow-up ${r.n}`)];
   const actions = (queuedFollowups.results || []).map(r=>({id:`prospect:nofollow:${r.id}`,label:`Stop follow-ups: ${r.name}`.slice(0,80)}));
   const { discordSend, discordButtons } = await import("./discord.js");
-  const posted = await discordSend(env,"outreach",{content:[`Sent today: ${sentA.length} first emails, ${sentF.length} follow-ups`,...names,`Replies today: ${reply?.n||0}`,`Bounces today: ${bounce?.n||0}`,`Queued for next send day: ${(queued?.n||0)+(nextTouches?.n||0)}`].join("\n").slice(0,1900),components:discordButtons(actions.slice(0,25))});
+  const posted = await discordSend(env,"outreach",{content:[`Sent today: ${sentA.length} first emails, ${sentF.length} follow-ups`,...names,`Clicked today: ${clickNames.length ? clickNames.join(", ") : "none"}`,`Replies today: ${reply?.n||0}`,`Bounces today: ${bounce?.n||0}`,`Queued for next send day: ${(queued?.n||0)+(nextTouches?.n||0)}`].join("\n").slice(0,1900),components:discordButtons(actions.slice(0,25))});
   if (posted) await metaSet(db,key,"sent");
   return !!posted;
 }

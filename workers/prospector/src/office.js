@@ -87,7 +87,7 @@ export function eveningSummaryText({made=[],proposals=[],builder=[],held=[],repl
  const lines=[];
  if(made.length) lines.push(`Made today: ${made.length} #gallery post${made.length===1?"":"s"}`, ...made.slice(0,6).map(x=>`${String(x.caption||"Gallery post").split("\n")[0].replace(/\*\*/g,"").slice(0,100)} — https://discord.com/channels/${x.guild}/${x.channel_id}/${x.message_id}`));
  if(proposals.length||builder.length||held.length||replies.length){lines.push("Needs your tap:");for(const p of proposals)lines.push(`Proposal: ${p.title} https://discord.com/channels/${p.guild}/${p.channel_id}/${p.thread_id}`);for(const x of builder)lines.push(`Builder review: ${x.title}`);for(const x of held)lines.push(`Held email: ${x}`);for(const x of replies)lines.push(`Reply draft: ${x}`);}
- const counts=[`first emails ${outreach.first||0}`,`follow-ups ${outreach.follow||0}`,`replies ${outreach.replies||0}`,`bounces ${outreach.bounces||0}`];
+ const counts=[`first emails ${outreach.first||0}`,`follow-ups ${outreach.follow||0}`,`human clicks ${outreach.clicks||0}`,`replies ${outreach.replies||0}`,`bounces ${outreach.bounces||0}`];
  if(counts.some((x,i)=>Number(Object.values(outreach)[i])>0))lines.push(`Outreach today: ${counts.join(" · ")}`);
  return (lines.length?lines.join("\n"):"Nothing new today.").slice(0,1899);
 }
@@ -106,13 +106,14 @@ export async function postEveningSummary(env,now=new Date()) {
  ]);
  const guild=c.guild_id||c.guild||"@me", links=gallery.results||[], props=(proposals.results||[]).map(p=>({...p,guild,channel_id:c.channels.tasks}));
  const from=sqlTime(etToUtc(day,0,0)),to=sqlTime(etToUtc(addDays(day,1),0,0));
- const [first,touch,reply,bounce]=await Promise.all([
+ const [first,touch,reply,bounce,clicks]=await Promise.all([
   env.DB.prepare("SELECT COUNT(*) AS n FROM outreach WHERE sent_via='auto' AND sent_at>=? AND sent_at<?").bind(from,to).first(),
   env.DB.prepare("SELECT COUNT(*) AS n FROM touches WHERE state='sent' AND sent_at>=? AND sent_at<?").bind(from,to).first(),
   env.DB.prepare("SELECT COUNT(*) AS n FROM replies WHERE received_at>=? AND received_at<?").bind(from,to).first(),
-  env.DB.prepare("SELECT COUNT(*) AS n FROM outreach WHERE bounced_at IS NOT NULL AND bounced_at>=? AND bounced_at<?").bind(from,to).first()
+  env.DB.prepare("SELECT COUNT(*) AS n FROM outreach WHERE bounced_at IS NOT NULL AND bounced_at>=? AND bounced_at<?").bind(from,to).first(),
+  env.DB.prepare("SELECT COUNT(*) AS n FROM clicks WHERE likely_bot=0 AND clicked_at>=? AND clicked_at<?").bind(from,to).first()
  ]);
- const text=eveningSummaryText({made:links.map(x=>({...x,guild})),proposals:props,builder:builder.results||[],held:(held.results||[]).map(x=>x.label),replies:(replies.results||[]).map(x=>x.label),outreach:{first:first?.n||0,follow:touch?.n||0,replies:reply?.n||0,bounces:bounce?.n||0}});
+ const text=eveningSummaryText({made:links.map(x=>({...x,guild})),proposals:props,builder:builder.results||[],held:(held.results||[]).map(x=>x.label),replies:(replies.results||[]).map(x=>x.label),outreach:{first:first?.n||0,follow:touch?.n||0,clicks:clicks?.n||0,replies:reply?.n||0,bounces:bounce?.n||0}});
  const {discordSend}=await import("./discord.js");const summary=await discordSend(env,"hq",{content:text});try{const {postLibrarySummary}=await import("./library.js");await postLibrarySummary(env,c.channels.hq);}catch(e){console.error("prospector: ready-to-post list failed:",e?.message||"unknown error");}if(summary?.id)await env.DB.prepare("INSERT INTO meta(key,value) VALUES('office_evening_summary_message',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(summary.id).run();
  await env.DB.prepare("INSERT INTO meta(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(key,day).run();return true;
 }
@@ -123,12 +124,13 @@ async function snapshot(env){
   autoSummary(env),env.DB.prepare("SELECT COUNT(*) AS n FROM outreach WHERE auto_state='queued'").first(),env.DB.prepare("SELECT COUNT(*) AS n FROM outreach WHERE auto_state='held'").first(),
   env.DB.prepare("SELECT state,COUNT(*) AS n FROM office_proposals GROUP BY state").all(),
   env.DB.prepare("SELECT p.kind,COUNT(*) AS sent,SUM(o.replied_at IS NOT NULL) AS replies FROM outreach o JOIN prospects p ON p.id=o.prospect_id WHERE o.founder_status='sent' GROUP BY p.kind").all(),
-  env.DB.prepare("SELECT o.variant,COUNT(*) AS sent,SUM(o.replied_at IS NOT NULL) AS replies FROM outreach o WHERE o.founder_status='sent' GROUP BY o.variant").all(),
+  env.DB.prepare("SELECT o.variant,COUNT(*) AS sent,SUM(o.replied_at IS NOT NULL) AS replies,SUM(EXISTS(SELECT 1 FROM clicks k WHERE k.outreach_id=o.id AND k.likely_bot=0)) AS clicks FROM outreach o WHERE o.founder_status='sent' GROUP BY o.variant").all(),
   env.DB.prepare("SELECT COUNT(*) AS n FROM outreach WHERE founder_status='sent' AND COALESCE(sent_at,updated_at) >= datetime('now','-1 day')").first(),
   env.DB.prepare("SELECT title,state FROM office_proposals ORDER BY id DESC LIMIT 20").all()
  ]);
- const rates=rows=>(rows||[]).map(r=>({...r,reply_rate:r.sent?Number((100*Number(r.replies||0)/Number(r.sent)).toFixed(1)):0}));
- return {sends_last_24h:Number(recent?.n||0),recent_decisions:(decided.results||[]).map(r=>({title:r.title,decision:r.state})),sends_total:(byKind.results||[]).reduce((n,r)=>n+Number(r.sent||0),0),replies_total:(byKind.results||[]).reduce((n,r)=>n+Number(r.replies||0),0),reply_rate_by_kind:rates(byKind.results),reply_rate_by_subject:rates(bySubject.results),queue:queue?.n||0,held:held?.n||0,proposals:props.results||[]};
+ const rates=rows=>(rows||[]).map(r=>({...r,reply_rate:r.sent?Number((100*Number(r.replies||0)/Number(r.sent)).toFixed(1)):0,click_rate:r.sent?Number((100*Number(r.clicks||0)/Number(r.sent)).toFixed(1)):0}));
+ const clicksTotal=await env.DB.prepare("SELECT COUNT(*) AS n FROM clicks WHERE likely_bot=0").first();
+ return {sends_last_24h:Number(recent?.n||0),recent_decisions:(decided.results||[]).map(r=>({title:r.title,decision:r.state})),sends_total:(byKind.results||[]).reduce((n,r)=>n+Number(r.sent||0),0),replies_total:(byKind.results||[]).reduce((n,r)=>n+Number(r.replies||0),0),clicks_total:Number(clicksTotal?.n||0),reply_rate_by_kind:rates(byKind.results),reply_rate_by_subject:rates(bySubject.results),click_rate_by_subject:rates(bySubject.results),queue:queue?.n||0,held:held?.n||0,proposals:props.results||[]};
 }
 async function makeThread(env,channel,slot){const p=Object.fromEntries(new Intl.DateTimeFormat("en-US",{timeZone:"America/New_York",weekday:"short",month:"short",day:"numeric",hour:"numeric",hour12:true}).formatToParts(new Date()).map(x=>[x.type,x.value]));const label=`${p.weekday} ${p.month} ${p.day} · ${p.hour} ${p.dayPeriod}${String(slot).startsWith("manual:")?" (test run)":""}`;const m=await discordApi(env,`/channels/${channel}/messages`,"POST",{content:"Standup starting.",allowed_mentions:{parse:[]}}); return await discordApi(env,`/channels/${channel}/messages/${m.id}/threads`,"POST",{name:`Standup · ${label}`});}
 export async function startOfficeRun(env,{manual=false,now=new Date()}={}){

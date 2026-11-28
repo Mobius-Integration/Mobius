@@ -282,6 +282,8 @@ export async function handleOps(request, env) {
 const COLUMNS = `p.id, p.domain, p.website, p.name, p.category, p.kind, p.track, p.city, p.phone, p.score, p.status, p.updated_at,
        o.digest_date, o.draft_subject, o.draft_body, o.contact_email, o.contact_url, o.contact_form, o.sent_at, o.sent_via, o.replied_at,
        o.auto_state, o.send_at, o.hold_reason, o.bounced_at, o.no_followups, o.sent_to,
+       (SELECT COUNT(*) FROM clicks k WHERE k.outreach_id=o.id AND k.likely_bot=0) AS click_count,
+       (SELECT MAX(clicked_at) FROM clicks k WHERE k.outreach_id=o.id AND k.likely_bot=0) AS clicked_at,
        (SELECT COUNT(*) FROM touches t WHERE t.outreach_id = o.id AND t.state = 'sent') AS fu_sent,
        (SELECT MIN(due_at) FROM touches t WHERE t.outreach_id = o.id AND t.state = 'queued') AS fu_due,
        c.issues_json, c.final_url
@@ -307,7 +309,8 @@ async function loadBoard(env) {
     db.prepare("SELECT r.prospect_id, r.state, r.intent, r.thread_id, r.text, r.note FROM replies r WHERE r.id IN (SELECT MAX(id) FROM replies GROUP BY prospect_id)"),
     // Every business emailed so far, for the results panel.
     db.prepare(
-      `SELECT p.track, p.kind, p.category, p.name, o.variant, o.replied_at IS NOT NULL AS replied, o.bounced_at IS NOT NULL AS bounced,
+      `SELECT p.track, p.kind, p.category, p.name, o.variant, o.angle, o.replied_at IS NOT NULL AS replied, o.bounced_at IS NOT NULL AS bounced,
+              EXISTS (SELECT 1 FROM clicks k WHERE k.outreach_id=o.id AND k.likely_bot=0) AS clicked,
               EXISTS (SELECT 1 FROM replies r WHERE r.prospect_id = p.id AND r.intent IN ('yes', 'question', 'call')) AS interested
          FROM outreach o JOIN prospects p ON p.id = o.prospect_id
         WHERE o.founder_status = 'sent' AND o.id = (SELECT MAX(id) FROM outreach WHERE prospect_id = p.id)`,
@@ -382,6 +385,7 @@ ${issues.length ? `<ul class="findings">${issues.map((i) => `<li>${esc(i)}</li>`
 <div class="row when-sent"><button type="button" class="btn" data-act="replied">They replied</button><button type="button" class="btn" data-act="unreplied">Not a reply</button><button type="button" class="btn" data-act="nofollow">Stop follow-ups</button><button type="button" class="btn" data-act="follow">Resume follow-ups</button><button type="button" class="btn danger" data-act="never">Never contact</button><button type="button" class="btn" data-act="undo">Undo</button></div>
 <div class="row when-closed"><button type="button" class="btn" data-act="undo">Undo</button></div>
 <p class="state">${esc(statusLabel(r.status, r))}</p>
+${r.sent_at ? `<p class="meta">Clicked ${Number(r.click_count || 0)} ${Number(r.click_count) === 1 ? "time" : "times"}${r.clicked_at ? ` · last ${esc(whenLabel(r.clicked_at))}` : ""}</p>` : ""}
 ${replyBlock(r, rep, env)}
 ${ctx.base ? writeupRow(r, wid, ctx.base) : ""}
 </article>`;
@@ -403,11 +407,12 @@ function tally(rows, keyOf) {
   for (const r of rows) {
     const k = keyOf(r);
     if (!k) continue;
-    const t = m.get(k) || { key: k, sent: 0, replied: 0, interested: 0, bounced: 0 };
+    const t = m.get(k) || { key: k, sent: 0, replied: 0, interested: 0, bounced: 0, clicked: 0 };
     t.sent++;
     if (r.replied) t.replied++;
     if (r.interested) t.interested++;
     if (r.bounced) t.bounced++;
+    if (r.clicked) t.clicked++;
     m.set(k, t);
   }
   return [...m.values()].sort((a, b) => b.sent - a.sent);
@@ -417,15 +422,17 @@ function resultsPanel(rows) {
   if (!rows.length) return "";
   const pct = (a, b) => (b ? `${Math.round((100 * a) / b)}%` : "–");
   const table = (caption, list, first) => `<div class="tablewrap" tabindex="0" role="region" aria-label="${esc(caption)}"><table><caption>${esc(caption)}</caption>
-<thead><tr><th scope="col">${esc(first)}</th><th scope="col">Sent</th><th scope="col">Replies</th><th scope="col">Reply rate</th><th scope="col">Interested</th></tr></thead>
-<tbody>${list.map((t) => `<tr><th scope="row">${esc(t.key)}</th><td>${t.sent}</td><td>${t.replied}</td><td>${pct(t.replied, t.sent)}</td><td>${t.interested}</td></tr>`).join("")}</tbody></table></div>`;
+<thead><tr><th scope="col">${esc(first)}</th><th scope="col">Sent</th><th scope="col">Replies</th><th scope="col">Reply rate</th><th scope="col">Human clicks</th><th scope="col">Click rate</th><th scope="col">Interested</th></tr></thead>
+<tbody>${list.map((t) => `<tr><th scope="row">${esc(t.key)}</th><td>${t.sent}</td><td>${t.replied}</td><td>${pct(t.replied, t.sent)}</td><td>${t.clicked}</td><td>${pct(t.clicked, t.sent)}</td><td>${t.interested}</td></tr>`).join("")}</tbody></table></div>`;
   const groups = tally(rows, resultGroup);
   const variants = tally(rows.filter((r) => r.variant), (r) => (r.variant === "B" ? "B: “Question about [business]’s website”" : "A: the drafted subject"));
+  const angles = tally(rows.filter((r) => r.angle), (r) => r.angle);
   const total = rows.length, replied = rows.filter((r) => r.replied).length;
   return `<section class="panel" aria-labelledby="h-results"><h2 id="h-results">What's working</h2>
 <p class="stats"><strong>${replied}</strong> ${replied === 1 ? "reply" : "replies"} from <strong>${total}</strong> ${total === 1 ? "email" : "emails"} (${pct(replied, total)}). "Interested" means their first reply said yes, asked a question or asked to talk.</p>
 ${table("By kind of business", groups, "Kind of business")}
 ${variants.length ? table("Subject line test (client emails)", variants, "Subject") : `<p class="muted">The subject line test starts with the next emails queued.</p>`}
+${angles.length ? table("By outreach angle", angles, "Angle") : ""}
 <p class="muted">Small numbers swing a lot: wait for about 40 emails in a row before trusting a difference.</p></section>`;
 }
 

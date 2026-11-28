@@ -73,6 +73,7 @@
     </div>
 
     <input type="hidden" name="source" value="{{ fp }}">
+    <input type="hidden" name="ref" value="">
     <input type="hidden" name="started_at" value="">
 
     {# Honeypot: hidden from everyone, including assistive tech and keyboard users. #}
@@ -115,6 +116,8 @@
       var button = form.querySelector("[data-submit]");
       var nojsError = wrap.querySelector(".lead-nojs-error");
       var started = form.elements["started_at"];
+      var refField = form.elements["ref"];
+      try { if (refField) refField.value = sessionStorage.getItem("mobius_ref") || ""; } catch (_) {}
       if (started) started.value = String(Date.now());
       if (nojsError) nojsError.hidden = true;
 

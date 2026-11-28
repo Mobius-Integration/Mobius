@@ -25,6 +25,7 @@ const FIELDS = {
   preferred_time: SHORT_MAX,
   message: MESSAGE_MAX,
   source: 60,
+  ref: 6,
 };
 
 const FIELD_LABELS = {
@@ -36,6 +37,7 @@ const FIELD_LABELS = {
   interest: "what you need help with",
   preferred_time: "best time for a call",
   message: "message",
+  ref: "email link code",
 };
 
 const FORM_PAGES = ["/contact/", "/free-checkup/"];
@@ -93,6 +95,7 @@ export async function onRequestPost(context) {
     return failure(request, wantsJson, 400, "Please enter a valid email address, like name@example.com.", source);
   }
   lead.source = source || "unknown";
+  lead.ref = /^[abcdefghjkmnpqrstuvwxyz23456789]{6}$/.test(lead.ref) ? lead.ref : "";
 
   const receivedAt = new Date();
   const record = { ...lead, received_at: receivedAt.toISOString() };

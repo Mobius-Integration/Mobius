@@ -80,6 +80,7 @@ export default {
 
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
+    if (url.pathname.startsWith("/r/")) return redirectClick(request, env, url.pathname.slice(3));
     if (url.pathname === "/discord/interactions") {
       try { return await handleDiscord(request, env, ctx); }
       catch (e) { console.error("prospector: Discord interaction failed:", e && e.message); return new Response("Internal error", { status: 500 }); }
@@ -130,6 +131,36 @@ export default {
     }
   },
 };
+
+const LINK_ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789";
+const VALID_LINK_CODE = /^[abcdefghjkmnpqrstuvwxyz23456789]{6}$/;
+async function redirectClick(request, env, code) {
+  const home = "https://mobiusintegration.com/";
+  let destination = home;
+  try {
+    if (VALID_LINK_CODE.test(code)) {
+      const row = await env.DB.prepare("SELECT id, prospect_id, sent_at FROM outreach WHERE link_code = ?").bind(code).first();
+      if (row) {
+        destination = `${home}?ref=${code}`;
+        const ua = request.headers.get("user-agent") || "";
+        const low = ua.toLowerCase();
+        // Google's image proxy fetches email images and should not be counted as a visit.
+        if (!/googleimageproxy/i.test(ua)) {
+          const head = request.method === "HEAD";
+          const scanner = /safe.?links?|outlook|barracuda|mimecast|proofpoint|crawler|\bcrawl\b|\bbot\b|spider|prefetch|preview|headless|urlscan|link.?check/i.test(low);
+          const sentMs = row.sent_at ? Date.parse(`${row.sent_at.replace(" ", "T")}Z`) : NaN;
+          const recent = Number.isFinite(sentMs) && Math.abs(Date.now() - sentMs) < 60000;
+          const likelyBot = head || !ua.trim() || scanner || recent;
+          const uaKind = head ? "scanner" : !ua.trim() ? "unknown" : scanner ? "scanner" : /gmail|google/i.test(low) ? "gmail-proxy" : /mozilla|chrome|safari|firefox|edge/i.test(low) ? "browser" : "other";
+          await env.DB.prepare("INSERT INTO clicks (code,outreach_id,prospect_id,clicked_at,likely_bot,ua_kind) VALUES (?,?,?,datetime('now'),?,?)").bind(code, row.id, row.prospect_id, likelyBot ? 1 : 0, uaKind).run();
+        }
+      }
+    }
+  } catch (e) {
+    console.error("prospector: click redirect failed:", e?.message || "unknown error");
+  }
+  return new Response(null, { status: 302, headers: { Location: destination, "Cache-Control": "no-store" } });
+}
 
 const num = (v, dflt, min, max) => Math.min(max, Math.max(min, parseInt(v, 10) || dflt));
 

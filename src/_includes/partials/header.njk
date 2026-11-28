@@ -24,6 +24,10 @@
 </header>
 <script>
   (function () {
+    try {
+      var ref = new URLSearchParams(window.location.search).get('ref');
+      if (ref && /^[abcdefghjkmnpqrstuvwxyz23456789]{6}$/.test(ref)) sessionStorage.setItem('mobius_ref', ref);
+    } catch (_) {}
     var btn = document.getElementById('menuBtn');
     var nav = document.getElementById('site-nav');
     if (!btn || !nav) return;

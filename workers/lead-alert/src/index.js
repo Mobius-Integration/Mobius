@@ -147,6 +147,7 @@ function detailRows(lead) {
     ["Name", lead.name], ["Email", lead.email], ["Business", lead.business], ["Website", lead.site_url],
     ["Phone", lead.phone], ["Interested in", pkg ? pkg.name : "Not sure yet"], ["Best time to call", lead.preferred_time],
     ["Came from", lead.source === "free-checkup" ? "Free Tech Checkup page" : lead.source === "contact" ? "Contact page" : lead.source],
+    ...(lead.ref ? [["Email link", `Came from your email (link code ${lead.ref})`]] : []),
     ["Received", lead.received_at],
   ].filter(([, v]) => v);
 }
